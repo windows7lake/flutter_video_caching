@@ -1,5 +1,12 @@
 // 定义下载任务的状态枚举
-enum DownloadTaskStatus { IDLE, DOWNLOADING, PAUSED, COMPLETED, CANCELLED }
+enum DownloadTaskStatus {
+  IDLE,
+  DOWNLOADING,
+  RESUME,
+  PAUSED,
+  COMPLETED,
+  CANCELLED
+}
 
 // 下载任务类
 class DownloadTask {
@@ -21,36 +28,26 @@ class DownloadTask {
   })  : id = _autoId.toString(),
         saveFile = fileName ?? url.split('/').last {
     _autoId++;
-  }
-
-  void start() {
-    if (status == DownloadTaskStatus.IDLE ||
-        status == DownloadTaskStatus.PAUSED) {
-      status = DownloadTaskStatus.DOWNLOADING;
+    if (!isValidUrl(url)) {
+      throw ArgumentError('Invalid URL: $url');
     }
   }
 
-  void pause() {
-    if (status == DownloadTaskStatus.DOWNLOADING) {
-      status = DownloadTaskStatus.PAUSED;
-    }
-  }
-
-  void resume() {
-    if (status == DownloadTaskStatus.PAUSED) {
-      status = DownloadTaskStatus.DOWNLOADING;
-    }
-  }
-
-  void cancel() {
-    if (status == DownloadTaskStatus.DOWNLOADING ||
-        status == DownloadTaskStatus.PAUSED) {
-      status = DownloadTaskStatus.CANCELLED;
+  bool isValidUrl(String url) {
+    try {
+      Uri.parse(url);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
   void updateProgress() {
     if (status == DownloadTaskStatus.DOWNLOADING && !_isCompleted) {
+      if (totalBytes == 0) {
+        print('Task $id: Total bytes is 0, cannot calculate progress.');
+        return;
+      }
       if (downloadedBytes >= totalBytes) {
         progress = 1.0;
         _isCompleted = true;
@@ -62,6 +59,7 @@ class DownloadTask {
     }
   }
 
+  @override
   String toString() {
     return 'Task ID: $id, URL: $url, Status: $status, Progress: ${(progress * 100).toStringAsFixed(2)}%';
   }

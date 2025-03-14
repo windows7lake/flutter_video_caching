@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 import 'package:log_wrapper/log/log.dart';
 
-import '../download/file_downloader.dart';
+import '../flutter_video_cache.dart';
 
 /// M3U8 HLS parser
 class HlsParser {
@@ -32,7 +32,8 @@ class HlsParser {
   /// 解析M3U8链接
   Future<HlsPlaylist?> parsePlaylist(String url) async {
     final String fileName = url.split('/').last;
-    final String savePath = await FileDownloader().start(url, fileName);
+    final String savePath = await DownloadManager()
+        .addTask(DownloadTask(url: url, fileName: fileName));
     final File file = File(savePath);
     final List<String> lines = await file.readAsLines();
     final HlsPlaylist? playList = await parseString(lines);
@@ -77,8 +78,8 @@ class HlsParser {
           segmentPath = '$prefix$segmentUrl';
         }
         final String segmentName = segmentUrl.split('/').last;
-        final String savePath =
-            await FileDownloader().start(segmentPath, segmentName);
+        final String savePath = await DownloadManager()
+            .addTask(DownloadTask(url: segmentPath, fileName: segmentName));
         downloaded.add(savePath);
       }
     }

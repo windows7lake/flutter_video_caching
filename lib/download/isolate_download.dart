@@ -1,49 +1,32 @@
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:path_provider/path_provider.dart';
-
 import 'download_task.dart';
 
-// 定义进度更新的最小时间间隔（毫秒）
+/// 定义进度更新的最小时间间隔（毫秒）
 const int MIN_PROGRESS_UPDATE_INTERVAL = 500;
 
-// 下载隔离管理器类
-class DownloadIsolateManager {
-  static void startDownload(DownloadTask task, Function(String) onCompleted,
-      Function(String, double) onProgressUpdate) async {
-    final appDir = await getApplicationDocumentsDirectory();
-    task.saveFile = '${appDir.path}/${task.saveFile}';
-
-    final receivePort = ReceivePort();
-    final isolate = await Isolate.spawn(
-      _downloadIsolateEntry,
-      [task, receivePort.sendPort],
-    );
-
-    receivePort.listen((message) {
-      if (message is double) {
-        print("receivePort: $message  task.progress: ${task.progress}");
-        onProgressUpdate(task.id, task.progress);
-      } else if (message == 'completed') {
-        task.status = DownloadTaskStatus.COMPLETED;
-        onCompleted(task.id);
-        receivePort.close();
-        isolate.kill(priority: Isolate.immediate);
+/// 下载任务在 Isolate 中执行的入口函数
+void downloadIsolateEntry(SendPort mainSendPort) {
+  final receivePort = ReceivePort();
+  DownloadTask? task;
+  mainSendPort.send(receivePort.sendPort);
+  receivePort.listen((message) {
+    print("Isolate listen: $message");
+    if (message is DownloadTask) {
+      task = message;
+      _downloadFile(task!, mainSendPort);
+    } else if (message is DownloadTaskStatus) {
+      task?.status = message;
+      if (message == DownloadTaskStatus.DOWNLOADING) {
+        mainSendPort.send(DownloadTaskStatus.DOWNLOADING);
+        _downloadFile(task!, mainSendPort);
       }
-    });
-  }
+    }
+  });
 }
 
-// 下载任务在 Isolate 中执行的入口函数
-void _downloadIsolateEntry(List<dynamic> args) {
-  final DownloadTask task = args[0];
-  final SendPort sendPort = args[1];
-
-  _downloadFile(task, sendPort);
-}
-
-// 下载文件的具体实现
+/// 下载文件的具体实现
 void _downloadFile(DownloadTask task, SendPort sendPort) async {
   try {
     final client = HttpClient();
@@ -76,14 +59,20 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
 
     await for (var data in response) {
       if (task.status == DownloadTaskStatus.PAUSED) {
+        print("PAUSED");
+        request.abort();
+        client.close();
         await raf.close();
-        task.updateProgress();
-        sendPort.send(task.progress);
+        sendPort.send(DownloadTaskStatus.PAUSED);
         return;
       }
       if (task.status == DownloadTaskStatus.CANCELLED) {
+        print("CANCELLED");
+        request.abort();
+        client.close();
         await raf.close();
         await tempFile.delete();
+        sendPort.send(DownloadTaskStatus.CANCELLED);
         return;
       }
       await raf.writeFrom(data);
@@ -106,7 +95,7 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     await raf.close();
     // 原子性写入磁盘操作：将临时文件重命名为最终文件
     await tempFile.rename(task.saveFile);
-    sendPort.send('completed');
+    sendPort.send(DownloadTaskStatus.COMPLETED);
   } catch (e) {
     print('Download error: $e');
   }

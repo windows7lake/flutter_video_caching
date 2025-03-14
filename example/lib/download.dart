@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Download Manager Home Page'),
+      home: const MyHomePage(title: 'Download Manager'),
     );
   }
 }
@@ -32,97 +32,126 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final DownloadManager _downloadManager = DownloadManager(maxDownloads: 1);
-  final Map<String, StreamController<double>> _progressControllers = {};
+  final DownloadManager _manager = DownloadManager(maxConcurrentDownloads: 1);
+  final Map<String, StreamController<double>> _controllers = {};
 
   @override
   void initState() {
     super.initState();
-    // 添加示例下载任务
-    final task1 = DownloadTask(
-      url:
-          'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/main.mp4',
-      priority: 2,
-    );
-    final task2 = DownloadTask(
-      url:
-          'https://mirrors.edge.kernel.org/linuxmint/stable/20.3/linuxmint-20.3-xfce-64bit.iso',
-      priority: 1,
-    );
-    final task3 = DownloadTask(
-      url:
-          'https://download.blender.org/release/Blender3.4/blender-3.4.1-windows-x64.msi',
-      priority: 3,
-    );
+    _addSampleTasks();
+  }
 
-    final onCompleted = (taskId) {
-      _progressControllers[taskId]?.close();
-      _progressControllers.remove(taskId);
-    };
-    final onProgressUpdate = (taskId, downloadedBytes) {
-      final task = _downloadManager.tasks.firstWhere((t) => t.id == taskId);
-      _progressControllers[taskId]?.add(task.progress);
-    };
+  void _addSampleTasks() async {
+    final List<String> links = [
+      'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/main.mp4',
+      'https://mirrors.edge.kernel.org/linuxmint/stable/20.3/linuxmint-20.3-xfce-64bit.iso',
+      'https://download.blender.org/release/Blender3.4/blender-3.4.1-windows-x64.msi',
+    ];
 
-    _downloadManager.addTask(task1, onCompleted, onProgressUpdate);
-    _downloadManager.addTask(task2, onCompleted, onProgressUpdate);
-    _downloadManager.addTask(task3, onCompleted, onProgressUpdate);
+    final tasks = [
+      DownloadTask(url: links[0], priority: 2),
+      DownloadTask(url: links[1], priority: 1),
+      DownloadTask(url: links[2], priority: 3),
+    ];
 
-    Future.delayed(const Duration(seconds: 5), () {
-      _downloadManager.pauseTaskById(task1.id, onCompleted, onProgressUpdate);
-    });
+    for (final task in tasks) {
+      await _manager.addTask(task, onProgressUpdate: (task) {
+        if (task.status == DownloadTaskStatus.COMPLETED) {
+          _controllers[task.id]?.close();
+          _controllers.remove(task.id);
+        } else {
+          _controllers[task.id]?.add(task.progress);
+        }
+      });
+    }
 
-    Future.delayed(const Duration(seconds: 10), () {
-      _downloadManager.resumeTaskById(task1.id, onCompleted, onProgressUpdate);
-    });
-
-    Future.delayed(const Duration(seconds: 15), () {
-      _downloadManager.cancelTaskById(task2.id);
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {});
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Download Manager Example',
-            ),
-            ..._downloadManager.tasks.map((task) {
-              _progressControllers.putIfAbsent(
-                  task.id, () => StreamController<double>());
-              return StreamBuilder<double>(
-                stream: _progressControllers[task.id]?.stream,
-                builder: (context, snapshot) {
-                  final progress = snapshot.data ?? 0.0;
-                  return Column(
+          children: _manager.allTasks.map((task) {
+            _controllers.putIfAbsent(task.id, () => StreamController<double>());
+            return StreamBuilder<double>(
+              stream: _controllers[task.id]?.stream,
+              builder: (context, snapshot) {
+                final progress = snapshot.data ?? 0.0;
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
                     children: [
                       Text(
-                        'Task ID: ${task.id}, URL: ${task.url}, Status: ${task.status}, Progress: ${(progress * 100).toStringAsFixed(2)}%',
+                        'Task ${task.id}',
+                        style: const TextStyle(fontSize: 20),
                       ),
-                      LinearProgressIndicator(
-                        value: progress,
+                      Text(
+                        'Status: ${task.status.name}',
+                        style: TextStyle(color: _getStatusColor(task.status)),
+                      ),
+                      LinearProgressIndicator(value: progress),
+                      Text('${(progress * 100).toStringAsFixed(2)}%'),
+                      ElevatedButton(
+                        onPressed: () {
+                          switch (task.status) {
+                            case DownloadTaskStatus.DOWNLOADING:
+                              _manager.pauseTaskById(task.id);
+                              break;
+                            case DownloadTaskStatus.PAUSED:
+                              _manager.resumeTaskById(task.id);
+                              break;
+                            default:
+                              _manager.cancelTaskById(task.id);
+                          }
+                        },
+                        child: Text(_getButtonText(task.status)),
                       ),
                     ],
-                  );
-                },
-              );
-            }).toList(),
-          ],
+                  ),
+                );
+              },
+            );
+          }).toList(),
         ),
       ),
     );
   }
 
+  Color _getStatusColor(DownloadTaskStatus status) {
+    switch (status) {
+      case DownloadTaskStatus.DOWNLOADING:
+        return Colors.blue;
+      case DownloadTaskStatus.PAUSED:
+        return Colors.orange;
+      case DownloadTaskStatus.COMPLETED:
+        return Colors.green;
+      case DownloadTaskStatus.CANCELLED:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getButtonText(DownloadTaskStatus status) {
+    switch (status) {
+      case DownloadTaskStatus.DOWNLOADING:
+        return 'Pause';
+      case DownloadTaskStatus.PAUSED:
+        return 'Resume';
+      default:
+        return 'Cancel';
+    }
+  }
+
   @override
   void dispose() {
-    for (final controller in _progressControllers.values) {
+    for (final controller in _controllers.values) {
       controller.close();
     }
     super.dispose();

@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_video_cache/ext/url_ext.dart';
 import 'package:flutter_video_cache/global/config.dart';
 import 'package:log_wrapper/log/log.dart';
 import 'package:pool/pool.dart';
 
-import '../download/file_downloader.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
+import '../flutter_video_cache.dart';
 import '../memory/memory_cache.dart';
 
 /// 本地代理服务器
@@ -129,8 +128,8 @@ class LocalProxyServer {
       return memoryData;
     }
     final String fileName = uri.pathSegments.last;
-    final String download =
-        await FileDownloader().start(uri.toString(), fileName);
+    final String download = await DownloadManager()
+        .addTask(DownloadTask(url: uri.toString(), fileName: fileName));
     final File file = File(download);
     if (uri.path.endsWith('m3u8')) {
       final List<String> lines = await file.readAsLines();
