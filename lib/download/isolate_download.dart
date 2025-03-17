@@ -39,15 +39,17 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
 
     final response = await request.close();
 
+    bool chunked = response.headers.chunkedTransferEncoding;
+    print('Response status code: ${response.statusCode}');
+    print('Response chunkedTransferEncoding: ${chunked}');
     // 检查 contentLength 是否有效
     if (response.contentLength == -1) {
       print('Failed to get the total file size.');
-      return;
     }
 
     // 计算文件总大小
     final totalBytes = task.downloadedBytes + response.contentLength;
-    task.totalBytes = totalBytes;
+    task.totalBytes = response.contentLength == -1 ? 0 : totalBytes;
     task.updateProgress();
 
     final tempFilePath = '${task.saveFile}.temp';
@@ -57,6 +59,51 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     // 记录上一次更新进度的时间
     DateTime lastUpdateTime = DateTime.now();
 
+    // if (chunked) {
+    //   // 如果服务器使用分块传输编码，则直接写入文件
+    //   await response.listen(
+    //     (data) async {
+    //       if (task.status == DownloadTaskStatus.PAUSED) {
+    //         print("PAUSED");
+    //         request.abort();
+    //         client.close();
+    //         await raf.close();
+    //         sendPort.send(DownloadTaskStatus.PAUSED);
+    //         return;
+    //       }
+    //       if (task.status == DownloadTaskStatus.CANCELLED) {
+    //         print("CANCELLED");
+    //         request.abort();
+    //         client.close();
+    //         await raf.close();
+    //         await tempFile.delete();
+    //         sendPort.send(DownloadTaskStatus.CANCELLED);
+    //         return;
+    //       }
+    //       await raf.writeFrom(data);
+    //       task.downloadedBytes += data.length;
+    //
+    //       // 计算当前时间与上一次更新时间的间隔
+    //       final currentTime = DateTime.now();
+    //       final timeDiff = currentTime.difference(lastUpdateTime).inMilliseconds;
+    //
+    //       // 如果时间间隔超过指定的最小更新间隔，或者已经下载完成，则更新进度
+    //       if (task.status == DownloadTaskStatus.DOWNLOADING &&
+    //           timeDiff >= MIN_PROGRESS_UPDATE_INTERVAL) {
+    //         task.updateProgress();
+    //         sendPort.send(task.progress);
+    //         lastUpdateTime = currentTime;
+    //       }
+    //     },
+    //     onDone: () async {
+    //       await raf.close();
+    //       await tempFile.rename(task.saveFile);
+    //       task.updateProgress();
+    //       sendPort.send(task.progress);
+    //       sendPort.send(DownloadTaskStatus.COMPLETED);
+    //     },
+    //   );
+    // } else {
     await for (var data in response) {
       if (task.status == DownloadTaskStatus.PAUSED) {
         print("PAUSED");
@@ -83,9 +130,8 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
       final timeDiff = currentTime.difference(lastUpdateTime).inMilliseconds;
 
       // 如果时间间隔超过指定的最小更新间隔，或者已经下载完成，则更新进度
-      if ((timeDiff >= MIN_PROGRESS_UPDATE_INTERVAL ||
-              task.downloadedBytes == totalBytes) &&
-          task.status == DownloadTaskStatus.DOWNLOADING) {
+      if (task.status == DownloadTaskStatus.DOWNLOADING &&
+          timeDiff >= MIN_PROGRESS_UPDATE_INTERVAL) {
         task.updateProgress();
         sendPort.send(task.progress);
         lastUpdateTime = currentTime;
@@ -95,7 +141,11 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     await raf.close();
     // 原子性写入磁盘操作：将临时文件重命名为最终文件
     await tempFile.rename(task.saveFile);
+
+    task.updateProgress();
+    sendPort.send(task.progress);
     sendPort.send(DownloadTaskStatus.COMPLETED);
+    // }
   } catch (e) {
     print('Download error: $e');
   }

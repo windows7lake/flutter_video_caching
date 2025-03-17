@@ -19,7 +19,7 @@ class DownloadTask {
   double progress = 0.0;
   int downloadedBytes = 0;
   int totalBytes = 0;
-  bool _isCompleted = false;
+  bool isCompleted = false;
 
   DownloadTask({
     required this.url,
@@ -43,24 +43,22 @@ class DownloadTask {
   }
 
   void updateProgress() {
-    if (status == DownloadTaskStatus.DOWNLOADING && !_isCompleted) {
-      if (totalBytes == 0) {
-        print('Task $id: Total bytes is 0, cannot calculate progress.');
-        return;
-      }
-      if (downloadedBytes >= totalBytes) {
-        progress = 1.0;
-        _isCompleted = true;
-        status = DownloadTaskStatus.COMPLETED;
-      } else {
-        progress = downloadedBytes / totalBytes;
-      }
-      print('Task ${id} (${url}) progress: ${progress * 100}%');
+    if (status == DownloadTaskStatus.DOWNLOADING && !isCompleted) {
+      progress = totalBytes == 0
+          ? downloadedBytes.toDouble()
+          : (downloadedBytes / totalBytes);
+      print(this.toString());
     }
   }
 
   @override
   String toString() {
-    return 'Task ID: $id, URL: $url, Status: $status, Progress: ${(progress * 100).toStringAsFixed(2)}%';
+    return 'Task ID: $id, URL: $url, Status: $status, Progress: ${progressText()}';
+  }
+
+  String progressText() {
+    return totalBytes == 0
+        ? '${(progress / 1000 / 1000).toStringAsFixed(2)}MB'
+        : '${(progress * 100).toStringAsFixed(2)}%';
   }
 }

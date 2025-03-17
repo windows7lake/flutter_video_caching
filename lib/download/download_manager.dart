@@ -15,11 +15,12 @@ class DownloadManager {
       .where((task) => task.status == DownloadTaskStatus.DOWNLOADING)
       .toList();
 
-  Future addTask(
-    DownloadTask task, {
-    Function(DownloadTask)? onProgressUpdate,
-  }) {
-    return _isolateManager.addTask(task, onProgressUpdate: onProgressUpdate);
+  Future addTask(DownloadTask task) {
+    return _isolateManager.addTask(task);
+  }
+
+  Future processTask({Function(DownloadTask)? onProgressUpdate}) {
+    return _isolateManager.processTask(onProgressUpdate: onProgressUpdate);
   }
 
   void pauseTaskById(String taskId) {

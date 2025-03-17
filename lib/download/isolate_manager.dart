@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:path_provider/path_provider.dart';
-import 'package:synchronized/synchronized.dart';
 
 import 'download_task.dart';
 import 'isolate_download.dart';
@@ -12,7 +11,6 @@ import 'isolate_instance.dart';
 const int MAX_POOL_SIZE = 1;
 
 class IsolateManager {
-  final Lock _atomicLock = Lock();
   final List<IsolateInstance> _isolatePool = [];
   final List<DownloadTask> _taskList = [];
   int _poolSize = 0;
@@ -32,28 +30,32 @@ class IsolateManager {
     print("Task ${isolateInstance?.task?.id} notifyIsolate: $message");
   }
 
-  Future addTask(
-    DownloadTask task, {
-    Function(DownloadTask)? onProgressUpdate,
-  }) async {
-    await _atomicLock.synchronized(() async {
-      final appDir = await getApplicationDocumentsDirectory();
-      task.saveFile = '${appDir.path}/${task.saveFile}';
-      _taskList.add(task);
-      _taskList.sort((a, b) => b.priority - a.priority);
-      task = _taskList.first;
-      await _attackToIsolate(task, onProgressUpdate: onProgressUpdate);
-    });
+  Future addTask(DownloadTask task) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    task.saveFile = '${appDir.path}/${task.saveFile}';
+    _taskList.add(task);
+  }
+
+  Future processTask({Function(DownloadTask)? onProgressUpdate}) async {
+    print("processTask => task size: ${_taskList.length}");
+    _taskList.sort((a, b) => b.priority - a.priority);
+    for (int i = 0; i < _poolSize; i++) {
+      if (i >= _taskList.length) break;
+      if (_taskList[i].status != DownloadTaskStatus.IDLE) continue;
+      await _attackToIsolate(_taskList[i], onProgressUpdate: onProgressUpdate);
+    }
   }
 
   Future _attackToIsolate(
     DownloadTask task, {
     Function(DownloadTask)? onProgressUpdate,
   }) async {
+    // print("_attackToIsolate step 1");
     IsolateInstance? availableIsolate =
         _isolatePool.where((isolate) => !isolate.isBusy).firstOrNull;
     if (availableIsolate == null && _isolatePool.length < _poolSize) {
       availableIsolate = await _createIsolate();
+      // print("_attackToIsolate step 2");
     }
     if (availableIsolate == null) {
       IsolateInstance? _isolate;
@@ -67,30 +69,36 @@ class IsolateManager {
       if (_isolate?.task != null && _isolate!.task!.id != task.id) {
         availableIsolate = _isolate;
       }
+      // print("_attackToIsolate step 3");
     }
     if (availableIsolate == null) return;
+    // print("_attackToIsolate step 4");
     availableIsolate.isBusy = true;
     availableIsolate.task = task;
     availableIsolate.subscription?.onData((message) {
       if (message is double) {
-        print("Task ${task.id} Progress: $message");
+        // print("Task ${task.id} Progress: $message");
         task.progress = message;
         onProgressUpdate?.call(task);
       } else if (message is DownloadTaskStatus) {
-        print("Task ${task.id} message: $message");
+        // print("Task ${task.id} message: $message");
         if (message == DownloadTaskStatus.COMPLETED) {
-          task.progress = 1.0;
+          _taskList
+              .removeWhere((task) => task.id == availableIsolate?.task?.id);
           availableIsolate?.reset();
+          processTask(onProgressUpdate: onProgressUpdate);
         }
         task.status = message;
         onProgressUpdate?.call(task);
       } else if (message is SendPort) {
-        print("Task ${task.id} controlPort: $message");
+        // print("Task ${task.id} controlPort: $message");
         task.status = DownloadTaskStatus.DOWNLOADING;
         availableIsolate?.controlPort = message;
         availableIsolate?.controlPort?.send(task);
       }
     });
+    task.status = DownloadTaskStatus.DOWNLOADING;
+    availableIsolate.controlPort?.send(task);
   }
 
   Future<IsolateInstance> _createIsolate() async {
