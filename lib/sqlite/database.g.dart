@@ -35,8 +35,30 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, Video> {
   late final GeneratedColumn<String> file = GeneratedColumn<String>(
       'file', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
   @override
-  List<GeneratedColumn> get $columns => [id, md5, link, file];
+  late final GeneratedColumn<int> size = GeneratedColumn<int>(
+      'size', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _mimeTypeMeta =
+      const VerificationMeta('mimeType');
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+      'mime_type', aliasedName, false,
+      additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 32),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, md5, link, file, size, createdAt, mimeType];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -68,6 +90,22 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, Video> {
     } else if (isInserting) {
       context.missing(_fileMeta);
     }
+    if (data.containsKey('size')) {
+      context.handle(
+          _sizeMeta, size.isAcceptableOrUnknown(data['size']!, _sizeMeta));
+    } else if (isInserting) {
+      context.missing(_sizeMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(_mimeTypeMeta,
+          mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta));
+    } else if (isInserting) {
+      context.missing(_mimeTypeMeta);
+    }
     return context;
   }
 
@@ -85,6 +123,12 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, Video> {
           .read(DriftSqlType.string, data['${effectivePrefix}link'])!,
       file: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}file'])!,
+      size: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}size'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      mimeType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}mime_type'])!,
     );
   }
 
@@ -99,11 +143,17 @@ class Video extends DataClass implements Insertable<Video> {
   final String md5;
   final String link;
   final String file;
+  final int size;
+  final DateTime createdAt;
+  final String mimeType;
   const Video(
       {required this.id,
       required this.md5,
       required this.link,
-      required this.file});
+      required this.file,
+      required this.size,
+      required this.createdAt,
+      required this.mimeType});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -111,6 +161,9 @@ class Video extends DataClass implements Insertable<Video> {
     map['md5'] = Variable<String>(md5);
     map['link'] = Variable<String>(link);
     map['file'] = Variable<String>(file);
+    map['size'] = Variable<int>(size);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['mime_type'] = Variable<String>(mimeType);
     return map;
   }
 
@@ -120,6 +173,9 @@ class Video extends DataClass implements Insertable<Video> {
       md5: Value(md5),
       link: Value(link),
       file: Value(file),
+      size: Value(size),
+      createdAt: Value(createdAt),
+      mimeType: Value(mimeType),
     );
   }
 
@@ -131,6 +187,9 @@ class Video extends DataClass implements Insertable<Video> {
       md5: serializer.fromJson<String>(json['md5']),
       link: serializer.fromJson<String>(json['link']),
       file: serializer.fromJson<String>(json['file']),
+      size: serializer.fromJson<int>(json['size']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
     );
   }
   @override
@@ -141,14 +200,28 @@ class Video extends DataClass implements Insertable<Video> {
       'md5': serializer.toJson<String>(md5),
       'link': serializer.toJson<String>(link),
       'file': serializer.toJson<String>(file),
+      'size': serializer.toJson<int>(size),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'mimeType': serializer.toJson<String>(mimeType),
     };
   }
 
-  Video copyWith({int? id, String? md5, String? link, String? file}) => Video(
+  Video copyWith(
+          {int? id,
+          String? md5,
+          String? link,
+          String? file,
+          int? size,
+          DateTime? createdAt,
+          String? mimeType}) =>
+      Video(
         id: id ?? this.id,
         md5: md5 ?? this.md5,
         link: link ?? this.link,
         file: file ?? this.file,
+        size: size ?? this.size,
+        createdAt: createdAt ?? this.createdAt,
+        mimeType: mimeType ?? this.mimeType,
       );
   Video copyWithCompanion(VideosCompanion data) {
     return Video(
@@ -156,6 +229,9 @@ class Video extends DataClass implements Insertable<Video> {
       md5: data.md5.present ? data.md5.value : this.md5,
       link: data.link.present ? data.link.value : this.link,
       file: data.file.present ? data.file.value : this.file,
+      size: data.size.present ? data.size.value : this.size,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
     );
   }
 
@@ -165,13 +241,17 @@ class Video extends DataClass implements Insertable<Video> {
           ..write('id: $id, ')
           ..write('md5: $md5, ')
           ..write('link: $link, ')
-          ..write('file: $file')
+          ..write('file: $file, ')
+          ..write('size: $size, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('mimeType: $mimeType')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, md5, link, file);
+  int get hashCode =>
+      Object.hash(id, md5, link, file, size, createdAt, mimeType);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -179,7 +259,10 @@ class Video extends DataClass implements Insertable<Video> {
           other.id == this.id &&
           other.md5 == this.md5 &&
           other.link == this.link &&
-          other.file == this.file);
+          other.file == this.file &&
+          other.size == this.size &&
+          other.createdAt == this.createdAt &&
+          other.mimeType == this.mimeType);
 }
 
 class VideosCompanion extends UpdateCompanion<Video> {
@@ -187,31 +270,48 @@ class VideosCompanion extends UpdateCompanion<Video> {
   final Value<String> md5;
   final Value<String> link;
   final Value<String> file;
+  final Value<int> size;
+  final Value<DateTime> createdAt;
+  final Value<String> mimeType;
   const VideosCompanion({
     this.id = const Value.absent(),
     this.md5 = const Value.absent(),
     this.link = const Value.absent(),
     this.file = const Value.absent(),
+    this.size = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.mimeType = const Value.absent(),
   });
   VideosCompanion.insert({
     this.id = const Value.absent(),
     required String md5,
     required String link,
     required String file,
+    required int size,
+    this.createdAt = const Value.absent(),
+    required String mimeType,
   })  : md5 = Value(md5),
         link = Value(link),
-        file = Value(file);
+        file = Value(file),
+        size = Value(size),
+        mimeType = Value(mimeType);
   static Insertable<Video> custom({
     Expression<int>? id,
     Expression<String>? md5,
     Expression<String>? link,
     Expression<String>? file,
+    Expression<int>? size,
+    Expression<DateTime>? createdAt,
+    Expression<String>? mimeType,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (md5 != null) 'md5': md5,
       if (link != null) 'link': link,
       if (file != null) 'file': file,
+      if (size != null) 'size': size,
+      if (createdAt != null) 'created_at': createdAt,
+      if (mimeType != null) 'mime_type': mimeType,
     });
   }
 
@@ -219,12 +319,18 @@ class VideosCompanion extends UpdateCompanion<Video> {
       {Value<int>? id,
       Value<String>? md5,
       Value<String>? link,
-      Value<String>? file}) {
+      Value<String>? file,
+      Value<int>? size,
+      Value<DateTime>? createdAt,
+      Value<String>? mimeType}) {
     return VideosCompanion(
       id: id ?? this.id,
       md5: md5 ?? this.md5,
       link: link ?? this.link,
       file: file ?? this.file,
+      size: size ?? this.size,
+      createdAt: createdAt ?? this.createdAt,
+      mimeType: mimeType ?? this.mimeType,
     );
   }
 
@@ -243,6 +349,15 @@ class VideosCompanion extends UpdateCompanion<Video> {
     if (file.present) {
       map['file'] = Variable<String>(file.value);
     }
+    if (size.present) {
+      map['size'] = Variable<int>(size.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
     return map;
   }
 
@@ -252,7 +367,10 @@ class VideosCompanion extends UpdateCompanion<Video> {
           ..write('id: $id, ')
           ..write('md5: $md5, ')
           ..write('link: $link, ')
-          ..write('file: $file')
+          ..write('file: $file, ')
+          ..write('size: $size, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('mimeType: $mimeType')
           ..write(')'))
         .toString();
   }
@@ -274,12 +392,18 @@ typedef $$VideosTableCreateCompanionBuilder = VideosCompanion Function({
   required String md5,
   required String link,
   required String file,
+  required int size,
+  Value<DateTime> createdAt,
+  required String mimeType,
 });
 typedef $$VideosTableUpdateCompanionBuilder = VideosCompanion Function({
   Value<int> id,
   Value<String> md5,
   Value<String> link,
   Value<String> file,
+  Value<int> size,
+  Value<DateTime> createdAt,
+  Value<String> mimeType,
 });
 
 class $$VideosTableFilterComposer extends Composer<_$MyDatabase, $VideosTable> {
@@ -301,6 +425,15 @@ class $$VideosTableFilterComposer extends Composer<_$MyDatabase, $VideosTable> {
 
   ColumnFilters<String> get file => $composableBuilder(
       column: $table.file, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get size => $composableBuilder(
+      column: $table.size, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+      column: $table.mimeType, builder: (column) => ColumnFilters(column));
 }
 
 class $$VideosTableOrderingComposer
@@ -323,6 +456,15 @@ class $$VideosTableOrderingComposer
 
   ColumnOrderings<String> get file => $composableBuilder(
       column: $table.file, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get size => $composableBuilder(
+      column: $table.size, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+      column: $table.mimeType, builder: (column) => ColumnOrderings(column));
 }
 
 class $$VideosTableAnnotationComposer
@@ -345,6 +487,15 @@ class $$VideosTableAnnotationComposer
 
   GeneratedColumn<String> get file =>
       $composableBuilder(column: $table.file, builder: (column) => column);
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
 }
 
 class $$VideosTableTableManager extends RootTableManager<
@@ -374,24 +525,36 @@ class $$VideosTableTableManager extends RootTableManager<
             Value<String> md5 = const Value.absent(),
             Value<String> link = const Value.absent(),
             Value<String> file = const Value.absent(),
+            Value<int> size = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String> mimeType = const Value.absent(),
           }) =>
               VideosCompanion(
             id: id,
             md5: md5,
             link: link,
             file: file,
+            size: size,
+            createdAt: createdAt,
+            mimeType: mimeType,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String md5,
             required String link,
             required String file,
+            required int size,
+            Value<DateTime> createdAt = const Value.absent(),
+            required String mimeType,
           }) =>
               VideosCompanion.insert(
             id: id,
             md5: md5,
             link: link,
             file: file,
+            size: size,
+            createdAt: createdAt,
+            mimeType: mimeType,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

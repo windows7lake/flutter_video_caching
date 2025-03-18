@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_video_cache/global/config.dart';
+import 'package:flutter_video_cache/sqlite/database.dart';
 import 'package:log_wrapper/log/log.dart';
 import 'package:pool/pool.dart';
 
@@ -10,6 +11,7 @@ import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../flutter_video_cache.dart';
 import '../memory/memory_cache.dart';
+import '../sqlite/db_instance.dart';
 
 /// 本地代理服务器
 class LocalProxyServer {
@@ -27,6 +29,9 @@ class LocalProxyServer {
 
   /// 代理服务
   ServerSocket? server;
+
+  /// 下载管理器
+  DownloadManager downloadManager = DownloadManager();
 
   /// 启动代理服务器
   Future<void> start() async {
@@ -127,10 +132,24 @@ class LocalProxyServer {
       logD('从内存中获取数据');
       return memoryData;
     }
-    final String fileName = uri.pathSegments.last;
-    final String download = await DownloadManager()
-        .addTask(DownloadTask(url: uri.toString(), fileName: fileName));
-    final File file = File(download);
+    Video? video = await selectVideoFromDB(md5);
+    File file;
+    if (video != null && File(video.file).existsSync()) {
+      logD('从数据库中获取数据');
+      file = File(video.file);
+    } else {
+      logD('从网络中获取数据');
+      final String fileName = uri.pathSegments.last;
+      final DownloadTask task = await downloadManager.addTask(DownloadTask(
+        url: uri.toString(),
+        fileName: fileName,
+      ));
+      await downloadManager.processTask();
+      file = File(task.saveFile);
+      while (!file.existsSync()) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
     if (uri.path.endsWith('m3u8')) {
       final List<String> lines = await file.readAsLines();
       final StringBuffer buffer = StringBuffer();
@@ -145,6 +164,12 @@ class LocalProxyServer {
         lastLine = line;
       }
       final Uint8List data = Uint8List.fromList(buffer.toString().codeUnits);
+      insertVideoToDB(
+        uri.toString(),
+        file.path,
+        file.lengthSync(),
+        'application/vnd.apple.mpegurl',
+      );
       return await MemoryCache.put(md5, data);
     } else {
       final int fileSize = await file.length();
@@ -164,6 +189,12 @@ class LocalProxyServer {
       final RandomAccessFile raf = await file.open();
       raf.setPositionSync(start);
       final Uint8List data = raf.readSync(end - start + 1);
+      insertVideoToDB(
+        uri.toString(),
+        file.path,
+        file.lengthSync(),
+        'application/vnd.apple.mpegurl',
+      );
       return await MemoryCache.put(md5, data);
     }
   }

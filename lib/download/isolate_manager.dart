@@ -11,6 +11,7 @@ import 'isolate_instance.dart';
 const int MAX_POOL_SIZE = 1;
 
 class IsolateManager {
+  final StreamController<DownloadTask> _streamController = StreamController();
   final List<IsolateInstance> _isolatePool = [];
   final List<DownloadTask> _taskList = [];
   int _poolSize = 0;
@@ -18,6 +19,8 @@ class IsolateManager {
   IsolateManager({int? poolSize}) {
     _poolSize = poolSize ?? MAX_POOL_SIZE;
   }
+
+  StreamController<DownloadTask> get streamController => _streamController;
 
   List<DownloadTask> get taskList => _taskList;
 
@@ -30,26 +33,24 @@ class IsolateManager {
     print("Task ${isolateInstance?.task?.id} notifyIsolate: $message");
   }
 
-  Future addTask(DownloadTask task) async {
+  Future<DownloadTask> addTask(DownloadTask task) async {
     final appDir = await getApplicationDocumentsDirectory();
     task.saveFile = '${appDir.path}/${task.saveFile}';
     _taskList.add(task);
+    return task;
   }
 
-  Future processTask({Function(DownloadTask)? onProgressUpdate}) async {
+  Future processTask() async {
     print("processTask => task size: ${_taskList.length}");
     _taskList.sort((a, b) => b.priority - a.priority);
     for (int i = 0; i < _poolSize; i++) {
       if (i >= _taskList.length) break;
       if (_taskList[i].status != DownloadTaskStatus.IDLE) continue;
-      await _attackToIsolate(_taskList[i], onProgressUpdate: onProgressUpdate);
+      await _attackToIsolate(_taskList[i]);
     }
   }
 
-  Future _attackToIsolate(
-    DownloadTask task, {
-    Function(DownloadTask)? onProgressUpdate,
-  }) async {
+  Future _attackToIsolate(DownloadTask task) async {
     // print("_attackToIsolate step 1");
     IsolateInstance? availableIsolate =
         _isolatePool.where((isolate) => !isolate.isBusy).firstOrNull;
@@ -79,17 +80,17 @@ class IsolateManager {
       if (message is double) {
         // print("Task ${task.id} Progress: $message");
         task.progress = message;
-        onProgressUpdate?.call(task);
+        _streamController.add(task);
       } else if (message is DownloadTaskStatus) {
         // print("Task ${task.id} message: $message");
         if (message == DownloadTaskStatus.COMPLETED) {
           _taskList
               .removeWhere((task) => task.id == availableIsolate?.task?.id);
           availableIsolate?.reset();
-          processTask(onProgressUpdate: onProgressUpdate);
+          processTask();
         }
         task.status = message;
-        onProgressUpdate?.call(task);
+        _streamController.add(task);
       } else if (message is SendPort) {
         // print("Task ${task.id} controlPort: $message");
         task.status = DownloadTaskStatus.DOWNLOADING;

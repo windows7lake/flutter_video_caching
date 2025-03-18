@@ -32,8 +32,9 @@ class HlsParser {
   /// 解析M3U8链接
   Future<HlsPlaylist?> parsePlaylist(String url) async {
     final String fileName = url.split('/').last;
-    final String savePath = await DownloadManager()
-        .addTask(DownloadTask(url: url, fileName: fileName));
+    final String savePath = (await DownloadManager()
+            .addTask(DownloadTask(url: url, fileName: fileName)))
+        .saveFile;
     final File file = File(savePath);
     final List<String> lines = await file.readAsLines();
     final HlsPlaylist? playList = await parseString(lines);
@@ -78,8 +79,9 @@ class HlsParser {
           segmentPath = '$prefix$segmentUrl';
         }
         final String segmentName = segmentUrl.split('/').last;
-        final String savePath = await DownloadManager()
-            .addTask(DownloadTask(url: segmentPath, fileName: segmentName));
+        final String savePath = (await DownloadManager()
+                .addTask(DownloadTask(url: segmentPath, fileName: segmentName)))
+            .saveFile;
         downloaded.add(savePath);
       }
     }

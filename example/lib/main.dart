@@ -40,7 +40,9 @@ class _VideoAppState extends State<VideoApp> {
     String remoteUri = localUri.toOriginUrl();
     print('localUri: $localUri');
     print('remoteUri: $remoteUri');
-    _controller = VideoPlayerController.networkUrl(url.toLocalUri())
+    // Uri uri = url.toLocalUri();
+    Uri uri = Uri.parse(remoteUri);
+    _controller = VideoPlayerController.networkUrl(uri)
       ..initialize().then((_) {
         // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
         setState(() {});

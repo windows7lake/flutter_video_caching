@@ -74,7 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {});
     });
 
-    await _manager.processTask(onProgressUpdate: (task) {
+    _manager.stream.listen((task) {
       if (task.status == DownloadTaskStatus.COMPLETED) {
         _controllers[task.id]?.close();
         _controllers.remove(task.id);
@@ -82,6 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _controllers[task.id]?.add(task.progress);
       }
     });
+    await _manager.processTask();
   }
 
   @override

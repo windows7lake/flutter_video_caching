@@ -3,11 +3,18 @@ import 'database.dart';
 
 final database = MyDatabase();
 
-Future<int> insertVideoToDB(String url, String path) async {
+Future<int> insertVideoToDB(
+  String url,
+  String path,
+  int fileSize,
+  String mimeType,
+) async {
   return database.into(database.videos).insert(VideosCompanion.insert(
         md5: url.generateMd5,
         link: url,
         file: path,
+        size: fileSize,
+        mimeType: mimeType,
       ));
 }
 

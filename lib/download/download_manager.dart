@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'download_task.dart';
 import 'isolate_manager.dart';
 
@@ -15,12 +17,14 @@ class DownloadManager {
       .where((task) => task.status == DownloadTaskStatus.DOWNLOADING)
       .toList();
 
-  Future addTask(DownloadTask task) {
+  Stream<DownloadTask> get stream => _isolateManager.streamController.stream;
+
+  Future<DownloadTask> addTask(DownloadTask task) {
     return _isolateManager.addTask(task);
   }
 
-  Future processTask({Function(DownloadTask)? onProgressUpdate}) {
-    return _isolateManager.processTask(onProgressUpdate: onProgressUpdate);
+  Future processTask() {
+    return _isolateManager.processTask();
   }
 
   void pauseTaskById(String taskId) {
