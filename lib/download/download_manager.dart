@@ -23,6 +23,10 @@ class DownloadManager {
     return _isolateManager.addTask(task);
   }
 
+  Future<DownloadTask> executeTask(DownloadTask task) {
+    return _isolateManager.executeTask(task);
+  }
+
   Future processTask() {
     return _isolateManager.processTask();
   }

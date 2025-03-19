@@ -4,7 +4,7 @@ import 'package:video_player/video_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // await LocalProxyServer().start();
+  await LocalProxyServer().start();
   runApp(const VideoApp());
 }
 
@@ -73,8 +73,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
-    // Uri uri = widget.url.toLocalUri();
-    Uri uri = Uri.parse(widget.url);
+    Uri uri = widget.url.toLocalUri();
+    // Uri uri = Uri.parse(widget.url);
     playControl = VideoPlayerController.networkUrl(uri)
       ..setLooping(true);
     playControl.initialize().then((value) {
