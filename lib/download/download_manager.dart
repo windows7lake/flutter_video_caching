@@ -42,4 +42,8 @@ class DownloadManager {
   void cancelTaskById(String taskId) {
     _isolateManager.notifyIsolate(taskId, DownloadTaskStatus.CANCELLED);
   }
+
+  void dispose() {
+    _isolateManager.dispose();
+  }
 }

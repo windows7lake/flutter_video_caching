@@ -84,7 +84,7 @@ class LocalProxyServer {
         }
       }
     } catch (e) {
-      await send500(socket);
+      // await send500(socket);
       logE('⚠ ⚠ ⚠ 传输异常: $e');
     } finally {
       await socket.close(); // 确保连接关闭
@@ -134,20 +134,18 @@ class LocalProxyServer {
     }
     Video? video = await selectVideoFromDB(md5);
     File file;
+    logW("video: ${video?.file}");
     if (video != null && File(video.file).existsSync()) {
       logD('从数据库中获取数据');
       file = File(video.file);
     } else {
       logD('从网络中获取数据');
       final String fileName = uri.pathSegments.last;
-      final DownloadTask task = await downloadManager.addTask(DownloadTask(
-        url: uri.toString(),
-        fileName: fileName,
-      ));
-      await downloadManager.processTask();
+      final DownloadTask task = await downloadManager
+          .executeTask(DownloadTask(url: uri.toString(), fileName: fileName));
       file = File(task.saveFile);
       while (!file.existsSync()) {
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 50));
       }
     }
     if (uri.path.endsWith('m3u8')) {
@@ -170,7 +168,8 @@ class LocalProxyServer {
         file.lengthSync(),
         'application/vnd.apple.mpegurl',
       );
-      return await MemoryCache.put(md5, data);
+      await MemoryCache.put(md5, data);
+      return data;
     } else {
       final int fileSize = await file.length();
       int start = 0, end = fileSize - 1;
@@ -193,9 +192,10 @@ class LocalProxyServer {
         uri.toString(),
         file.path,
         file.lengthSync(),
-        'application/vnd.apple.mpegurl',
+        'video/*',
       );
-      return await MemoryCache.put(md5, data);
+      await MemoryCache.put(md5, data);
+      return data;
     }
   }
 

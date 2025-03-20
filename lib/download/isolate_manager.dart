@@ -13,7 +13,8 @@ import 'isolate_instance.dart';
 const int MAX_POOL_SIZE = 1;
 
 class IsolateManager {
-  final StreamController<DownloadTask> _streamController = StreamController();
+  final StreamController<DownloadTask> _streamController =
+      StreamController.broadcast();
   final List<IsolateInstance> _isolatePool = [];
   final List<DownloadTask> _taskList = [];
   int _poolSize = 0;
@@ -27,15 +28,28 @@ class IsolateManager {
 
   List<DownloadTask> get taskList => _taskList;
 
+  /// 根据任务ID查找隔离实例
   IsolateInstance? finaIsolateByTaskId(String taskId) =>
       _isolatePool.where((isolate) => isolate.task?.id == taskId).firstOrNull;
 
+  /// 发送消息通知隔离实例
   void notifyIsolate(String taskId, DownloadTaskStatus message) {
     IsolateInstance? isolateInstance = finaIsolateByTaskId(taskId);
     isolateInstance?.controlPort?.send(message);
     print("Task ${isolateInstance?.task?.id} notifyIsolate: $message");
   }
 
+  /// 重置所有隔离实例
+  void resetAllIsolate() {
+    _isolatePool.forEach((isolate) {
+      isolate.task?.status = DownloadTaskStatus.PAUSED;
+      isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
+      isolate.isBusy = false;
+      isolate.reset();
+    });
+  }
+
+  /// 添加任务，不会立即执行
   Future<DownloadTask> addTask(DownloadTask task) async {
     if (cacheDir.isEmpty) {
       final appDir = await getApplicationCacheDirectory();
@@ -49,12 +63,14 @@ class IsolateManager {
     return task;
   }
 
+  /// 添加并立即执行任务（根据任务优先级，如果当前有更高优先级的任务在执行，则会优先执行高优先级任务）
   Future<DownloadTask> executeTask(DownloadTask task) async {
     DownloadTask _task = await addTask(task);
     processTask();
     return _task;
   }
 
+  /// 处理任务
   Future processTask() async {
     _taskList.sort((a, b) => b.priority - a.priority);
 
@@ -111,6 +127,7 @@ class IsolateManager {
     }
   }
 
+  /// 向隔离实例发送任务
   Future _attackToIsolate(IsolateInstance isolate, DownloadTask task) async {
     // logD("_attackToIsolate isolate: $isolate, task: $task");
     isolate.isBusy = true;
@@ -119,11 +136,12 @@ class IsolateManager {
       if (message is double) {
         // logD("Task ${task.id} Progress: $message");
         task.progress = message;
-        _streamController.add(task);
+        _streamController.sink.add(task);
       } else if (message is DownloadTaskStatus) {
         // logD("Task ${task.id} message: $message");
         if (message == DownloadTaskStatus.COMPLETED) {
           logD("download COMPLETED $task");
+          task.status = DownloadTaskStatus.COMPLETED;
           _taskList.removeWhere((task) => task.id == isolate.task?.id);
           _isolatePool
               .where((e) => e.task?.id == isolate.task?.id)
@@ -131,7 +149,7 @@ class IsolateManager {
               ?.reset();
           processTask();
         }
-        _streamController.add(task);
+        _streamController.sink.add(task);
       } else if (message is SendPort) {
         // logD("Task ${task.id} controlPort: $message");
         task.status = DownloadTaskStatus.DOWNLOADING;
@@ -143,6 +161,7 @@ class IsolateManager {
     isolate.controlPort?.send(task);
   }
 
+  /// 创建隔离实例
   Future<IsolateInstance> _createIsolate() async {
     final mainReceivePort = ReceivePort();
     final isolate = await Isolate.spawn(
@@ -158,5 +177,14 @@ class IsolateManager {
     isolateInstance.subscription = subscription;
     _isolatePool.add(isolateInstance);
     return isolateInstance;
+  }
+
+  void dispose() {
+    _streamController.close();
+    _isolatePool.forEach((isolate) {
+      isolate.subscription?.cancel();
+      isolate.receivePort.close();
+      isolate.isolate.kill(priority: Isolate.immediate);
+    });
   }
 }

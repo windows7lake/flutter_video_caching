@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter_hls_parser/flutter_hls_parser.dart';
+import 'package:flutter_video_cache/memory/memory_cache.dart';
 import 'package:log_wrapper/log/log.dart';
 
 import '../flutter_video_cache.dart';
+import '../sqlite/db_instance.dart';
 
 /// M3U8 HLS parser
 class HlsParser {
@@ -17,6 +20,11 @@ class HlsParser {
   static final HlsParser instance = HlsParser._();
 
   final HlsPlaylistParser _parser = HlsPlaylistParser.create();
+
+  final DownloadManager _downloadManager =
+      DownloadManager(maxConcurrentDownloads: 4);
+
+  DownloadManager get downloadManager => _downloadManager;
 
   /// 解析M3U8文件
   Future<HlsPlaylist?> parseString(List<String> lines) async {
@@ -32,10 +40,8 @@ class HlsParser {
   /// 解析M3U8链接
   Future<HlsPlaylist?> parsePlaylist(String url) async {
     final String fileName = url.split('/').last;
-    final String savePath = (await DownloadManager()
-            .addTask(DownloadTask(url: url, fileName: fileName)))
-        .saveFile;
-    final File file = File(savePath);
+    final path = await downloadSync(DownloadTask(url: url, fileName: fileName));
+    final File file = File(path);
     final List<String> lines = await file.readAsLines();
     final HlsPlaylist? playList = await parseString(lines);
     return playList;
@@ -65,12 +71,10 @@ class HlsParser {
 
   /// 解析M3U8 ts文件
   Future<List<String>> parseSegment(String url) async {
-    final String prefix = url.substring(0, url.lastIndexOf('/') + 1);
     final HlsMediaPlaylist? playList = await parseMediaPlaylist(url);
-    if (playList == null) {
-      return <String>[];
-    }
-    final List<String> downloaded = <String>[];
+    if (playList == null) return <String>[];
+    final String prefix = url.substring(0, url.lastIndexOf('/') + 1);
+    List<String> segments = <String>[];
     for (final Segment segment in playList.segments) {
       final String? segmentUrl = segment.url;
       if (segmentUrl != null) {
@@ -78,14 +82,57 @@ class HlsParser {
         if (!segmentUrl.startsWith('http')) {
           segmentPath = '$prefix$segmentUrl';
         }
-        final String segmentName = segmentUrl.split('/').last;
-        final String savePath = (await DownloadManager()
-                .addTask(DownloadTask(url: segmentPath, fileName: segmentName)))
-            .saveFile;
-        downloaded.add(savePath);
+        segments.add(segmentPath);
       }
     }
-    logD('下载完成：${downloaded.length}');
-    return downloaded;
+    return segments;
+  }
+
+  Future<String> downloadSync(DownloadTask task) {
+    Completer<String> completer = Completer();
+    String md5 = task.url.generateMd5;
+    selectVideoFromDB(md5).then((video) {
+      if (video != null && File(video.file).existsSync()) {
+        completer.complete(video.file);
+      } else {
+        _downloadManager.stream.listen((_task) async {
+          if (_task.status == DownloadTaskStatus.COMPLETED &&
+              _task.id == task.id) {
+            File file = File(task.saveFile);
+            Uint8List uint8list;
+            await insertVideoToDB(
+              task.url,
+              task.saveFile,
+              file.lengthSync(),
+              task.url.endsWith("m3u8")
+                  ? 'application/vnd.apple.mpegurl'
+                  : 'video/mp2t',
+            );
+            if (task.url.endsWith("m3u8")) {
+              Uri uri = Uri.parse(task.url);
+              final List<String> lines = await file.readAsLines();
+              final StringBuffer buffer = StringBuffer();
+              String lastLine = '';
+              for (final String line in lines) {
+                String changeUrl = '';
+                if (lastLine.startsWith("#EXTINF") ||
+                    lastLine.startsWith("#EXT-X-STREAM-INF")) {
+                  changeUrl = '?redirect=${uri.origin}';
+                }
+                buffer.write('$line$changeUrl\r\n');
+                lastLine = line;
+              }
+              uint8list = Uint8List.fromList(buffer.toString().codeUnits);
+            } else {
+              uint8list = file.readAsBytesSync();
+            }
+            await MemoryCache.put(md5, uint8list);
+            completer.complete(_task.saveFile);
+          }
+        });
+        _downloadManager.executeTask(task);
+      }
+    });
+    return completer.future;
   }
 }
