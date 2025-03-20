@@ -1,22 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_video_cache/flutter_video_cache.dart';
 import 'package:video_player/video_player.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await LocalProxyServer().start();
-  runApp(const VideoApp());
-}
-
-/// Stateful widget to fetch and then display video content.
-class VideoApp extends StatefulWidget {
-  const VideoApp({super.key});
+class VideoPageViewPage extends StatefulWidget {
+  const VideoPageViewPage({super.key});
 
   @override
-  _VideoAppState createState() => _VideoAppState();
+  State<VideoPageViewPage> createState() => _VideoPageViewPageState();
 }
 
-class _VideoAppState extends State<VideoApp> {
+class _VideoPageViewPageState extends State<VideoPageViewPage> {
   final PageController pageController = PageController();
   final List<String> urls = [
     'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341959_IpJiA57x83/full_hls/api_63_1741341959_IpJiA57x83.m3u8',
@@ -24,36 +19,41 @@ class _VideoAppState extends State<VideoApp> {
     'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341458_D3zoeHyhsS/full_hls/api_63_1741341458_D3zoeHyhsS.m3u8',
     'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341240_K8577E4A4v/full_hls/api_63_1741341240_K8577E4A4v.m3u8',
   ];
+  Timer? timer;
 
   @override
   void initState() {
     super.initState();
-    initController();
+    timer = Timer(const Duration(seconds: 8), () {
+      for (int i = 1; i < urls.length; i++) {
+        VideoPreCaching.loadM3u8(urls[i]);
+      }
+    });
   }
-
-  void initController() {}
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Video Demo',
-      home: Scaffold(
-        body: PageView.builder(
-          scrollDirection: Axis.vertical,
-          controller: pageController,
-          // itemCount: controller.showVideoList.length,
-          itemBuilder: (context, index) {
-            int curIndex = index % urls.length;
-            String url = urls[curIndex];
-            return VideoPlayerWidget(url: url);
-          },
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Video PageView'),
+      ),
+      body: PageView.builder(
+        scrollDirection: Axis.vertical,
+        controller: pageController,
+        // itemCount: controller.showVideoList.length,
+        itemBuilder: (context, index) {
+          int curIndex = index % urls.length;
+          String url = urls[curIndex];
+          return VideoPlayerWidget(url: url);
+        },
       ),
     );
   }
 
   @override
   void dispose() {
+    timer?.cancel();
+    pageController.dispose();
     super.dispose();
   }
 }
@@ -75,8 +75,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     super.initState();
     Uri uri = widget.url.toLocalUri();
     // Uri uri = Uri.parse(widget.url);
-    playControl = VideoPlayerController.networkUrl(uri)
-      ..setLooping(true);
+    playControl = VideoPlayerController.networkUrl(uri)..setLooping(true);
     playControl.initialize().then((value) {
       setState(() {});
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -3,35 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_video_cache/flutter_video_cache.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class DownloadPage extends StatefulWidget {
+  const DownloadPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Download Manager',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Download Manager'),
-    );
-  }
+  State<DownloadPage> createState() => _DownloadPageState();
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
+class _DownloadPageState extends State<DownloadPage> {
   final DownloadManager _manager = DownloadManager(maxConcurrentDownloads: 2);
   final Map<String, double> _progress = {};
   final List<String> links = [
@@ -43,8 +22,8 @@ class _MyHomePageState extends State<MyHomePage> {
     'https://filesamples.com/samples/video/mp4/sample_2560x1440.mp4',
     'https://filesamples.com/samples/video/mp4/sample_1920x1080.mp4',
     'https://filesamples.com/samples/video/mp4/sample_1280x720.mp4',
-    // 'https://download.blender.org/release/Blender3.4/blender-3.4.1-windows-x64.msi',
-    // 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+    'https://download.blender.org/release/Blender3.4/blender-3.4.1-windows-x64.msi',
+    'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
   ];
   int index = 0;
 
@@ -52,11 +31,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _initTasks();
-    // _addTaskMore();
   }
 
   void _initTasks() async {
     _manager.stream.listen((task) {
+      print("Task ${task.id} Progress: ${task.status}");
       if (task.status == DownloadTaskStatus.COMPLETED) {
         _progress.remove(task.id);
       } else {
@@ -88,7 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(title: Text("Download Test")),
       floatingActionButton: FloatingActionButton(
         onPressed: _addTask,
         tooltip: 'Add Task',
@@ -169,5 +148,11 @@ class _MyHomePageState extends State<MyHomePage> {
       default:
         return 'Cancel';
     }
+  }
+
+  @override
+  void dispose() {
+    _manager.dispose();
+    super.dispose();
   }
 }
