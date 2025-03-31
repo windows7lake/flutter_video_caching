@@ -9,3 +9,4 @@ export 'ext/url_ext.dart';
 export 'm3u8/hls_parser.dart';
 export 'precache/video_pre_caching.dart';
 export 'proxy/local_proxy_server.dart';
+export 'proxy/video_proxy.dart';

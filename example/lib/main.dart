@@ -5,7 +5,7 @@ import 'main_route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await LocalProxyServer().start();
+  await VideoProxy.init();
   runApp(const HomeApp());
 }
 

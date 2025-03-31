@@ -24,11 +24,11 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
   @override
   void initState() {
     super.initState();
-    timer = Timer(const Duration(seconds: 8), () {
-      for (int i = 1; i < urls.length; i++) {
-        VideoPreCaching.loadM3u8(urls[i]);
-      }
-    });
+    // timer = Timer(const Duration(seconds: 8), () {
+    //   for (int i = 1; i < urls.length; i++) {
+    //     VideoPreCaching.loadM3u8(urls[i]);
+    //   }
+    // });
   }
 
   @override
@@ -45,6 +45,9 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
           int curIndex = index % urls.length;
           String url = urls[curIndex];
           return VideoPlayerWidget(url: url);
+        },
+        onPageChanged: (index) {
+          VideoProxy.switchTasks();
         },
       ),
     );

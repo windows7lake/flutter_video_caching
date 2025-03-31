@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_video_cache/global/config.dart';
 import 'package:flutter_video_cache/sqlite/database.dart';
 import 'package:log_wrapper/log/log.dart';
-import 'package:pool/pool.dart';
 
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
@@ -31,18 +30,22 @@ class LocalProxyServer {
   ServerSocket? server;
 
   /// 下载管理器
-  DownloadManager downloadManager = DownloadManager();
+  DownloadManager downloadManager = DownloadManager(maxConcurrentDownloads: 4);
 
   /// 启动代理服务器
   Future<void> start() async {
     LogWrapper().logFilter = LocalLogFilter();
-    final InternetAddress internetAddress = InternetAddress(Config.ip);
-    server = await ServerSocket.bind(internetAddress, Config.port);
-    final Pool connectionPool = Pool(10, timeout: const Duration(seconds: 30));
-    logD('Proxy server started at ${server?.address.address}:${server?.port}');
-    server?.listen((Socket socket) {
-      connectionPool.withResource(() => _handleConnection(socket));
-    });
+    try {
+      final InternetAddress internetAddress = InternetAddress(Config.ip);
+      server = await ServerSocket.bind(internetAddress, Config.port);
+      logD('Proxy server started ${server?.address.address}:${server?.port}');
+      server?.listen(_handleConnection);
+    } on SocketException catch (e) {
+      if (e.osError?.errorCode == 98) {
+        Config.port = Config.port + 1;
+        start();
+      }
+    }
   }
 
   /// 关闭代理服务器
@@ -134,7 +137,6 @@ class LocalProxyServer {
     }
     Video? video = await selectVideoFromDB(md5);
     File file;
-    logW("video: ${video?.file}");
     if (video != null && File(video.file).existsSync()) {
       logD('从数据库中获取数据');
       file = File(video.file);

@@ -19,7 +19,7 @@ class DownloadTask {
   double progress = 0.0;
   int downloadedBytes = 0;
   int totalBytes = 0;
-  bool isCompleted = false;
+  int createAt = DateTime.now().millisecondsSinceEpoch;
 
   DownloadTask({
     required this.url,
@@ -43,7 +43,7 @@ class DownloadTask {
   }
 
   void updateProgress() {
-    if (status == DownloadTaskStatus.DOWNLOADING && !isCompleted) {
+    if (status == DownloadTaskStatus.DOWNLOADING) {
       progress = totalBytes == 0
           ? downloadedBytes.toDouble()
           : (downloadedBytes / totalBytes);

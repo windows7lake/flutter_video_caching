@@ -43,6 +43,15 @@ class DownloadManager {
     _isolateManager.notifyIsolate(taskId, DownloadTaskStatus.CANCELLED);
   }
 
+  void resetAllTasks() {
+    _isolateManager.resetAllIsolate();
+    _isolateManager.taskList.clear();
+  }
+
+  void switchTasks() {
+    _isolateManager.switchTasks();
+  }
+
   void dispose() {
     _isolateManager.dispose();
   }

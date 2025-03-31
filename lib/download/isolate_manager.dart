@@ -36,7 +36,22 @@ class IsolateManager {
   void notifyIsolate(String taskId, DownloadTaskStatus message) {
     IsolateInstance? isolateInstance = finaIsolateByTaskId(taskId);
     isolateInstance?.controlPort?.send(message);
-    print("Task ${isolateInstance?.task?.id} notifyIsolate: $message");
+    logD("Task ${isolateInstance?.task?.id} notifyIsolate: $message");
+  }
+
+  /// 切换任务
+  void switchTasks() {
+    int nowTime = DateTime.now().millisecondsSinceEpoch;
+    _taskList.removeWhere((e) => (nowTime - e.createAt).abs() > 1500);
+    _isolatePool.forEach((isolate) {
+      int createAt = isolate.task?.createAt ?? 0;
+      if ((nowTime - createAt).abs() > 1500) {
+        isolate.task?.status = DownloadTaskStatus.PAUSED;
+        isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
+        isolate.isBusy = false;
+        isolate.reset();
+      }
+    });
   }
 
   /// 重置所有隔离实例
