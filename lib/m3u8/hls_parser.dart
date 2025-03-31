@@ -127,7 +127,9 @@ class HlsParser {
               uint8list = file.readAsBytesSync();
             }
             await MemoryCache.put(md5, uint8list);
-            completer.complete(_task.saveFile);
+            if (!completer.isCompleted) {
+              completer.complete(_task.saveFile);
+            }
           }
         });
         _downloadManager.executeTask(task);
