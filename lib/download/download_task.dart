@@ -61,4 +61,8 @@ class DownloadTask {
         ? '${(progress / 1000 / 1000).toStringAsFixed(2)}MB'
         : '${(progress * 100).toStringAsFixed(2)}%';
   }
+
+  static void resetId() {
+    _autoId = 1;
+  }
 }

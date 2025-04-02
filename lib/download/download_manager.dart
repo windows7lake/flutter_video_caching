@@ -52,6 +52,14 @@ class DownloadManager {
     _isolateManager.switchTasks();
   }
 
+  bool isUrlExit(String url) {
+    return allTasks.where((task) => task.url == url).isNotEmpty;
+  }
+
+  bool isUrlDownloading(String url) {
+    return activeTasks.where((task) => task.url == url).isNotEmpty;
+  }
+
   void dispose() {
     _isolateManager.dispose();
   }

@@ -201,5 +201,6 @@ class IsolateManager {
       isolate.receivePort.close();
       isolate.isolate.kill(priority: Isolate.immediate);
     });
+    DownloadTask.resetId();
   }
 }

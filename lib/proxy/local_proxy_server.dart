@@ -143,11 +143,24 @@ class LocalProxyServer {
     } else {
       logD('从网络中获取数据');
       final String fileName = uri.pathSegments.last;
-      final DownloadTask task = await downloadManager
-          .executeTask(DownloadTask(url: uri.toString(), fileName: fileName));
-      file = File(task.saveFile);
-      while (!file.existsSync()) {
-        await Future.delayed(const Duration(milliseconds: 50));
+      final String url = uri.toString();
+      if (downloadManager.isUrlExit(url)) {
+        if (downloadManager.isUrlDownloading(url)) {
+          while (memoryData == null) {
+            await Future.delayed(const Duration(milliseconds: 200));
+            memoryData = await MemoryCache.get(md5);
+          }
+          return memoryData;
+        } else {
+          return null;
+        }
+      } else {
+        final DownloadTask task = await downloadManager
+            .executeTask(DownloadTask(url: url, fileName: fileName));
+        file = File(task.saveFile);
+        while (!file.existsSync()) {
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
       }
     }
     if (uri.path.endsWith('m3u8')) {
@@ -188,8 +201,8 @@ class LocalProxyServer {
       }
 
       final RandomAccessFile raf = await file.open();
-      raf.setPositionSync(start);
-      final Uint8List data = raf.readSync(end - start + 1);
+      await raf.setPosition(start);
+      final Uint8List data = await raf.read(end - start + 1);
       insertVideoToDB(
         uri.toString(),
         file.path,
@@ -228,7 +241,7 @@ class LocalProxyServer {
       // 'HTTP/1.1 $statusCode $statusMessage',
       'HTTP/1.1 200 OK',
       'Accept-Ranges: bytes',
-      'Content-Type: video/mp4',
+      'Content-Type: video/MP2T',
       // 'Content-Length: ${end - start + 1}',
       // 'Content-Range: bytes $start-$end/$fileSize',
     ].join('\r\n');

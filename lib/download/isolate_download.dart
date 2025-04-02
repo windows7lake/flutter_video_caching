@@ -55,6 +55,7 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     final tempFilePath = '${task.saveFile}.temp';
     final tempFile = File(tempFilePath);
     final raf = await tempFile.open(mode: FileMode.append);
+    await raf.setPosition(task.downloadedBytes);
 
     // 记录上一次更新进度的时间
     DateTime lastUpdateTime = DateTime.now();
