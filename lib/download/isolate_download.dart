@@ -141,7 +141,9 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
 
     await raf.close();
     // 原子性写入磁盘操作：将临时文件重命名为最终文件
-    await tempFile.rename(task.saveFile);
+    if (await tempFile.exists()) {
+      await tempFile.rename(task.saveFile);
+    }
 
     task.updateProgress();
     sendPort.send(task.progress);

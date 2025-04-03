@@ -21,10 +21,7 @@ class HlsParser {
 
   final HlsPlaylistParser _parser = HlsPlaylistParser.create();
 
-  final DownloadManager _downloadManager =
-      DownloadManager(maxConcurrentDownloads: 4);
-
-  DownloadManager get downloadManager => _downloadManager;
+  DownloadManager get downloadManager => VideoProxy.downloadManager;
 
   /// 解析M3U8文件
   Future<HlsPlaylist?> parseString(List<String> lines) async {
@@ -95,7 +92,7 @@ class HlsParser {
       if (video != null && File(video.file).existsSync()) {
         completer.complete(video.file);
       } else {
-        _downloadManager.stream.listen((_task) async {
+        downloadManager.stream.listen((_task) async {
           if (_task.status == DownloadTaskStatus.COMPLETED &&
               _task.id == task.id) {
             File file = File(task.saveFile);
@@ -132,7 +129,20 @@ class HlsParser {
             }
           }
         });
-        _downloadManager.executeTask(task);
+        downloadManager.executeTask(task);
+      }
+    });
+    return completer.future;
+  }
+
+  Future<String> addTask(DownloadTask task) async {
+    Completer<String> completer = Completer();
+    String md5 = task.url.generateMd5;
+    selectVideoFromDB(md5).then((video) {
+      if (video != null && File(video.file).existsSync()) {
+        completer.complete(video.file);
+      } else {
+        downloadManager.addTask(task);
       }
     });
     return completer.future;

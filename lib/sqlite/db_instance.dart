@@ -24,3 +24,9 @@ Future<Video?> selectVideoFromDB(String md5) async {
       .get();
   return videos.firstOrNull;
 }
+
+Future<void> removeVideoFromDB(String url) async {
+  await database.managers.videos
+      .filter((video) => video.md5.equals(url.generateMd5))
+      .delete();
+}

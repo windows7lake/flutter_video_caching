@@ -13,7 +13,7 @@ class DownloadTask {
   static int _autoId = 1;
   final String id;
   final String url;
-  final int priority;
+  int priority;
   DownloadTaskStatus status = DownloadTaskStatus.IDLE;
   String saveFile;
   double progress = 0.0;

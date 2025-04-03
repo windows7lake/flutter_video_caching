@@ -48,8 +48,8 @@ class DownloadManager {
     _isolateManager.taskList.clear();
   }
 
-  void switchTasks() {
-    _isolateManager.switchTasks();
+  void switchTasks({String? url}) {
+    _isolateManager.switchTasks(url: url);
   }
 
   bool isUrlExit(String url) {
@@ -58,6 +58,17 @@ class DownloadManager {
 
   bool isUrlDownloading(String url) {
     return activeTasks.where((task) => task.url == url).isNotEmpty;
+  }
+
+  void raiseTaskPriority(String url) {
+    var tasks = activeTasks.where((task) => task.url == url);
+    if (tasks.isEmpty) return;
+    var taskId = tasks.first.id;
+    var isolateInstance = _isolateManager.finaIsolateByTaskId(taskId);
+    if (isolateInstance != null) {
+      isolateInstance.task?.priority = 10;
+      _isolateManager.processTask();
+    }
   }
 
   void dispose() {

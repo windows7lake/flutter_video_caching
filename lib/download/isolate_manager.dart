@@ -40,18 +40,35 @@ class IsolateManager {
   }
 
   /// 切换任务
-  void switchTasks() {
-    int nowTime = DateTime.now().millisecondsSinceEpoch;
-    _taskList.removeWhere((e) => (nowTime - e.createAt).abs() > 1500);
-    _isolatePool.forEach((isolate) {
-      int createAt = isolate.task?.createAt ?? 0;
-      if ((nowTime - createAt).abs() > 1500) {
+  void switchTasks({String? url}) {
+    if (url != null) {
+      for (var isolate in _isolatePool) {
+        String? urlPrefix = url.split(".").firstOrNull;
+        if (urlPrefix != null &&
+            isolate.task?.url != null &&
+            isolate.task!.url.startsWith(urlPrefix)) {
+          continue;
+        }
+        isolate.task?.priority = 1;
         isolate.task?.status = DownloadTaskStatus.PAUSED;
         isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
         isolate.isBusy = false;
         isolate.reset();
       }
-    });
+    } else {
+      int nowTime = DateTime.now().millisecondsSinceEpoch;
+      _taskList.removeWhere((e) => (nowTime - e.createAt).abs() > 1500);
+      _isolatePool.forEach((isolate) {
+        int createAt = isolate.task?.createAt ?? 0;
+        if ((nowTime - createAt).abs() > 1500) {
+          isolate.task?.priority = 1;
+          isolate.task?.status = DownloadTaskStatus.PAUSED;
+          isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
+          isolate.isBusy = false;
+          isolate.reset();
+        }
+      });
+    }
   }
 
   /// 重置所有隔离实例
@@ -81,7 +98,8 @@ class IsolateManager {
   /// 添加并立即执行任务（根据任务优先级，如果当前有更高优先级的任务在执行，则会优先执行高优先级任务）
   Future<DownloadTask> executeTask(DownloadTask task) async {
     DownloadTask _task = await addTask(task);
-    processTask();
+    await processTask();
+    await _pauseLowPriorityTask();
     return _task;
   }
 
@@ -138,6 +156,28 @@ class IsolateManager {
         IsolateInstance isolate = await _createIsolate();
         await _attackToIsolate(isolate, taskPool3[i]);
         if (_isolatePool.length >= _poolSize) break;
+      }
+    }
+  }
+
+  Future _pauseLowPriorityTask() async {
+    List<DownloadTask> downloading = taskList
+        .where((task) => task.status == DownloadTaskStatus.DOWNLOADING)
+        .toList();
+    bool hasHighPriorityTask = false;
+    for (var task in downloading) {
+      if (task.priority >= 10) {
+        hasHighPriorityTask = true;
+        break;
+      }
+    }
+    if (hasHighPriorityTask) {
+      for (var task in downloading) {
+        if (task.priority >= 10) continue;
+        IsolateInstance? isolateInstance = finaIsolateByTaskId(task.id);
+        isolateInstance?.task?.status = DownloadTaskStatus.PAUSED;
+        isolateInstance?.controlPort?.send(DownloadTaskStatus.PAUSED);
+        isolateInstance?.isBusy = false;
       }
     }
   }

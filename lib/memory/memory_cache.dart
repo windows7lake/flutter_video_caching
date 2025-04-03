@@ -45,7 +45,7 @@ class MemoryCache {
       if (lists.isEmpty) return Uint8List(0);
 
       // 内存占用预警
-      const maxMemory = 100 * 1024 * 1024; // 512MB
+      const maxMemory = 100 * 1024 * 1024; // 100MB
       final total = lists.fold<int>(0, (s, e) => s + e.length);
       if (total > maxMemory) {
         throw Exception('合并后数据超过内存限制');

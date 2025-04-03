@@ -64,6 +64,7 @@ class LocalProxyServer {
         if (buffer.toString().contains(httpTerminal)) {
           final String rawHeaders = buffer.toString().split(httpTerminal).first;
           final Map<String, String> headers = _parseHeaders(rawHeaders, socket);
+          logD("传入请求头： $headers");
           if (headers.isEmpty) {
             await send400(socket);
             return;
@@ -75,7 +76,7 @@ class LocalProxyServer {
           final Uint8List? data =
               await parseData(socket, originUri, rangeHeader);
           if (data == null) {
-            await send404(socket);
+            // await send404(socket);
             break;
           }
           if (originUri.path.endsWith('m3u8')) {
@@ -141,11 +142,15 @@ class LocalProxyServer {
       logD('从数据库中获取数据');
       file = File(video.file);
     } else {
-      logD('从网络中获取数据');
+      if (video != null) {
+        removeVideoFromDB(video.md5);
+      }
       final String fileName = uri.pathSegments.last;
       final String url = uri.toString();
       if (downloadManager.isUrlExit(url)) {
+        logD('从网络中获取数据，正在下载中');
         if (downloadManager.isUrlDownloading(url)) {
+          downloadManager.raiseTaskPriority(url);
           while (memoryData == null) {
             await Future.delayed(const Duration(milliseconds: 200));
             memoryData = await MemoryCache.get(md5);
@@ -155,8 +160,9 @@ class LocalProxyServer {
           return null;
         }
       } else {
-        final DownloadTask task = await downloadManager
-            .executeTask(DownloadTask(url: url, fileName: fileName));
+        logD('从网络中获取数据');
+        final DownloadTask task = await downloadManager.executeTask(
+            DownloadTask(url: url, fileName: fileName, priority: 10));
         file = File(task.saveFile);
         while (!file.existsSync()) {
           await Future.delayed(const Duration(milliseconds: 50));
@@ -223,6 +229,7 @@ class LocalProxyServer {
       'HTTP/1.1 $statusCode $statusMessage',
       'Accept-Ranges: bytes',
       'Content-Type: application/vnd.apple.mpegurl',
+      'Connection: keep-alive',
     ].join('\r\n');
     await socket.append(headers);
 
@@ -242,6 +249,7 @@ class LocalProxyServer {
       'HTTP/1.1 200 OK',
       'Accept-Ranges: bytes',
       'Content-Type: video/MP2T',
+      'Connection: keep-alive',
       // 'Content-Length: ${end - start + 1}',
       // 'Content-Range: bytes $start-$end/$fileSize',
     ].join('\r\n');

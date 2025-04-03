@@ -66,7 +66,10 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
           return VideoPlayerWidget(url: url);
         },
         onPageChanged: (index) {
-          VideoProxy.switchTasks();
+          if (index + 1 < urls.length) {
+            VideoPreCaching.loadM3u8(urls[index + 1], downloadNow: false);
+          }
+          VideoProxy.switchTasks(url: urls[index]);
         },
       ),
     );
@@ -111,7 +114,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   }
 
   Future initPlayControl(Uri uri) async {
-    playControl = VideoPlayerController.networkUrl(uri)..setLooping(true);
+    playControl = VideoPlayerController.networkUrl(uri,
+        httpHeaders: {'Connection': 'keep-alive', 'Keep-Alive': 'timeout=20'})
+      ..setLooping(true);
     playControl.addListener(playListener);
     await playControl.initialize().then((value) {
       initialize = true;
@@ -123,7 +128,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   }
 
   void playListener() {
-    print("playControl.value: ${playControl.value}");
     if (playControl.value.hasError) {
       if (playControl.value.errorDescription!.contains("Source error")) {
         Uri uri = Uri.parse(widget.url);
