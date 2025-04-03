@@ -3,14 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_video_cache/global/config.dart';
-import 'package:flutter_video_cache/sqlite/database.dart';
 import 'package:log_wrapper/log/log.dart';
 
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../flutter_video_cache.dart';
 import '../memory/memory_cache.dart';
-import '../sqlite/db_instance.dart';
+import '../sqlite/table_video.dart';
 
 /// 本地代理服务器
 class LocalProxyServer {
@@ -136,14 +135,14 @@ class LocalProxyServer {
       logD('从内存中获取数据');
       return memoryData;
     }
-    Video? video = await selectVideoFromDB(md5);
+    InstanceVideo? video = await TableVideo.queryByUrl(uri.toString());
     File file;
     if (video != null && File(video.file).existsSync()) {
       logD('从数据库中获取数据');
       file = File(video.file);
     } else {
       if (video != null) {
-        removeVideoFromDB(video.md5);
+        TableVideo.deleteByUrl(video.url);
       }
       final String fileName = uri.pathSegments.last;
       final String url = uri.toString();
@@ -183,11 +182,12 @@ class LocalProxyServer {
         lastLine = line;
       }
       final Uint8List data = Uint8List.fromList(buffer.toString().codeUnits);
-      insertVideoToDB(
+      TableVideo.insert(
+        "",
         uri.toString(),
         file.path,
-        file.lengthSync(),
         'application/vnd.apple.mpegurl',
+        file.lengthSync(),
       );
       await MemoryCache.put(md5, data);
       return data;
@@ -209,11 +209,12 @@ class LocalProxyServer {
       final RandomAccessFile raf = await file.open();
       await raf.setPosition(start);
       final Uint8List data = await raf.read(end - start + 1);
-      insertVideoToDB(
+      TableVideo.insert(
+        "",
         uri.toString(),
         file.path,
-        file.lengthSync(),
         'video/*',
+        file.lengthSync(),
       );
       await MemoryCache.put(md5, data);
       return data;

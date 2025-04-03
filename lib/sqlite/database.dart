@@ -1,28 +1,43 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 
-import 'video_table.dart';
+class DatabaseHelper {
+  static final DatabaseHelper _instance = DatabaseHelper._internal();
 
-part 'database.g.dart';
+  factory DatabaseHelper() => _instance;
 
-const dbName = "video_cache";
+  DatabaseHelper._internal();
 
-@DriftDatabase(tables: [Videos])
-class MyDatabase extends _$MyDatabase {
-  MyDatabase() : super(createDatabaseConnection(dbName));
+  static Database? _database;
 
-  @override
-  int get schemaVersion => 1;
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDB();
+    return _database!;
+  }
 
-  static QueryExecutor createDatabaseConnection(String databaseName) {
-    return LazyDatabase(() async {
-      final dbFolder = await getApplicationDocumentsDirectory();
-      final file = File(join(dbFolder.path, '$databaseName.sqlite'));
-      return NativeDatabase(file);
-    });
+  Future<Database> _initDB() async {
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, 'video_cache.db');
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (Database db, int version) async {
+        await db.execute('''
+          CREATE TABLE videos (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            parent_url TEXT,
+            url TEXT,
+            file TEXT,
+            mime_type TEXT,
+            file_size INTEGER,
+            created_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s', CURRENT_TIMESTAMP) AS INTEGER))
+          )
+        ''');
+      },
+    );
   }
 }

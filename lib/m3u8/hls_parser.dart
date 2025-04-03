@@ -6,7 +6,7 @@ import 'package:flutter_video_cache/memory/memory_cache.dart';
 import 'package:log_wrapper/log/log.dart';
 
 import '../flutter_video_cache.dart';
-import '../sqlite/db_instance.dart';
+import '../sqlite/table_video.dart';
 
 /// M3U8 HLS parser
 class HlsParser {
@@ -87,8 +87,7 @@ class HlsParser {
 
   Future<String> downloadSync(DownloadTask task) {
     Completer<String> completer = Completer();
-    String md5 = task.url.generateMd5;
-    selectVideoFromDB(md5).then((video) {
+    TableVideo.queryByUrl(task.url).then((video) {
       if (video != null && File(video.file).existsSync()) {
         completer.complete(video.file);
       } else {
@@ -97,13 +96,14 @@ class HlsParser {
               _task.id == task.id) {
             File file = File(task.saveFile);
             Uint8List uint8list;
-            await insertVideoToDB(
+            await TableVideo.insert(
+              "",
               task.url,
               task.saveFile,
-              file.lengthSync(),
               task.url.endsWith("m3u8")
                   ? 'application/vnd.apple.mpegurl'
                   : 'video/mp2t',
+              file.lengthSync(),
             );
             if (task.url.endsWith("m3u8")) {
               Uri uri = Uri.parse(task.url);
@@ -123,7 +123,7 @@ class HlsParser {
             } else {
               uint8list = file.readAsBytesSync();
             }
-            await MemoryCache.put(md5, uint8list);
+            await MemoryCache.put(_task.url.generateMd5, uint8list);
             if (!completer.isCompleted) {
               completer.complete(_task.saveFile);
             }
@@ -137,8 +137,7 @@ class HlsParser {
 
   Future<String> addTask(DownloadTask task) async {
     Completer<String> completer = Completer();
-    String md5 = task.url.generateMd5;
-    selectVideoFromDB(md5).then((video) {
+    TableVideo.queryByUrl(task.url).then((video) {
       if (video != null && File(video.file).existsSync()) {
         completer.complete(video.file);
       } else {
