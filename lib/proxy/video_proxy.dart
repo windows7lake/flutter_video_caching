@@ -12,10 +12,6 @@ class VideoProxy {
     await _localProxyServer.start();
   }
 
-  static void switchTasks({String? url}) {
-    _localProxyServer.downloadManager.switchTasks(url: url);
-  }
-
   static void resetAllTasks() {
     _localProxyServer.downloadManager.resetAllTasks();
   }

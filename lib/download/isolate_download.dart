@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import '../ext/log_ext.dart';
 import 'download_task.dart';
 
 /// 定义进度更新的最小时间间隔（毫秒）
@@ -12,7 +13,7 @@ void downloadIsolateEntry(SendPort mainSendPort) {
   DownloadTask? task;
   mainSendPort.send(receivePort.sendPort);
   receivePort.listen((message) {
-    print("Isolate listen: $message");
+    logIsolate("Isolate listen: $message");
     if (message is DownloadTask) {
       task = message;
       _downloadFile(task!, mainSendPort);
@@ -40,11 +41,11 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     final response = await request.close();
 
     bool chunked = response.headers.chunkedTransferEncoding;
-    print('Response status code: ${response.statusCode}');
-    print('Response chunkedTransferEncoding: ${chunked}');
+    logIsolate('Response status code: ${response.statusCode}');
+    logIsolate('Response chunkedTransferEncoding: ${chunked}');
     // 检查 contentLength 是否有效
     if (response.contentLength == -1) {
-      print('Failed to get the total file size.');
+      logIsolate('Failed to get the total file size.');
     }
 
     // 计算文件总大小
@@ -65,7 +66,7 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     //   await response.listen(
     //     (data) async {
     //       if (task.status == DownloadTaskStatus.PAUSED) {
-    //         print("PAUSED");
+    //         logIsolate("PAUSED");
     //         request.abort();
     //         client.close();
     //         await raf.close();
@@ -73,7 +74,7 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     //         return;
     //       }
     //       if (task.status == DownloadTaskStatus.CANCELLED) {
-    //         print("CANCELLED");
+    //         logIsolate("CANCELLED");
     //         request.abort();
     //         client.close();
     //         await raf.close();
@@ -107,7 +108,7 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     // } else {
     await for (var data in response) {
       if (task.status == DownloadTaskStatus.PAUSED) {
-        print("PAUSED");
+        logIsolate("PAUSED");
         request.abort();
         client.close();
         await raf.close();
@@ -115,7 +116,7 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
         return;
       }
       if (task.status == DownloadTaskStatus.CANCELLED) {
-        print("CANCELLED");
+        logIsolate("CANCELLED");
         request.abort();
         client.close();
         await raf.close();
@@ -150,6 +151,6 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
     sendPort.send(DownloadTaskStatus.COMPLETED);
     // }
   } catch (e) {
-    print('Download error: $e');
+    logIsolate('Download error: $e');
   }
 }

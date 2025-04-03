@@ -160,8 +160,8 @@ class LocalProxyServer {
         }
       } else {
         logD('从网络中获取数据');
-        final DownloadTask task = await downloadManager.executeTask(
-            DownloadTask(url: url, fileName: fileName, priority: 10));
+        final DownloadTask task = await downloadManager
+            .executeTaskNow(DownloadTask(url: url, fileName: fileName));
         file = File(task.saveFile);
         while (!file.existsSync()) {
           await Future.delayed(const Duration(milliseconds: 50));

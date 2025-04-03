@@ -39,14 +39,18 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
   ];
   Timer? timer;
+  int currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    // timer = Timer(const Duration(seconds: 8), () {
-    //   for (int i = 1; i < urls.length; i++) {
-    //     VideoPreCaching.loadM3u8(urls[i]);
-    //   }
+    // timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    //   print("\n\n\n");
+    //   print("====> last: ${currentIndex > 0 ? urls[currentIndex - 1] : null}");
+    //   print("====> current: ${urls[currentIndex]}");
+    //   print("====> next: ${currentIndex < urls.length - 1 ? urls[currentIndex + 1]: null}");
+    //   VideoProxy.downloadManager.activeTasks
+    //       .forEach((element) => print(element.toString()));
     // });
   }
 
@@ -66,10 +70,10 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
           return VideoPlayerWidget(url: url);
         },
         onPageChanged: (index) {
+          currentIndex = index;
           if (index + 1 < urls.length) {
             VideoPreCaching.loadM3u8(urls[index + 1], downloadNow: false);
           }
-          VideoProxy.switchTasks(url: urls[index]);
         },
       ),
     );
@@ -199,9 +203,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                   child: VideoProgressIndicator(
                     playControl,
                     allowScrubbing: true,
-                    seekCallback: () {
-                      VideoProxy.switchTasks();
-                    },
+                    seekCallback: () {},
                   ),
                 ),
               ),

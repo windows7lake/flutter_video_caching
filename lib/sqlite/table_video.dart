@@ -61,7 +61,7 @@ class InstanceVideo {
   final String file;
   final String mimeType;
   final int fileSize;
-  final String? createdAt;
+  final int? createdAt;
 
   const InstanceVideo({
     required this.id,

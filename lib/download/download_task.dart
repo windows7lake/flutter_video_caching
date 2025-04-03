@@ -1,4 +1,6 @@
 // 定义下载任务的状态枚举
+import '../ext/log_ext.dart';
+
 enum DownloadTaskStatus {
   IDLE,
   DOWNLOADING,
@@ -47,7 +49,7 @@ class DownloadTask {
       progress = totalBytes == 0
           ? downloadedBytes.toDouble()
           : (downloadedBytes / totalBytes);
-      print(this.toString());
+      logIsolate(this.toString());
     }
   }
 

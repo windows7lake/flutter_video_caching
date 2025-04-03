@@ -39,38 +39,6 @@ class IsolateManager {
     logD("Task ${isolateInstance?.task?.id} notifyIsolate: $message");
   }
 
-  /// 切换任务
-  void switchTasks({String? url}) {
-    if (url != null) {
-      for (var isolate in _isolatePool) {
-        String? urlPrefix = url.split(".").firstOrNull;
-        if (urlPrefix != null &&
-            isolate.task?.url != null &&
-            isolate.task!.url.startsWith(urlPrefix)) {
-          continue;
-        }
-        isolate.task?.priority = 1;
-        isolate.task?.status = DownloadTaskStatus.PAUSED;
-        isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
-        isolate.isBusy = false;
-        isolate.reset();
-      }
-    } else {
-      int nowTime = DateTime.now().millisecondsSinceEpoch;
-      _taskList.removeWhere((e) => (nowTime - e.createAt).abs() > 1500);
-      _isolatePool.forEach((isolate) {
-        int createAt = isolate.task?.createAt ?? 0;
-        if ((nowTime - createAt).abs() > 1500) {
-          isolate.task?.priority = 1;
-          isolate.task?.status = DownloadTaskStatus.PAUSED;
-          isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
-          isolate.isBusy = false;
-          isolate.reset();
-        }
-      });
-    }
-  }
-
   /// 重置所有隔离实例
   void resetAllIsolate() {
     _isolatePool.forEach((isolate) {
@@ -96,10 +64,100 @@ class IsolateManager {
   }
 
   /// 添加并立即执行任务（根据任务优先级，如果当前有更高优先级的任务在执行，则会优先执行高优先级任务）
+  Future<DownloadTask> executeTaskNow(DownloadTask task) async {
+    String url = task.url;
+    String? urlPrefix = url.split(".").firstOrNull ?? '';
+    for (var task in _taskList) {
+      if (task.url.startsWith(urlPrefix)) {
+        continue;
+      }
+      task.status = DownloadTaskStatus.PAUSED;
+      task.priority = 1;
+    }
+    for (var isolate in _isolatePool) {
+      if (isolate.task?.url != null &&
+          isolate.task!.url.startsWith(urlPrefix)) {
+        continue;
+      }
+      isolate.task?.priority = 1;
+      isolate.task?.status = DownloadTaskStatus.PAUSED;
+      isolate.controlPort?.send(DownloadTaskStatus.PAUSED);
+      isolate.isBusy = false;
+      isolate.reset();
+    }
+    DownloadTask _task = await addTask(task);
+    await processTaskNow(urlPrefix);
+    var list = taskList
+        .where((task) => task.status == DownloadTaskStatus.DOWNLOADING)
+        .toList();
+    print(list);
+    return _task;
+  }
+
+  Future processTaskNow(String urlPrefix) async {
+    _taskList.sort((a, b) => b.priority - a.priority);
+
+    // 检查是否有正在下载的隔离实例且优先级较低
+    List<DownloadTask> taskPool1 = _taskList
+        .where((task) => task.url.startsWith(urlPrefix))
+        .where((task) => task.status != DownloadTaskStatus.DOWNLOADING)
+        .toList();
+    for (var _task in taskPool1) {
+      List<IsolateInstance> busyIsolate =
+          _isolatePool.where((isolate) => isolate.isBusy).toList();
+      IsolateInstance? minPriorityIsolate;
+      for (IsolateInstance isolate in busyIsolate) {
+        int currentTaskPriority = isolate.task?.priority ?? 0;
+        int minPriority = minPriorityIsolate?.task?.priority ?? 9999;
+        if (currentTaskPriority < minPriority) {
+          minPriorityIsolate = isolate;
+        }
+      }
+      int minPriority = minPriorityIsolate?.task?.priority ?? 0;
+      if (minPriority < _task.priority) {
+        minPriorityIsolate?.task?.status = DownloadTaskStatus.PAUSED;
+        minPriorityIsolate?.controlPort?.send(DownloadTaskStatus.PAUSED);
+        minPriorityIsolate?.reset();
+        if (minPriorityIsolate != null) {
+          _task.status = DownloadTaskStatus.DOWNLOADING;
+          await _attackToIsolate(minPriorityIsolate, _task);
+        }
+      }
+    }
+
+    // 检查是否有空闲的隔离实例
+    List<DownloadTask> taskPool2 = _taskList
+        .where((task) => task.url.startsWith(urlPrefix))
+        .where((task) => task.status != DownloadTaskStatus.DOWNLOADING)
+        .toList();
+    List<IsolateInstance> isolatePool =
+        _isolatePool.where((isolate) => !isolate.isBusy).toList();
+    if (isolatePool.isNotEmpty) {
+      for (int i = 0; i < isolatePool.length; i++) {
+        if (i >= taskPool2.length) break;
+        await _attackToIsolate(isolatePool[i], taskPool2[i]);
+      }
+    }
+
+    // 检查是否达到隔离实例池的最大个数
+    List<DownloadTask> taskPool3 = _taskList
+        .where((task) => task.url.startsWith(urlPrefix))
+        .where((task) => task.status != DownloadTaskStatus.DOWNLOADING)
+        .toList();
+    if (taskPool3.isNotEmpty && _isolatePool.length < _poolSize) {
+      for (int i = 0; i < taskPool3.length; i++) {
+        IsolateInstance isolate = await _createIsolate();
+        await _attackToIsolate(isolate, taskPool3[i]);
+        if (_isolatePool.length >= _poolSize) break;
+      }
+    }
+  }
+
+  /// 添加并立即执行任务（根据任务优先级，如果当前有更高优先级的任务在执行，则会优先执行高优先级任务）
   Future<DownloadTask> executeTask(DownloadTask task) async {
     DownloadTask _task = await addTask(task);
     await processTask();
-    await _pauseLowPriorityTask();
+    // await _pauseLowPriorityTask();
     return _task;
   }
 
@@ -202,7 +260,14 @@ class IsolateManager {
               .where((e) => e.task?.id == isolate.task?.id)
               .firstOrNull
               ?.reset();
-          processTask();
+          String urlPrefix = task.url.split(".").firstOrNull ?? '';
+          var filterList =
+              _taskList.where((task) => task.url.startsWith(urlPrefix));
+          if (filterList.isEmpty) {
+            processTask();
+          } else {
+            processTaskNow(urlPrefix);
+          }
         }
         _streamController.sink.add(task);
       } else if (message is SendPort) {

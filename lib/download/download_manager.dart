@@ -27,6 +27,10 @@ class DownloadManager {
     return _isolateManager.executeTask(task);
   }
 
+  Future<DownloadTask> executeTaskNow(DownloadTask task) {
+    return _isolateManager.executeTaskNow(task);
+  }
+
   Future processTask() {
     return _isolateManager.processTask();
   }
@@ -46,10 +50,6 @@ class DownloadManager {
   void resetAllTasks() {
     _isolateManager.resetAllIsolate();
     _isolateManager.taskList.clear();
-  }
-
-  void switchTasks({String? url}) {
-    _isolateManager.switchTasks(url: url);
   }
 
   bool isUrlExit(String url) {
