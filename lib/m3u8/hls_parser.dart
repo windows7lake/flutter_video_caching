@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter_video_cache/memory/memory_cache.dart';
-import 'package:log_wrapper/log/log.dart';
-
+import '../ext/log_ext.dart';
 import '../flutter_video_cache.dart';
+import '../memory/memory_cache.dart';
 import '../sqlite/table_video.dart';
 
 /// M3U8 HLS parser
@@ -96,15 +95,17 @@ class HlsParser {
               _task.id == task.id) {
             File file = File(task.saveFile);
             Uint8List uint8list;
-            await TableVideo.insert(
-              "",
-              task.url,
-              task.saveFile,
-              task.url.endsWith("m3u8")
-                  ? 'application/vnd.apple.mpegurl'
-                  : 'video/mp2t',
-              file.lengthSync(),
-            );
+            if (file.existsSync()) {
+              await TableVideo.insert(
+                "",
+                task.url,
+                task.saveFile,
+                task.url.endsWith("m3u8")
+                    ? 'application/vnd.apple.mpegurl'
+                    : 'video/mp2t',
+                file.lengthSync(),
+              );
+            }
             if (task.url.endsWith("m3u8")) {
               Uri uri = Uri.parse(task.url);
               final List<String> lines = await file.readAsLines();

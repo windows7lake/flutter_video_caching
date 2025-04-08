@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_video_cache/global/config.dart';
-import 'package:log_wrapper/log/log.dart';
 
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
@@ -33,7 +32,6 @@ class LocalProxyServer {
 
   /// 启动代理服务器
   Future<void> start() async {
-    LogWrapper().logFilter = LocalLogFilter();
     try {
       final InternetAddress internetAddress = InternetAddress(Config.ip);
       server = await ServerSocket.bind(internetAddress, Config.port);

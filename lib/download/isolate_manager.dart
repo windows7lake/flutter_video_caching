@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:log_wrapper/log/log.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../ext/log_ext.dart';
 import 'download_task.dart';
 import 'isolate_download.dart';
 import 'isolate_instance.dart';

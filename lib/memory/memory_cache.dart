@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:log_wrapper/log/log.dart';
 
+import '../ext/log_ext.dart';
 import '../global/config.dart';
 import 'lru_cache.dart';
 

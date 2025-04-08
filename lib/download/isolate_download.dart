@@ -40,6 +40,13 @@ void _downloadFile(DownloadTask task, SendPort sendPort) async {
 
     final response = await request.close();
 
+    if (response.statusCode != 200) {
+      logIsolate('Failed to download file, status code: ${response.statusCode}');
+      task.status = DownloadTaskStatus.FAILED;
+      sendPort.send(task);
+      return;
+    }
+
     bool chunked = response.headers.chunkedTransferEncoding;
     logIsolate('Response status code: ${response.statusCode}');
     logIsolate('Response chunkedTransferEncoding: ${chunked}');

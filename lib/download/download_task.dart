@@ -7,7 +7,8 @@ enum DownloadTaskStatus {
   RESUME,
   PAUSED,
   COMPLETED,
-  CANCELLED
+  CANCELLED,
+  FAILED
 }
 
 // 下载任务类
