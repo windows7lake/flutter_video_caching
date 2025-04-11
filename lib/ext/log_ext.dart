@@ -25,7 +25,7 @@ logIsolate(dynamic message) {
   }
 }
 
-logV(dynamic message) => '';//LogInstance.logger.t(message);
+logV(dynamic message) => LogInstance.logger.t(message);
 
 logD(dynamic message) => LogInstance.logger.d(message);
 
