@@ -12,7 +12,6 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   final DownloadManager _manager = DownloadManager(maxConcurrentDownloads: 2);
-  final Map<String, double> _progress = {};
   final List<String> links = [
     'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/main.mp4',
     'https://mirrors.edge.kernel.org/linuxmint/stable/20.3/linuxmint-20.3-xfce-64bit.iso',
@@ -35,12 +34,6 @@ class _DownloadPageState extends State<DownloadPage> {
 
   void _initTasks() async {
     _manager.stream.listen((task) {
-      print("Task ${task.id} Progress: ${task.status}");
-      if (task.status == DownloadTaskStatus.COMPLETED) {
-        _progress.remove(task.id);
-      } else {
-        _progress[task.id] = task.progress;
-      }
       setState(() {});
     });
   }
@@ -49,7 +42,7 @@ class _DownloadPageState extends State<DownloadPage> {
     for (var i = 0; i < 6; i++) {
       await _manager.addTask(DownloadTask(url: links[i], priority: i));
     }
-    await _manager.processTask();
+    await _manager.roundIsolate();
     setState(() {});
   }
 
@@ -97,10 +90,10 @@ class _DownloadPageState extends State<DownloadPage> {
                   ElevatedButton(
                     onPressed: () {
                       switch (task.status) {
-                        case DownloadTaskStatus.DOWNLOADING:
+                        case DownloadStatus.DOWNLOADING:
                           _manager.pauseTaskById(task.id);
                           break;
-                        case DownloadTaskStatus.PAUSED:
+                        case DownloadStatus.PAUSED:
                           _manager.resumeTaskById(task.id);
                           break;
                         default:
@@ -119,31 +112,31 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   String progressText(DownloadTask task) {
-    return task.progress > 1
-        ? '${(task.progress / 1000 / 1000).toStringAsFixed(2)}MB'
+    return task.totalBytes == 0
+        ? '${(task.downloadedBytes / 1000 / 1000).toStringAsFixed(2)}MB'
         : '${(task.progress * 100).toStringAsFixed(2)}%';
   }
 
-  Color _getStatusColor(DownloadTaskStatus status) {
+  Color _getStatusColor(DownloadStatus status) {
     switch (status) {
-      case DownloadTaskStatus.DOWNLOADING:
+      case DownloadStatus.DOWNLOADING:
         return Colors.blue;
-      case DownloadTaskStatus.PAUSED:
+      case DownloadStatus.PAUSED:
         return Colors.orange;
-      case DownloadTaskStatus.COMPLETED:
+      case DownloadStatus.COMPLETED:
         return Colors.green;
-      case DownloadTaskStatus.CANCELLED:
+      case DownloadStatus.CANCELLED:
         return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
-  String _getButtonText(DownloadTaskStatus status) {
+  String _getButtonText(DownloadStatus status) {
     switch (status) {
-      case DownloadTaskStatus.DOWNLOADING:
+      case DownloadStatus.DOWNLOADING:
         return 'Pause';
-      case DownloadTaskStatus.PAUSED:
+      case DownloadStatus.PAUSED:
         return 'Resume';
       default:
         return 'Cancel';

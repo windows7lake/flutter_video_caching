@@ -34,7 +34,7 @@ class _MainRouteState extends State<MainRoute> {
   void initState() {
     super.initState();
     for (int i = 0; i < urls.length; i++) {
-      VideoPreCaching.loadM3u8(urls[i]);
+      // VideoPreCaching.loadM3u8(urls[i]);
     }
   }
 

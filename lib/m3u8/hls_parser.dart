@@ -2,9 +2,15 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter_hls_parser/flutter_hls_parser.dart';
+
+import '../download/download_manager.dart';
+import '../download/download_status.dart';
+import '../download/download_task.dart';
 import '../ext/log_ext.dart';
-import '../flutter_video_cache.dart';
-import '../memory/memory_cache.dart';
+import '../ext/string_ext.dart';
+import '../memory/video_memory_cache.dart';
+import '../proxy/video_proxy.dart';
 import '../sqlite/table_video.dart';
 
 /// M3U8 HLS parser
@@ -91,8 +97,7 @@ class HlsParser {
         completer.complete(video.file);
       } else {
         downloadManager.stream.listen((_task) async {
-          if (_task.status == DownloadTaskStatus.COMPLETED &&
-              _task.id == task.id) {
+          if (_task.status == DownloadStatus.COMPLETED && _task.id == task.id) {
             File file = File(task.saveFile);
             Uint8List uint8list;
             if (file.existsSync()) {
@@ -124,7 +129,7 @@ class HlsParser {
             } else {
               uint8list = file.readAsBytesSync();
             }
-            await MemoryCache.put(_task.url.generateMd5, uint8list);
+            await VideoMemoryCache.put(_task.url.generateMd5, uint8list);
             if (!completer.isCompleted) {
               completer.complete(_task.saveFile);
             }

@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_video_cache/global/config.dart';
+import 'package:flutter_video_cache/ext/int_ext.dart';
 
+import '../download/download_manager.dart';
+import '../download/download_task.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
-import '../flutter_video_cache.dart';
-import '../memory/memory_cache.dart';
+import '../ext/string_ext.dart';
+import '../global/config.dart';
+import '../memory/video_memory_cache.dart';
 import '../sqlite/table_video.dart';
 
 /// 本地代理服务器
@@ -53,7 +56,7 @@ class LocalProxyServer {
   /// 处理连接
   Future<void> _handleConnection(Socket socket) async {
     try {
-      logD('_handleConnection start');
+      logV('_handleConnection start');
       final StringBuffer buffer = StringBuffer();
       await for (final Uint8List data in socket) {
         buffer.write(String.fromCharCodes(data));
@@ -128,9 +131,10 @@ class LocalProxyServer {
   /// 解析并返回对应的文件
   Future<Uint8List?> parseData(Socket socket, Uri uri, String range) async {
     final md5 = uri.toString().generateMd5;
-    Uint8List? memoryData = await MemoryCache.get(md5);
+    Uint8List? memoryData = await VideoMemoryCache.get(md5);
     if (memoryData != null) {
-      logD('从内存中获取数据');
+      logD('从内存中获取数据: ${memoryData.lengthInBytes.toMemorySize}');
+      logD('当前内存占用: ${(await VideoMemoryCache.size()).toMemorySize}');
       return memoryData;
     }
     InstanceVideo? video = await TableVideo.queryByUrl(uri.toString());
@@ -147,10 +151,9 @@ class LocalProxyServer {
       if (downloadManager.isUrlExit(url)) {
         logD('从网络中获取数据，正在下载中');
         if (downloadManager.isUrlDownloading(url)) {
-          downloadManager.raiseTaskPriority(url);
           while (memoryData == null) {
             await Future.delayed(const Duration(milliseconds: 200));
-            memoryData = await MemoryCache.get(md5);
+            memoryData = await VideoMemoryCache.get(md5);
           }
           return memoryData;
         } else {
@@ -159,7 +162,7 @@ class LocalProxyServer {
       } else {
         logD('从网络中获取数据');
         final DownloadTask task = await downloadManager
-            .executeTaskNow(DownloadTask(url: url, fileName: fileName));
+            .executeTask(DownloadTask(url: url, fileName: fileName));
         file = File(task.saveFile);
         while (!file.existsSync()) {
           await Future.delayed(const Duration(milliseconds: 50));
@@ -187,7 +190,7 @@ class LocalProxyServer {
         'application/vnd.apple.mpegurl',
         file.lengthSync(),
       );
-      await MemoryCache.put(md5, data);
+      await VideoMemoryCache.put(md5, data);
       return data;
     } else {
       final int fileSize = await file.length();
@@ -214,7 +217,7 @@ class LocalProxyServer {
         'video/*',
         file.lengthSync(),
       );
-      await MemoryCache.put(md5, data);
+      await VideoMemoryCache.put(md5, data);
       return data;
     }
   }
@@ -269,34 +272,12 @@ class LocalProxyServer {
     await socket.append(headers);
   }
 
-  /// 发送404
-  Future<void> send404(Socket socket) async {
-    logD('HTTP/1.1 404 Not Found');
-    final String headers = <String>[
-      'HTTP/1.1 404 Not Found',
-      'Content-Type: text/plain',
-      'Video file not found'
-    ].join(httpTerminal);
-    await socket.append(headers);
-  }
-
   /// 发送416
   Future<void> send416(Socket socket, int fileSize) async {
     logD('HTTP/1.1 416 Range Not Satisfiable');
     final String headers = <String>[
       'HTTP/1.1 416 Range Not Satisfiable',
       'Content-Range: bytes */$fileSize'
-    ].join(httpTerminal);
-    await socket.append(headers);
-  }
-
-  /// 发送500
-  Future<void> send500(Socket socket) async {
-    logD('HTTP/1.1 500 Internal Error');
-    final String headers = <String>[
-      'HTTP/1.1 500 Internal Error',
-      'Content-Type: text/plain',
-      'Internal Error'
     ].join(httpTerminal);
     await socket.append(headers);
   }

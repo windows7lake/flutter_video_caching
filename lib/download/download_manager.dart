@@ -1,55 +1,44 @@
-import 'dart:async';
-
+import 'download_isolate_pool.dart';
+import 'download_status.dart';
 import 'download_task.dart';
-import 'isolate_manager.dart';
 
-// 下载管理类
 class DownloadManager {
-  late IsolateManager _isolateManager;
+  late DownloadIsolatePool _isolatePool;
 
-  DownloadManager({int? maxConcurrentDownloads}) {
-    _isolateManager = IsolateManager(poolSize: maxConcurrentDownloads);
+  DownloadManager({int maxConcurrentDownloads = MAX_ISOLATE_POOL_SIZE}) {
+    _isolatePool = DownloadIsolatePool(poolSize: maxConcurrentDownloads);
   }
 
-  List<DownloadTask> get allTasks => _isolateManager.taskList;
+  Stream<DownloadTask> get stream => _isolatePool.streamController.stream;
 
-  List<DownloadTask> get activeTasks => _isolateManager.taskList
-      .where((task) => task.status == DownloadTaskStatus.DOWNLOADING)
+  List<DownloadTask> get allTasks => _isolatePool.taskList;
+
+  List<DownloadTask> get activeTasks => _isolatePool.taskList
+      .where((task) => task.status == DownloadStatus.DOWNLOADING)
       .toList();
 
-  Stream<DownloadTask> get stream => _isolateManager.streamController.stream;
-
   Future<DownloadTask> addTask(DownloadTask task) {
-    return _isolateManager.addTask(task);
+    return _isolatePool.addTask(task);
   }
 
   Future<DownloadTask> executeTask(DownloadTask task) {
-    return _isolateManager.executeTask(task);
+    return _isolatePool.executeTask(task);
   }
 
-  Future<DownloadTask> executeTaskNow(DownloadTask task) {
-    return _isolateManager.executeTaskNow(task);
-  }
-
-  Future processTask() {
-    return _isolateManager.processTask();
+  Future<void> roundIsolate() {
+    return _isolatePool.roundIsolate();
   }
 
   void pauseTaskById(String taskId) {
-    _isolateManager.notifyIsolate(taskId, DownloadTaskStatus.PAUSED);
+    _isolatePool.notifyIsolate(taskId, DownloadStatus.PAUSED);
   }
 
   void resumeTaskById(String taskId) {
-    _isolateManager.notifyIsolate(taskId, DownloadTaskStatus.DOWNLOADING);
+    _isolatePool.notifyIsolate(taskId, DownloadStatus.DOWNLOADING);
   }
 
   void cancelTaskById(String taskId) {
-    _isolateManager.notifyIsolate(taskId, DownloadTaskStatus.CANCELLED);
-  }
-
-  void resetAllTasks() {
-    _isolateManager.resetAllIsolate();
-    _isolateManager.taskList.clear();
+    _isolatePool.notifyIsolate(taskId, DownloadStatus.CANCELLED);
   }
 
   bool isUrlExit(String url) {
@@ -60,18 +49,7 @@ class DownloadManager {
     return activeTasks.where((task) => task.url == url).isNotEmpty;
   }
 
-  void raiseTaskPriority(String url) {
-    var tasks = activeTasks.where((task) => task.url == url);
-    if (tasks.isEmpty) return;
-    var taskId = tasks.first.id;
-    var isolateInstance = _isolateManager.finaIsolateByTaskId(taskId);
-    if (isolateInstance != null) {
-      isolateInstance.task?.priority = 10;
-      _isolateManager.processTask();
-    }
-  }
-
   void dispose() {
-    _isolateManager.dispose();
+    _isolatePool.dispose();
   }
 }
