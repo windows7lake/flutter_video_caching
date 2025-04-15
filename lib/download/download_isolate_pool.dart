@@ -240,14 +240,13 @@ class DownloadIsolatePool {
           int isolateIndex =
               _isolateList.indexWhere((i) => i.task?.id == task.id);
           if (isolateIndex != -1) _isolateList[isolateIndex] = isolate;
-          if (task.status == DownloadStatus.COMPLETED) {
+          if (task.status == DownloadStatus.FINISHED) {
             if (taskIndex != -1) _taskList.removeAt(taskIndex);
             if (isolateIndex != -1) _isolateList[isolateIndex].reset();
             roundIsolate();
           }
           _streamController.sink.add(task);
           break;
-        default:
       }
     }
   }

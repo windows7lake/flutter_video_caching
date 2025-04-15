@@ -27,14 +27,18 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8'))
     // 'https://t100upload.s3.ap-northeast-1.amazonaws.com/video/hls/2024/12/25/api_64_1734338254_NUcT15ZNmE.m3u8'))
     // 'https://t100upload.s3.ap-northeast-1.amazonaws.com/video/hls/2024/12/25/api_64_1734338254_NUcT15ZNmE_hls_00001.ts'))
-    var url =
-        'https://cp4.100.com.tw/short_video/2025/02/27/api_63_1740649413_DHxpJR9NOT/full_hls/api_63_1740649413_DHxpJR9NOT.m3u8';
+    List<String> urls = [
+      'http://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8',
+      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mp4/.m3u8',
+      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    ];
+    var url = urls[0];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
     print('localUri: $localUri');
     print('remoteUri: $remoteUri');
-    Uri uri = url.toLocalUri();
-    // Uri uri = Uri.parse(remoteUri);
+    // Uri uri = url.toLocalUri();
+    Uri uri = Uri.parse(remoteUri);
     _controller = VideoPlayerController.networkUrl(uri)
       ..initialize().then((_) {
         setState(() {});

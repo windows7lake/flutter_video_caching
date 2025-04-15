@@ -1,8 +1,10 @@
+import 'package:flutter_video_cache/ext/string_ext.dart';
+
 import 'download_status.dart';
 
 class DownloadTask {
   final String id;
-  final String url;
+  final Uri uri;
 
   int priority;
   String saveFile;
@@ -10,11 +12,12 @@ class DownloadTask {
   int downloadedBytes;
   int totalBytes;
   DownloadStatus status;
+  List<int> data = [];
 
   int createAt = DateTime.now().millisecondsSinceEpoch;
 
   DownloadTask({
-    required this.url,
+    required this.uri,
     this.priority = 1,
     String? fileName,
     this.progress = 0.0,
@@ -22,18 +25,13 @@ class DownloadTask {
     this.totalBytes = 0,
     this.status = DownloadStatus.IDLE,
   })  : id = _autoId.toString(),
-        saveFile = fileName ?? url.split('/').last {
+        saveFile = fileName ??
+            uri.pathSegments.lastOrNull ??
+            uri.toString().generateMd5 {
     _autoId++;
-    checkUrl();
   }
 
-  void checkUrl() {
-    try {
-      Uri.parse(url);
-    } catch (e) {
-      throw ArgumentError('Invalid URL: $url');
-    }
-  }
+  String get url => uri.toString();
 
   static int _autoId = 1;
 
@@ -41,11 +39,18 @@ class DownloadTask {
     _autoId = 1;
   }
 
+  void reset() {
+    downloadedBytes = 0;
+    totalBytes = 0;
+    progress = 0.0;
+    data.clear();
+  }
+
   @override
   String toString() {
     return 'Task [ '
         'ID: $id, '
-        'URL: $url, '
+        'URL: $uri, '
         'Status: $status, '
         'Priority: $priority, '
         'Progress: $progress, '

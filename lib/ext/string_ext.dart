@@ -10,7 +10,7 @@ extension UrlExt on String {
     Uri uri = Uri.parse(this);
     if (uri.host == Config.ip && uri.port == Config.port) return this;
     String proxy = 'http://${Config.ip}:${Config.port}';
-    return "$proxy${uri.path}?redirect=${uri.origin}";
+    return "$proxy${uri.path}?origin=${uri.origin}";
   }
 
   /// 转换为本地地址
@@ -20,9 +20,9 @@ extension UrlExt on String {
 
   /// 转换为原始链接
   String toOriginUrl() {
-    if (!contains('?redirect=')) return this;
+    if (!contains('?origin=')) return this;
     Uri uri = Uri.parse(this);
-    String? origin = uri.queryParameters['redirect'];
+    String? origin = uri.queryParameters['origin'];
     String? path = uri.path;
     if (origin == null) return this;
     return '$origin$path';

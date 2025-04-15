@@ -1,16 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
+import 'package:flutter_video_cache/ext/int_ext.dart';
+import 'package:flutter_video_cache/ext/uri_ext.dart';
 
 import '../download/download_manager.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/log_ext.dart';
-import '../ext/string_ext.dart';
 import '../memory/video_memory_cache.dart';
-import '../proxy/video_proxy.dart';
 import '../sqlite/table_video.dart';
 
 /// M3U8 HLS parser
@@ -26,10 +27,11 @@ class HlsParser {
 
   final HlsPlaylistParser _parser = HlsPlaylistParser.create();
 
-  DownloadManager get downloadManager => VideoProxy.downloadManager;
+  final DownloadManager downloadManager =
+      DownloadManager(maxConcurrentDownloads: 4);
 
-  /// 解析M3U8文件
-  Future<HlsPlaylist?> parseString(List<String> lines) async {
+  /// 解析M3U8数据行
+  Future<HlsPlaylist?> parseLines(List<String> lines) async {
     HlsPlaylist? playList;
     try {
       playList = await _parser.parse(Uri.base, lines);
@@ -39,31 +41,24 @@ class HlsParser {
     return playList;
   }
 
-  /// 解析M3U8链接
-  Future<HlsPlaylist?> parsePlaylist(String url) async {
-    final String fileName = url.split('/').last;
-    final path = await downloadSync(DownloadTask(url: url, fileName: fileName));
-    final File file = File(path);
-    final List<String> lines = await file.readAsLines();
-    final HlsPlaylist? playList = await parseString(lines);
+  /// 解析M3U8分辨率列表
+  Future<HlsPlaylist?> parsePlaylist(Uri uri) async {
+    Uint8List? uint8List = await downloadTask(DownloadTask(uri: uri));
+    if (uint8List == null) return null;
+    List<String> lines = readLineFromUint8List(uint8List);
+    final HlsPlaylist? playList = await parseLines(lines);
     return playList;
   }
 
   /// 解析M3U8媒体播放列表
-  Future<HlsMediaPlaylist?> parseMediaPlaylist(String url) async {
-    final String prefix = url.substring(0, url.lastIndexOf('/') + 1);
-    final HlsPlaylist? playList = await parsePlaylist(url);
+  Future<HlsMediaPlaylist?> parseMediaPlaylist(Uri uri) async {
+    final HlsPlaylist? playList = await parsePlaylist(uri);
     if (playList is HlsMasterPlaylist) {
-      for (final Uri? uri in playList.mediaPlaylistUrls) {
-        if (uri == null) {
-          continue;
-        }
-        final String mediaUrl = '$prefix${uri.path}';
-        final HlsMediaPlaylist? mediaPlayList =
-            await parseMediaPlaylist(mediaUrl);
-        if (mediaPlayList != null) {
-          return mediaPlayList;
-        }
+      for (final Uri? _uri in playList.mediaPlaylistUrls) {
+        if (_uri == null) continue;
+        Uri masterUri = Uri.parse('${uri.pathPrefix}${_uri.path}');
+        HlsMediaPlaylist? mediaPlayList = await parseMediaPlaylist(masterUri);
+        return mediaPlayList;
       }
     } else if (playList is HlsMediaPlaylist) {
       return playList;
@@ -72,84 +67,84 @@ class HlsParser {
   }
 
   /// 解析M3U8 ts文件
-  Future<List<String>> parseSegment(String url) async {
-    final HlsMediaPlaylist? playList = await parseMediaPlaylist(url);
+  Future<List<String>> parseSegment(Uri uri) async {
+    final HlsMediaPlaylist? playList = await parseMediaPlaylist(uri);
     if (playList == null) return <String>[];
-    final String prefix = url.substring(0, url.lastIndexOf('/') + 1);
     List<String> segments = <String>[];
     for (final Segment segment in playList.segments) {
-      final String? segmentUrl = segment.url;
-      if (segmentUrl != null) {
-        String segmentPath = segmentUrl;
-        if (!segmentUrl.startsWith('http')) {
-          segmentPath = '$prefix$segmentUrl';
-        }
-        segments.add(segmentPath);
+      String? segmentUrl = segment.url;
+      if (segmentUrl != null && !segmentUrl.startsWith('http')) {
+        segmentUrl = '${uri.pathPrefix}/$segmentUrl';
       }
+      if (segmentUrl == null) continue;
+      segments.add(segmentUrl);
     }
     return segments;
   }
 
-  Future<String> downloadSync(DownloadTask task) {
-    Completer<String> completer = Completer();
-    TableVideo.queryByUrl(task.url).then((video) {
-      if (video != null && File(video.file).existsSync()) {
-        completer.complete(video.file);
-      } else {
-        downloadManager.stream.listen((_task) async {
-          if (_task.status == DownloadStatus.COMPLETED && _task.id == task.id) {
-            File file = File(task.saveFile);
-            Uint8List uint8list;
-            if (file.existsSync()) {
-              await TableVideo.insert(
-                "",
-                task.url,
-                task.saveFile,
-                task.url.endsWith("m3u8")
-                    ? 'application/vnd.apple.mpegurl'
-                    : 'video/mp2t',
-                file.lengthSync(),
-              );
-            }
-            if (task.url.endsWith("m3u8")) {
-              Uri uri = Uri.parse(task.url);
-              final List<String> lines = await file.readAsLines();
-              final StringBuffer buffer = StringBuffer();
-              String lastLine = '';
-              for (final String line in lines) {
-                String changeUrl = '';
-                if (lastLine.startsWith("#EXTINF") ||
-                    lastLine.startsWith("#EXT-X-STREAM-INF")) {
-                  changeUrl = '?redirect=${uri.origin}';
-                }
-                buffer.write('$line$changeUrl\r\n');
-                lastLine = line;
-              }
-              uint8list = Uint8List.fromList(buffer.toString().codeUnits);
-            } else {
-              uint8list = file.readAsBytesSync();
-            }
-            await VideoMemoryCache.put(_task.url.generateMd5, uint8list);
-            if (!completer.isCompleted) {
-              completer.complete(_task.saveFile);
-            }
-          }
-        });
-        downloadManager.executeTask(task);
-      }
-    });
-    return completer.future;
+  Future<void> addTask(DownloadTask task) async {
+    final md5 = task.uri.generateMd5;
+    Uint8List? memoryCache = await VideoMemoryCache.get(md5);
+    if (memoryCache != null) return;
+    InstanceVideo? video = await TableVideo.queryByUrl(task.url);
+    if (video != null && File(video.file).existsSync()) return;
+    await downloadManager.addTask(task);
   }
 
-  Future<String> addTask(DownloadTask task) async {
-    Completer<String> completer = Completer();
-    TableVideo.queryByUrl(task.url).then((video) {
-      if (video != null && File(video.file).existsSync()) {
-        completer.complete(video.file);
-      } else {
-        downloadManager.addTask(task);
+  Future<Uint8List?> downloadTask(DownloadTask task) async {
+    final md5 = task.uri.generateMd5;
+    Uint8List? memoryCache = await VideoMemoryCache.get(md5);
+    if (memoryCache != null) {
+      logD('从内存中获取数据: ${memoryCache.lengthInBytes.toMemorySize}');
+      logD('当前内存占用: ${(await VideoMemoryCache.size()).toMemorySize}');
+      return memoryCache;
+    }
+    InstanceVideo? video = await TableVideo.queryByUrl(task.url);
+    if (video != null && File(video.file).existsSync()) {
+      logD('从数据库中获取数据');
+      File file = File(video.file);
+      Uint8List fileCache = await file.readAsBytes();
+      await VideoMemoryCache.put(md5, fileCache);
+      return fileCache;
+    } else {
+      logD('从网络中获取数据，正在下载中');
+      Uint8List? netData;
+      await downloadManager.executeTask(task);
+      await for (DownloadTask downloadTask in downloadManager.stream) {
+        if (downloadTask.status == DownloadStatus.COMPLETED &&
+            downloadTask.id == task.id) {
+          netData = Uint8List.fromList(downloadTask.data);
+          String mimeType = task.url.endsWith('m3u8')
+              ? 'application/vnd.apple.mpegurl'
+              : 'video/*';
+          TableVideo.insert(
+            "",
+            task.url,
+            downloadTask.saveFile,
+            mimeType,
+            netData.lengthInBytes,
+          );
+          await VideoMemoryCache.put(md5, netData);
+          break;
+        }
       }
-    });
-    return completer.future;
+      return netData;
+    }
+  }
+
+  List<String> readLineFromUint8List(Uint8List uint8List) {
+    final List<String> lines = [];
+    final Utf8Codec codec = Utf8Codec();
+    int startIndex = 0;
+    int lastIndex = 0;
+    for (var byte in uint8List) {
+      if (byte == 0x0A) {
+        final line = uint8List.sublist(startIndex, lastIndex);
+        lines.add(codec.decode(line));
+        startIndex = lastIndex + 1;
+      }
+      lastIndex++;
+    }
+    return lines;
   }
 }

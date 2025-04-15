@@ -1,8 +1,4 @@
-enum IsolateMsgType {
-  sendPort,
-  task,
-  status
-}
+enum IsolateMsgType { sendPort, task }
 
 class DownloadIsolateMsg {
   final IsolateMsgType type;

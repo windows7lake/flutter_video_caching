@@ -2,16 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_video_cache/ext/int_ext.dart';
 
-import '../download/download_manager.dart';
 import '../download/download_task.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../ext/string_ext.dart';
 import '../global/config.dart';
-import '../memory/video_memory_cache.dart';
-import '../sqlite/table_video.dart';
+import '../m3u8/hls_parser.dart';
 
 /// 本地代理服务器
 class LocalProxyServer {
@@ -29,9 +26,6 @@ class LocalProxyServer {
 
   /// 代理服务
   ServerSocket? server;
-
-  /// 下载管理器
-  DownloadManager downloadManager = DownloadManager(maxConcurrentDownloads: 4);
 
   /// 启动代理服务器
   Future<void> start() async {
@@ -62,8 +56,9 @@ class LocalProxyServer {
         buffer.write(String.fromCharCodes(data));
         // 检测头部结束标记（空行 \r\n\r\n）
         if (buffer.toString().contains(httpTerminal)) {
-          final String rawHeaders = buffer.toString().split(httpTerminal).first;
-          final Map<String, String> headers = _parseHeaders(rawHeaders, socket);
+          String? rawHeaders =
+              buffer.toString().split(httpTerminal).firstOrNull;
+          Map<String, String> headers = _parseHeaders(rawHeaders);
           logD("传入请求头： $headers");
           if (headers.isEmpty) {
             await send400(socket);
@@ -73,8 +68,7 @@ class LocalProxyServer {
           final String url = headers['redirect'] ?? '';
           final Uri originUri = url.toOriginUri();
           logD('传入链接 Origin url：$originUri');
-          final Uint8List? data =
-              await parseData(socket, originUri, rangeHeader);
+          final Uint8List? data = await _parseData(originUri, rangeHeader);
           if (data == null) {
             // await send404(socket);
             break;
@@ -97,7 +91,10 @@ class LocalProxyServer {
   }
 
   /// 解析请求头
-  Map<String, String> _parseHeaders(String rawHeaders, Socket socket) {
+  Map<String, String> _parseHeaders(String? rawHeaders) {
+    if (rawHeaders == null || rawHeaders.isEmpty) {
+      return <String, String>{};
+    }
     final List<String> lines = rawHeaders.split('\r\n');
     if (lines.isEmpty) {
       return <String, String>{};
@@ -129,97 +126,25 @@ class LocalProxyServer {
   }
 
   /// 解析并返回对应的文件
-  Future<Uint8List?> parseData(Socket socket, Uri uri, String range) async {
-    final md5 = uri.toString().generateMd5;
-    Uint8List? memoryData = await VideoMemoryCache.get(md5);
-    if (memoryData != null) {
-      logD('从内存中获取数据: ${memoryData.lengthInBytes.toMemorySize}');
-      logD('当前内存占用: ${(await VideoMemoryCache.size()).toMemorySize}');
-      return memoryData;
-    }
-    InstanceVideo? video = await TableVideo.queryByUrl(uri.toString());
-    File file;
-    if (video != null && File(video.file).existsSync()) {
-      logD('从数据库中获取数据');
-      file = File(video.file);
-    } else {
-      if (video != null) {
-        TableVideo.deleteByUrl(video.url);
-      }
-      final String fileName = uri.pathSegments.last;
-      final String url = uri.toString();
-      if (downloadManager.isUrlExit(url)) {
-        logD('从网络中获取数据，正在下载中');
-        if (downloadManager.isUrlDownloading(url)) {
-          while (memoryData == null) {
-            await Future.delayed(const Duration(milliseconds: 200));
-            memoryData = await VideoMemoryCache.get(md5);
-          }
-          return memoryData;
-        } else {
-          return null;
-        }
-      } else {
-        logD('从网络中获取数据');
-        final DownloadTask task = await downloadManager
-            .executeTask(DownloadTask(url: url, fileName: fileName));
-        file = File(task.saveFile);
-        while (!file.existsSync()) {
-          await Future.delayed(const Duration(milliseconds: 50));
-        }
-      }
-    }
-    if (uri.path.endsWith('m3u8')) {
-      final List<String> lines = await file.readAsLines();
-      final StringBuffer buffer = StringBuffer();
+  Future<Uint8List?> _parseData(Uri uri, String range) async {
+    Uint8List? data = await HlsParser().downloadTask(DownloadTask(uri: uri));
+    if (data != null && uri.toString().endsWith('.m3u8')) {
+      List<String> lines = HlsParser().readLineFromUint8List(data);
       String lastLine = '';
-      for (final String line in lines) {
-        String changeUrl = '';
+      StringBuffer buffer = StringBuffer();
+      for (String line in lines) {
         if (lastLine.startsWith("#EXTINF") ||
             lastLine.startsWith("#EXT-X-STREAM-INF")) {
-          changeUrl = '?redirect=${uri.origin}';
+          line = line.startsWith('http')
+              ? line.toLocalUrl()
+              : '$line?origin=${uri.origin}';
         }
-        buffer.write('$line$changeUrl\r\n');
+        buffer.write('$line\r\n');
         lastLine = line;
       }
-      final Uint8List data = Uint8List.fromList(buffer.toString().codeUnits);
-      TableVideo.insert(
-        "",
-        uri.toString(),
-        file.path,
-        'application/vnd.apple.mpegurl',
-        file.lengthSync(),
-      );
-      await VideoMemoryCache.put(md5, data);
-      return data;
-    } else {
-      final int fileSize = await file.length();
-      int start = 0, end = fileSize - 1;
-
-      if (range.isNotEmpty) {
-        final List<String> parts = range.split('-');
-        start = int.parse(parts[0]);
-        end = parts[1].isNotEmpty ? int.parse(parts[1]) : fileSize - 1;
-      }
-
-      if (start >= fileSize || end >= fileSize) {
-        await send416(socket, fileSize);
-        return null;
-      }
-
-      final RandomAccessFile raf = await file.open();
-      await raf.setPosition(start);
-      final Uint8List data = await raf.read(end - start + 1);
-      TableVideo.insert(
-        "",
-        uri.toString(),
-        file.path,
-        'video/*',
-        file.lengthSync(),
-      );
-      await VideoMemoryCache.put(md5, data);
-      return data;
+      data = Uint8List.fromList(buffer.toString().codeUnits);
     }
+    return data;
   }
 
   /// 发送m3u8文件

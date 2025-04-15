@@ -6,14 +6,15 @@ class VideoPreCaching {
     int cacheSegments = 2,
     bool downloadNow = true,
   }) async {
-    List<String> mediaList = await HlsParser().parseSegment(url);
+    List<String> mediaList = await HlsParser().parseSegment(Uri.parse(url));
     if (mediaList.isEmpty) return;
     final List<String> segments = mediaList.take(cacheSegments).toList();
     for (final String segment in segments) {
+      DownloadTask task = DownloadTask(uri: Uri.parse(segment));
       if (downloadNow) {
-        HlsParser().downloadSync(DownloadTask(url: segment));
+        HlsParser().downloadTask(task);
       } else {
-        HlsParser().addTask(DownloadTask(url: segment));
+        HlsParser().addTask(task);
       }
     }
   }

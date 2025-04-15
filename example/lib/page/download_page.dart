@@ -40,7 +40,10 @@ class _DownloadPageState extends State<DownloadPage> {
 
   void _addTaskMore() async {
     for (var i = 0; i < 6; i++) {
-      await _manager.addTask(DownloadTask(url: links[i], priority: i));
+      await _manager.addTask(DownloadTask(
+        uri: Uri.parse(links[i]),
+        priority: i,
+      ));
     }
     await _manager.roundIsolate();
     setState(() {});
@@ -48,7 +51,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   Future _addTask() async {
     await _manager.executeTask(DownloadTask(
-      url: links[index],
+      uri: Uri.parse(links[index]),
       priority: index,
     ));
     if (++index >= links.length) {

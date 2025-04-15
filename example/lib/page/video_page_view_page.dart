@@ -14,14 +14,17 @@ class VideoPageViewPage extends StatefulWidget {
 class _VideoPageViewPageState extends State<VideoPageViewPage> {
   final PageController pageController = PageController();
   final List<String> urls = [
-    // 'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341959_IpJiA57x83/full_hls/api_63_1741341959_IpJiA57x83.m3u8',
-    // 'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341896_kQMmDNpe31/full_hls/api_63_1741341896_kQMmDNpe31.m3u8',
-    // 'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341458_D3zoeHyhsS/full_hls/api_63_1741341458_D3zoeHyhsS.m3u8',
-    // 'https://cp4.100.com.tw/short_video/2025/03/07/api_63_1741341240_K8577E4A4v/full_hls/api_63_1741341240_K8577E4A4v.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/19/api_76_1739944065_it2uv2B37X.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740034816_gyJD2rv5iJ.m3u8',
     'https://images.debug.100.com.tw/short_video/2025/03/13/api_76_1741847328_sR96QRx6nz/full_hls/api_76_1741847328_sR96QRx6nz.m3u8',
     'https://images.debug.100.com.tw/short_video/2025/02/25/api_76_1740451086_YfIgNO1nAL/full_hls/api_76_1740451086_YfIgNO1nAL.m3u8',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740034816_gyJD2rv5iJ.m3u8',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/19/api_76_1739944065_it2uv2B37X.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/03/26/mobile/2171273-849283.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091573-822258.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091545-322856.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091543-694014.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/23/mobile/2087576-472697.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/13/mobile/2078058-141252.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mobile/2065937-110120.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041957_1mWiprwazK.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740043126_wJVXwIEOHh.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740042408_eJf8r036BT.m3u8',
@@ -33,10 +36,6 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
-    'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
-    'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
-    'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
-    'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
   ];
   Timer? timer;
   int currentIndex = 0;
@@ -44,14 +43,6 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
   @override
   void initState() {
     super.initState();
-    // timer = Timer.periodic(const Duration(seconds: 2), (_) {
-    //   print("\n\n\n");
-    //   print("====> last: ${currentIndex > 0 ? urls[currentIndex - 1] : null}");
-    //   print("====> current: ${urls[currentIndex]}");
-    //   print("====> next: ${currentIndex < urls.length - 1 ? urls[currentIndex + 1]: null}");
-    //   VideoProxy.downloadManager.activeTasks
-    //       .forEach((element) => print(element.toString()));
-    // });
   }
 
   @override
@@ -99,6 +90,7 @@ class VideoPlayerWidget extends StatefulWidget {
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   late VideoPlayerController playControl;
 
+  Timer? timer;
   bool initialize = false;
   bool showLoading = true;
 
@@ -125,7 +117,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     await playControl.initialize().then((value) {
       initialize = true;
       setState(() {});
-      Future.delayed((Duration(milliseconds: 200))).then((value) {
+      timer = Timer(const Duration(milliseconds: 200), () {
         playControl.play();
       });
     });
@@ -133,11 +125,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   void playListener() {
     if (playControl.value.hasError) {
+      print("errorDescription: ${playControl.value.errorDescription}");
       if (playControl.value.errorDescription!.contains("Source error")) {
         Uri uri = Uri.parse(widget.url);
         initPlayControl(uri);
-      } else {
-        print("${playControl.value.errorDescription}");
       }
       return;
     }
@@ -160,6 +151,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   @override
   void dispose() {
+    timer?.cancel();
     playControl.dispose();
     super.dispose();
   }

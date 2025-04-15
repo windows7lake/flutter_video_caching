@@ -42,11 +42,11 @@ class DownloadManager {
   }
 
   bool isUrlExit(String url) {
-    return allTasks.where((task) => task.url == url).isNotEmpty;
+    return allTasks.where((task) => task.uri.toString() == url).isNotEmpty;
   }
 
   bool isUrlDownloading(String url) {
-    return activeTasks.where((task) => task.url == url).isNotEmpty;
+    return activeTasks.where((task) => task.uri.toString() == url).isNotEmpty;
   }
 
   void dispose() {
