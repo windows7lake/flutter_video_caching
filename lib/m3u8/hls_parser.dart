@@ -35,8 +35,8 @@ class HlsParser {
     HlsPlaylist? playList;
     try {
       playList = await _parser.parse(Uri.base, lines);
-    } on ParserException catch (e) {
-      logE('ParserException: ${e.message}');
+    } catch (e) {
+      logE('Exception: ${e}');
     }
     return playList;
   }

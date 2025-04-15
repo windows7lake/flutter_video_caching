@@ -44,10 +44,11 @@ void downloadIsolateEntry(SendPort mainSendPort) {
 const int MIN_PROGRESS_UPDATE_INTERVAL = 500;
 
 class DownloadIsolate {
-  HttpClient client = HttpClient();
+  final Lock _lock = Lock();
+  final HttpClient client = HttpClient();
   bool _isPaused = false;
   bool _isCancelled = false;
-  final Lock _lock = Lock();
+  int retryTimes = 3;
 
   Future<void> start(DownloadTask task, SendPort sendPort) async {
     logIsolate('[DownloadIsolate] START ${task.uri}');
@@ -62,7 +63,14 @@ class DownloadIsolate {
       final response = await request.close();
       logIsolate('[DownloadIsolate] status code: ${response.statusCode}');
 
-      if (response.statusCode < 200 && response.statusCode >= 300) {
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (retryTimes > 0) {
+          logIsolate('[DownloadIsolate] retry $retryTimes: ${task.uri}');
+          retryTimes--;
+          task.reset();
+          start(task, sendPort);
+          return;
+        }
         logIsolate('[DownloadIsolate] failed: ${task.uri}');
         task.reset();
         task.status = DownloadStatus.FAILED;
@@ -85,19 +93,19 @@ class DownloadIsolate {
       // 创建临时存储
       List<int> buffer = [];
 
-      final File tempFile = File('${task.saveFile}.temp');
+      final File saveFile = File('${task.saveFile}');
 
       await for (var data in response) {
         // 检查是否被取消或暂停
         if (_isPaused) {
-          await _writeToFile(tempFile, buffer);
+          await _writeToFile(saveFile, buffer);
           task.status = DownloadStatus.PAUSED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
           logIsolate("[DownloadIsolate] PAUSED ${task.uri} ");
           return;
         }
         if (_isCancelled) {
-          await tempFile.delete();
+          await saveFile.delete();
           task.status = DownloadStatus.CANCELLED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
           logIsolate("[DownloadIsolate] CANCELLED ${task.uri} ");
@@ -127,8 +135,7 @@ class DownloadIsolate {
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
       logIsolate("[DownloadIsolate] COMPLETED");
 
-      await _writeToFile(tempFile, buffer);
-      await _renameFile(tempFile, task.saveFile);
+      await _writeToFile(saveFile, buffer);
       task.status = DownloadStatus.FINISHED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
       task.reset();
@@ -150,6 +157,7 @@ class DownloadIsolate {
   }
 
   void reset() {
+    retryTimes = 3;
     _isPaused = false;
     _isCancelled = false;
   }
@@ -160,18 +168,6 @@ class DownloadIsolate {
         await file.writeAsBytes(data);
       } catch (e) {
         logIsolate('[DownloadIsolate] write error: $e');
-      }
-    });
-  }
-
-  Future<void> _renameFile(File file, String name) async {
-    await _lock.synchronized(() async {
-      try {
-        if (await file.exists()) {
-          await file.rename(name);
-        }
-      } catch (e) {
-        logIsolate('[DownloadIsolate] rename error: $e');
       }
     });
   }
