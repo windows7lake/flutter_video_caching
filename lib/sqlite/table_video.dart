@@ -28,6 +28,7 @@ class TableVideo {
       'videos',
       where: 'url = ?',
       whereArgs: [url],
+      orderBy: 'created_at DESC',
     );
     return maps.isNotEmpty ? InstanceVideo.fromJson(maps.first) : null;
   }
