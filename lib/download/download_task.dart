@@ -7,6 +7,7 @@ class DownloadTask {
   final Uri uri;
 
   int priority;
+  String cacheDir;
   String saveFile;
   double progress;
   int downloadedBytes;
@@ -20,6 +21,7 @@ class DownloadTask {
     required this.uri,
     this.priority = 1,
     String? fileName,
+    this.cacheDir = "",
     this.progress = 0.0,
     this.downloadedBytes = 0,
     this.totalBytes = 0,

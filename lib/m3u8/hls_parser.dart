@@ -7,6 +7,7 @@ import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 import 'package:flutter_video_cache/ext/int_ext.dart';
 import 'package:flutter_video_cache/ext/uri_ext.dart';
 
+import '../download/download_isolate_pool.dart';
 import '../download/download_manager.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
@@ -28,7 +29,7 @@ class HlsParser {
   final HlsPlaylistParser _parser = HlsPlaylistParser.create();
 
   final DownloadManager downloadManager =
-      DownloadManager(maxConcurrentDownloads: 4);
+      DownloadManager(maxConcurrentDownloads: 6);
 
   /// 解析M3U8数据行
   Future<HlsPlaylist?> parseLines(List<String> lines) async {
@@ -100,9 +101,10 @@ class HlsParser {
       return memoryCache;
     }
     InstanceVideo? video = await TableVideo.queryByUrl(task.url);
-    if (video != null && File(video.file).existsSync()) {
+    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    File file = File('$cachePath/${video?.file}');
+    if (video != null && file.existsSync()) {
       logD('从数据库中获取数据');
-      File file = File(video.file);
       Uint8List fileCache = await file.readAsBytes();
       await VideoMemoryCache.put(md5, fileCache);
       return fileCache;
@@ -112,7 +114,7 @@ class HlsParser {
       await downloadManager.executeTask(task);
       await for (DownloadTask downloadTask in downloadManager.stream) {
         if (downloadTask.status == DownloadStatus.COMPLETED &&
-            downloadTask.id == task.id) {
+            downloadTask.url == task.url) {
           netData = Uint8List.fromList(downloadTask.data);
           String mimeType = task.url.endsWith('m3u8')
               ? 'application/vnd.apple.mpegurl'

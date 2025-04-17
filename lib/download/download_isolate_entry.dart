@@ -93,7 +93,7 @@ class DownloadIsolate {
       // 创建临时存储
       List<int> buffer = [];
 
-      final File saveFile = File('${task.saveFile}');
+      final File saveFile = File('${task.cacheDir}/${task.saveFile}');
 
       await for (var data in response) {
         // 检查是否被取消或暂停

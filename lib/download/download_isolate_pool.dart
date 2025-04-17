@@ -78,12 +78,19 @@ class DownloadIsolatePool {
   Future<DownloadTask> addTask(DownloadTask task) async {
     logV('[DownloadIsolatePool] addTask: ${task.toString()}');
     String cachePath = await createVideoCachePath();
-    task.saveFile = '$cachePath/${task.saveFile}';
+    task.cacheDir = cachePath;
+    task.saveFile = task.saveFile;
     _taskList.add(task);
     return task;
   }
 
   Future<DownloadTask> executeTask(DownloadTask task) async {
+    final existTask = _isolateList
+        .where((isolate) => isolate.isBusy)
+        .where((e) => e.task?.url == task.url)
+        .firstOrNull
+        ?.task;
+    if (existTask != null) return existTask;
     DownloadTask downloadTask = await addTask(task);
     await roundIsolate();
     return downloadTask;

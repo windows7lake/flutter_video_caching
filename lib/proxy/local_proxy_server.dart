@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_video_cache/ext/uri_ext.dart';
 
 import '../download/download_task.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../ext/string_ext.dart';
 import '../global/config.dart';
+import '../m3u8/hls_map.dart';
 import '../m3u8/hls_parser.dart';
 
 /// 本地代理服务器
@@ -128,16 +130,26 @@ class LocalProxyServer {
   /// 解析并返回对应的文件
   Future<Uint8List?> _parseData(Uri uri, String range) async {
     Uint8List? data = await HlsParser().downloadTask(DownloadTask(uri: uri));
+    // HlsMap.concurrent(uri.toString());
     if (data != null && uri.toString().endsWith('.m3u8')) {
       List<String> lines = HlsParser().readLineFromUint8List(data);
       String lastLine = '';
       StringBuffer buffer = StringBuffer();
       for (String line in lines) {
+        String hlsLine = line.trim();
         if (lastLine.startsWith("#EXTINF") ||
             lastLine.startsWith("#EXT-X-STREAM-INF")) {
           line = line.startsWith('http')
               ? line.toLocalUrl()
               : '$line?origin=${uri.origin}';
+        }
+        if (lastLine.startsWith("#EXTINF")) {
+          HlsMap.add(HlsSegment(
+            key: uri.generateMd5,
+            url: hlsLine.startsWith('http')
+                ? hlsLine
+                : '${uri.pathPrefix}/$hlsLine',
+          ));
         }
         buffer.write('$line\r\n');
         lastLine = line;
