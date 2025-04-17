@@ -13,7 +13,6 @@ import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/log_ext.dart';
 import '../memory/video_memory_cache.dart';
-import '../sqlite/table_video.dart';
 
 /// M3U8 HLS parser
 class HlsParser {
@@ -87,8 +86,9 @@ class HlsParser {
     final md5 = task.uri.generateMd5;
     Uint8List? memoryCache = await VideoMemoryCache.get(md5);
     if (memoryCache != null) return;
-    InstanceVideo? video = await TableVideo.queryByUrl(task.url);
-    if (video != null && File(video.file).existsSync()) return;
+    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    File file = File('$cachePath/${task.saveFile}');
+    if (file.existsSync()) return;
     await downloadManager.addTask(task);
   }
 
@@ -100,10 +100,9 @@ class HlsParser {
       logD('当前内存占用: ${(await VideoMemoryCache.size()).toMemorySize}');
       return memoryCache;
     }
-    InstanceVideo? video = await TableVideo.queryByUrl(task.url);
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
-    File file = File('$cachePath/${video?.file}');
-    if (video != null && file.existsSync()) {
+    File file = File('$cachePath/${task.saveFile}');
+    if (file.existsSync()) {
       logD('从数据库中获取数据');
       Uint8List fileCache = await file.readAsBytes();
       await VideoMemoryCache.put(md5, fileCache);
@@ -116,16 +115,6 @@ class HlsParser {
         if (downloadTask.status == DownloadStatus.COMPLETED &&
             downloadTask.url == task.url) {
           netData = Uint8List.fromList(downloadTask.data);
-          String mimeType = task.url.endsWith('m3u8')
-              ? 'application/vnd.apple.mpegurl'
-              : 'video/*';
-          TableVideo.insert(
-            "",
-            task.url,
-            downloadTask.saveFile,
-            mimeType,
-            netData.lengthInBytes,
-          );
           await VideoMemoryCache.put(md5, netData);
           break;
         }

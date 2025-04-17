@@ -4,11 +4,11 @@ import 'dart:typed_data';
 
 import 'package:flutter_video_cache/ext/log_ext.dart';
 
+import '../download/download_isolate_pool.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/string_ext.dart';
 import '../memory/video_memory_cache.dart';
-import '../sqlite/table_video.dart';
 import 'hls_parser.dart';
 
 class HlsMap {
@@ -58,32 +58,23 @@ class HlsMap {
       complete(segment);
       return;
     }
-    final video = await TableVideo.queryByUrl(segment.url);
-    if (video != null && File(video.file).existsSync()) {
+    DownloadTask task = DownloadTask(uri: Uri.parse(segment.url));
+    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    File file = File('$cachePath/${task.saveFile}');
+    if (file.existsSync()) {
       complete(segment);
       return;
     }
-    final exitUri = HlsParser().downloadManager.isUrlExit(segment.url);
+    final exitUri = HlsParser().downloadManager.isUrlExit(task.url);
     if (exitUri) {
       complete(segment, status: DownloadStatus.DOWNLOADING);
       return;
     }
-    DownloadTask task = DownloadTask(uri: Uri.parse(segment.url));
     HlsParser().downloadManager.executeTask(task);
     HlsParser().downloadManager.stream.listen((downloadTask) {
       if (downloadTask.status == DownloadStatus.COMPLETED &&
           downloadTask.id == task.id) {
         final netData = Uint8List.fromList(downloadTask.data);
-        String mimeType = task.url.endsWith('m3u8')
-            ? 'application/vnd.apple.mpegurl'
-            : 'video/*';
-        TableVideo.insert(
-          "",
-          task.url,
-          downloadTask.saveFile,
-          mimeType,
-          netData.lengthInBytes,
-        );
         VideoMemoryCache.put(segment.url.generateMd5, netData);
         complete(segment);
       }
