@@ -1,20 +1,20 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
-
-import 'package:flutter_video_cache/ext/log_ext.dart';
 
 import '../download/download_isolate_pool.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/string_ext.dart';
 import '../memory/video_memory_cache.dart';
-import 'hls_parser.dart';
+import '../proxy/video_proxy.dart';
 
 class HlsMap {
   static final List<HlsSegment> _list = <HlsSegment>[];
 
   static List<HlsSegment> get list => _list;
+
+  static String latestUrl = "";
 
   static void add(HlsSegment segment) {
     bool match = _list.where((e) => e.url == segment.url).isNotEmpty;
@@ -25,10 +25,17 @@ class HlsMap {
     int index = _list.indexWhere((e) => e.url == segment.url);
     if (index == -1) return;
     _list[index].status = status ?? DownloadStatus.COMPLETED;
+    HlsSegment? latest = _list.where((e) => e.url == latestUrl).firstOrNull;
+    if (latest != null) {
+      List<HlsSegment> list = _list.where((e) => e.key == latest.key).toList();
+      int index = _list.indexWhere((e) => e.url == latest.url);
+      if (index != -1 && index + 1 < list.length) {
+        concurrent(list[index + 1].url);
+        return;
+      }
+    }
     Set<String> keys = _list.map((e) => e.key).toSet();
     String key = keys.elementAt(Random().nextInt(keys.length));
-    logW("keys: $keys");
-    logW("key: $key");
     HlsSegment? idleSegment = _list
         .where((e) => e.key == key)
         .where((e) => e.status == DownloadStatus.IDLE)
@@ -42,8 +49,13 @@ class HlsMap {
   }
 
   static void concurrent(String url) async {
+    latestUrl = url;
     Set<String> keys = _list.map((e) => e.key).toSet();
     if (keys.length > 2) {
+      _list.where((e) => e.key == keys.last).forEach((e) {
+        VideoProxy.downloadManager.allTasks
+            .removeWhere((task) => task.url == e.url);
+      });
       _list.removeWhere((e) => e.key == keys.first);
     }
     HlsSegment? segment = _list.where((e) => e.url == url).firstOrNull;
@@ -52,7 +64,7 @@ class HlsMap {
         .where((e) => e.key == segment.key)
         .where((e) => e.status == DownloadStatus.DOWNLOADING)
         .toList();
-    if (downloading.length >= 4) return;
+    if (downloading.length >= 2) return;
     final cache = await VideoMemoryCache.get(segment.url.generateMd5);
     if (cache != null) {
       complete(segment);
@@ -65,17 +77,17 @@ class HlsMap {
       complete(segment);
       return;
     }
-    final exitUri = HlsParser().downloadManager.isUrlExit(task.url);
+    final exitUri = VideoProxy.downloadManager.isUrlExit(segment.url);
     if (exitUri) {
       complete(segment, status: DownloadStatus.DOWNLOADING);
       return;
     }
-    HlsParser().downloadManager.executeTask(task);
-    HlsParser().downloadManager.stream.listen((downloadTask) {
+    await VideoProxy.downloadManager.executeTask(task);
+    StreamSubscription? subscription;
+    subscription = VideoProxy.downloadManager.stream.listen((downloadTask) {
       if (downloadTask.status == DownloadStatus.COMPLETED &&
-          downloadTask.id == task.id) {
-        final netData = Uint8List.fromList(downloadTask.data);
-        VideoMemoryCache.put(segment.url.generateMd5, netData);
+          downloadTask.url == task.url) {
+        subscription?.cancel();
         complete(segment);
       }
     });

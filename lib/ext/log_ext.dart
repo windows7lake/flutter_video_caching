@@ -21,7 +21,7 @@ class LocalLogFilter extends LogFilter {
 
 logIsolate(dynamic message) {
   if (Config.isDebug) {
-    print(message);
+    // print(message);
   }
 }
 

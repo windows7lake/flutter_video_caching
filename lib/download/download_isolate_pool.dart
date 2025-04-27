@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:flutter_video_cache/ext/log_ext.dart';
 import 'package:flutter_video_cache/flutter_video_cache.dart';
 import 'package:path_provider/path_provider.dart';
+
+import '../memory/video_memory_cache.dart';
 
 const int MAX_ISOLATE_POOL_SIZE = 1;
 const int MAX_TASK_PRIORITY = 9999;
@@ -85,13 +88,9 @@ class DownloadIsolatePool {
   }
 
   Future<DownloadTask> executeTask(DownloadTask task) async {
-    final existTask = _isolateList
-        .where((isolate) => isolate.isBusy)
-        .where((e) => e.task?.url == task.url)
-        .firstOrNull
-        ?.task;
-    if (existTask != null) return existTask;
-    DownloadTask downloadTask = await addTask(task);
+    final existTask = _taskList.where((e) => e.url == task.url).firstOrNull;
+    DownloadTask downloadTask =
+        existTask == null ? await addTask(task) : existTask;
     await roundIsolate();
     return downloadTask;
   }
@@ -216,45 +215,41 @@ class DownloadIsolatePool {
     logV('[DownloadIsolatePool] bindingIsolate ${task.id}');
     task.status = DownloadStatus.DOWNLOADING;
     isolate.bindTask(task);
-    isolate.subscription?.onData((data) => _isolateListener(isolate, data));
+    isolate.subscription?.onData((message) {
+      logV('[DownloadIsolatePool] isolateListener ${message.toString()}');
+      if (message is DownloadIsolateMsg) {
+        switch (message.type) {
+          case IsolateMsgType.sendPort:
+            if (isolate.task == null) return;
+            isolate.task!.status = DownloadStatus.DOWNLOADING;
+            isolate.controlPort = message.data as SendPort;
+            isolate.controlPort!.send(DownloadIsolateMsg(
+              IsolateMsgType.task,
+              isolate.task,
+            ));
+            break;
+          case IsolateMsgType.task:
+            final task = message.data as DownloadTask;
+            isolate.task = task;
+            int taskIndex = _taskList.indexWhere((t) => t.id == task.id);
+            if (taskIndex != -1) _taskList[taskIndex] = task;
+            int isolateIndex =
+                _isolateList.indexWhere((i) => i.task?.id == task.id);
+            if (isolateIndex != -1) _isolateList[isolateIndex] = isolate;
+            if (task.status == DownloadStatus.COMPLETED) {
+              Uint8List netData = Uint8List.fromList(task.data);
+              VideoMemoryCache.put(task.url.generateMd5, netData);
+            }
+            if (task.status == DownloadStatus.FINISHED) {
+              if (taskIndex != -1) _taskList.removeAt(taskIndex);
+              if (isolateIndex != -1) _isolateList[isolateIndex].reset();
+              roundIsolate();
+            }
+            _streamController.sink.add(task);
+            break;
+        }
+      }
+    });
     isolate.controlPort?.send(DownloadIsolateMsg(IsolateMsgType.task, task));
-  }
-
-  void _isolateListener(
-    DownloadIsolateInstance isolate,
-    dynamic message,
-  ) {
-    logV('[DownloadIsolatePool] isolateListener ${message.toString()}');
-    if (message is DownloadIsolateMsg) {
-      if (isolate.task == null) {
-        logV('[DownloadIsolatePool] isolateListener task is null');
-        return;
-      }
-      switch (message.type) {
-        case IsolateMsgType.sendPort:
-          isolate.task!.status = DownloadStatus.DOWNLOADING;
-          isolate.controlPort = message.data as SendPort;
-          isolate.controlPort!.send(DownloadIsolateMsg(
-            IsolateMsgType.task,
-            isolate.task,
-          ));
-          break;
-        case IsolateMsgType.task:
-          final task = message.data as DownloadTask;
-          isolate.task = task;
-          int taskIndex = _taskList.indexWhere((t) => t.id == task.id);
-          if (taskIndex != -1) _taskList[taskIndex] = task;
-          int isolateIndex =
-              _isolateList.indexWhere((i) => i.task?.id == task.id);
-          if (isolateIndex != -1) _isolateList[isolateIndex] = isolate;
-          if (task.status == DownloadStatus.FINISHED) {
-            if (taskIndex != -1) _taskList.removeAt(taskIndex);
-            if (isolateIndex != -1) _isolateList[isolateIndex].reset();
-            roundIsolate();
-          }
-          _streamController.sink.add(task);
-          break;
-      }
-    }
   }
 }

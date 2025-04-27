@@ -8,33 +8,19 @@ import 'package:flutter_video_cache/ext/int_ext.dart';
 import 'package:flutter_video_cache/ext/uri_ext.dart';
 
 import '../download/download_isolate_pool.dart';
-import '../download/download_manager.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/log_ext.dart';
 import '../memory/video_memory_cache.dart';
+import '../proxy/video_proxy.dart';
 
 /// M3U8 HLS parser
 class HlsParser {
-  /// 获取单例对象
-  factory HlsParser() => instance;
-
-  /// 私有构造函数
-  HlsParser._();
-
-  /// 单例对象
-  static final HlsParser instance = HlsParser._();
-
-  final HlsPlaylistParser _parser = HlsPlaylistParser.create();
-
-  final DownloadManager downloadManager =
-      DownloadManager(maxConcurrentDownloads: 6);
-
   /// 解析M3U8数据行
   Future<HlsPlaylist?> parseLines(List<String> lines) async {
     HlsPlaylist? playList;
     try {
-      playList = await _parser.parse(Uri.base, lines);
+      playList = await VideoProxy.hlsPlaylistParser.parse(Uri.base, lines);
     } catch (e) {
       logE('Exception: ${e}');
     }
@@ -89,7 +75,7 @@ class HlsParser {
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
     File file = File('$cachePath/${task.saveFile}');
     if (file.existsSync()) return;
-    await downloadManager.addTask(task);
+    await VideoProxy.downloadManager.addTask(task);
   }
 
   Future<Uint8List?> downloadTask(DownloadTask task) async {
@@ -110,12 +96,13 @@ class HlsParser {
     } else {
       logD('从网络中获取数据，正在下载中');
       Uint8List? netData;
-      await downloadManager.executeTask(task);
-      await for (DownloadTask downloadTask in downloadManager.stream) {
+      task.priority += 10;
+      await VideoProxy.downloadManager.executeTask(task);
+      await for (DownloadTask downloadTask
+          in VideoProxy.downloadManager.stream) {
         if (downloadTask.status == DownloadStatus.COMPLETED &&
             downloadTask.url == task.url) {
           netData = Uint8List.fromList(downloadTask.data);
-          await VideoMemoryCache.put(md5, netData);
           break;
         }
       }

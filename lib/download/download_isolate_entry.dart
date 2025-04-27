@@ -61,7 +61,7 @@ class DownloadIsolate {
       }
 
       final response = await request.close();
-      logIsolate('[DownloadIsolate] status code: ${response.statusCode}');
+      logIsolate('[DownloadIsolate] status code: ${response.statusCode} ${task.uri}');
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (retryTimes > 0) {
@@ -133,17 +133,17 @@ class DownloadIsolate {
       task.data = buffer;
       task.status = DownloadStatus.COMPLETED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
-      logIsolate("[DownloadIsolate] COMPLETED");
+      logIsolate("[DownloadIsolate] COMPLETED ${task.uri}");
 
       await _writeToFile(saveFile, buffer);
       task.status = DownloadStatus.FINISHED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
       task.reset();
-      logIsolate("[DownloadIsolate] FINISHED");
+      logIsolate("[DownloadIsolate] FINISHED ${task.uri}");
     } catch (e) {
       logIsolate('[DownloadIsolate] Download error: $e');
     } finally {
-      logIsolate('[DownloadIsolate] close');
+      logIsolate('[DownloadIsolate] close ${task.uri}');
     }
   }
 

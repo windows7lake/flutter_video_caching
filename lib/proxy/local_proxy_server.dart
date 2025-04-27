@@ -80,6 +80,7 @@ class LocalProxyServer {
           } else {
             await _sendContent(socket, data);
           }
+          logD('返回请求数据 Origin url：$originUri');
           break;
         }
       }
@@ -129,10 +130,11 @@ class LocalProxyServer {
 
   /// 解析并返回对应的文件
   Future<Uint8List?> _parseData(Uri uri, String range) async {
-    Uint8List? data = await HlsParser().downloadTask(DownloadTask(uri: uri));
-    // HlsMap.concurrent(uri.toString());
+    HlsParser hlsParser = HlsParser();
+    Uint8List? data = await hlsParser.downloadTask(DownloadTask(uri: uri));
+    HlsMap.concurrent(uri.toString());
     if (data != null && uri.toString().endsWith('.m3u8')) {
-      List<String> lines = HlsParser().readLineFromUint8List(data);
+      List<String> lines = hlsParser.readLineFromUint8List(data);
       String lastLine = '';
       StringBuffer buffer = StringBuffer();
       for (String line in lines) {
