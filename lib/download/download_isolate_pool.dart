@@ -238,7 +238,8 @@ class DownloadIsolatePool {
             if (isolateIndex != -1) _isolateList[isolateIndex] = isolate;
             if (task.status == DownloadStatus.COMPLETED) {
               Uint8List netData = Uint8List.fromList(task.data);
-              VideoMemoryCache.put(task.url.generateMd5, netData);
+              final md5 = '${task.url}${task.endRange}'.generateMd5;
+              VideoMemoryCache.put(md5, netData);
             }
             if (task.status == DownloadStatus.FINISHED) {
               if (taskIndex != -1) _taskList.removeAt(taskIndex);

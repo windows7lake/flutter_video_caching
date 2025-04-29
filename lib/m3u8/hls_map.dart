@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter_video_cache/ext/log_ext.dart';
+
 import '../download/download_isolate_pool.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
@@ -49,6 +51,7 @@ class HlsMap {
   }
 
   static void concurrent(String url) async {
+    logD("异步下载开始： $url");
     latestUrl = url;
     Set<String> keys = _list.map((e) => e.key).toSet();
     if (keys.length > 2) {
@@ -87,6 +90,7 @@ class HlsMap {
     subscription = VideoProxy.downloadManager.stream.listen((downloadTask) {
       if (downloadTask.status == DownloadStatus.COMPLETED &&
           downloadTask.url == task.url) {
+        logD("异步下载完成： $url");
         subscription?.cancel();
         complete(segment);
       }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_video_cache/ext/uri_ext.dart';
+import 'package:flutter_video_cache/mp4/mp4_parser.dart';
 
 import '../download/download_task.dart';
 import '../ext/log_ext.dart';
@@ -35,7 +36,7 @@ class LocalProxyServer {
       final InternetAddress internetAddress = InternetAddress(Config.ip);
       server = await ServerSocket.bind(internetAddress, Config.port);
       logD('Proxy server started ${server?.address.address}:${server?.port}');
-      server?.listen(_handleConnection);
+      server?.listen(_handleConnection2);
     } on SocketException catch (e) {
       if (e.osError?.errorCode == 98) {
         Config.port = Config.port + 1;
@@ -47,6 +48,86 @@ class LocalProxyServer {
   /// 关闭代理服务器
   Future<void> close() async {
     await server?.close();
+  }
+
+  /// 处理连接
+  Future<void> _handleConnection2(Socket socket) async {
+    try {
+      logV('_handleConnection start');
+      final StringBuffer buffer = StringBuffer();
+      await for (final Uint8List data in socket) {
+        buffer.write(String.fromCharCodes(data));
+        // 检测头部结束标记（空行 \r\n\r\n）
+        if (buffer.toString().contains(httpTerminal)) {
+          String? rawHeaders =
+              buffer.toString().split(httpTerminal).firstOrNull;
+          Map<String, String> headers = _parseHeaders(rawHeaders);
+          logD("传入请求头： $headers");
+          if (headers.isEmpty) {
+            await send400(socket);
+            return;
+          }
+          final String rangeHeader = headers['range'] ?? '';
+          final String url = headers['redirect'] ?? '';
+          final Uri originUri = url.toOriginUri();
+          logD('传入链接 Origin url：$originUri');
+
+          RegExp exp = RegExp(r'bytes=(\d+)-(\d*)');
+          RegExpMatch? rangeMatch = exp.firstMatch(rangeHeader);
+          int rangeStart = int.parse(rangeMatch?.group(1) ?? '0');
+
+          // 处理完整请求
+          final responseHeaders = [
+            rangeStart > 0 ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
+            'Content-Type: video/mp4',
+            'Accept-Ranges: bytes',
+            'Connection: keep-alive',
+          ].join('\r\n');
+          await socket.append(responseHeaders);
+
+          int startRange = rangeStart - (rangeStart % Config.segmentSize);
+          int endRange = startRange + Config.segmentSize - 1;
+          DownloadTask task = DownloadTask(
+            uri: originUri,
+            startRange: startRange,
+            endRange: endRange,
+          );
+          logD('传入Range => start: $startRange, end: $endRange');
+
+          MP4Parser mp4parser = MP4Parser();
+          Uint8List? result = await mp4parser.cacheTask(task);
+          if (result != null) {
+            if (rangeStart % Config.segmentSize != 0) {
+              result = result.sublist(rangeStart % Config.segmentSize);
+            }
+            socket.add(result);
+            int count = 2;
+            while (count > 0) {
+              count--;
+              task.startRange += Config.segmentSize;
+              task.endRange = task.startRange + Config.segmentSize - 1;
+              result = await mp4parser.cacheTask(task);
+              if (result != null) socket.add(result);
+            }
+          } else {
+            result = await mp4parser.downloadTask(task);
+            if (rangeStart % Config.segmentSize != 0) {
+              result = result?.sublist(rangeStart % Config.segmentSize);
+            }
+            if (result != null) socket.add(result);
+          }
+          await socket.flush();
+
+          logD('返回请求数据 Origin url：$originUri');
+          break;
+        }
+      }
+    } catch (e) {
+      logE('⚠ ⚠ ⚠ 传输异常: $e');
+    } finally {
+      await socket.close(); // 确保连接关闭
+      logD('连接关闭\n');
+    }
   }
 
   /// 处理连接

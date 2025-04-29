@@ -10,4 +10,6 @@ class Config {
   static int gbSize = 1024 * mbSize;
   static int memoryCacheSize = 100 * mbSize; // 100MB
   static int storageCacheSize = 1 * gbSize; // 1GB
+
+  static int segmentSize = 2000000;
 }

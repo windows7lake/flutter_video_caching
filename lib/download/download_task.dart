@@ -13,6 +13,8 @@ class DownloadTask {
   int downloadedBytes;
   int totalBytes;
   DownloadStatus status;
+  int startRange;
+  int? endRange;
   List<int> data = [];
 
   int createAt = DateTime.now().millisecondsSinceEpoch;
@@ -26,6 +28,8 @@ class DownloadTask {
     this.downloadedBytes = 0,
     this.totalBytes = 0,
     this.status = DownloadStatus.IDLE,
+    this.startRange = 0,
+    this.endRange,
   })  : id = _autoId.toString(),
         saveFile = fileName ??
             uri.pathSegments.lastOrNull ??

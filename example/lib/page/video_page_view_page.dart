@@ -14,6 +14,18 @@ class VideoPageViewPage extends StatefulWidget {
 class _VideoPageViewPageState extends State<VideoPageViewPage> {
   final PageController pageController = PageController();
   final List<String> urls = [
+    'https://video.591.com.tw/online/target/hls/union/2024/09/27/mp4/1594258-502136.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/04/17/mp4/2211160-128132.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mp4/2065926-822341.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2024/12/17/mp4/2050458-494488.mp4',
+    'http://vjs.zencdn.net/v/oceans.mp4',
+    'https://t100upload.s3.ap-northeast-1.amazonaws.com/short_video/202502/27/api_63_1740628111_nHl0Zax1Am.mp4',
+    'https://t100upload.s3.ap-northeast-1.amazonaws.com/short_video/202502/27/api_63_1740649956_BSALYwWQfZ.mp4',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041957_1mWiprwazK.m3u8',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740043126_wJVXwIEOHh.m3u8',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740042408_eJf8r036BT.m3u8',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041707_yOQW9ocCUX.m3u8',
+    'https://images.debug.100.com.tw/short_video/hls/2025/02/18/api_76_1739860463_qHCzRqVkDd.m3u8',
     'https://cp4.100.com.tw/short_video/2025/04/17/api_63_1744873574_gDqHbvKzmK/full_hls/api_63_1744873574_gDqHbvKzmK.m3u8',
     'https://cp4.100.com.tw/short_video/2025/04/17/api_63_1744873176_gKUCVVfeTc/full_hls/api_63_1744873176_gKUCVVfeTc.m3u8',
     'https://cp4.100.com.tw/short_video/2025/04/08/api_63_1744076558_oeO5cO38zR/full_hls/api_63_1744076558_oeO5cO38zR.m3u8',
@@ -21,11 +33,6 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
     'https://cp4.100.com.tw/short_video/2025/03/28/api_63_1743147983_tvUvhzQHuZ/full_hls/api_63_1743147983_tvUvhzQHuZ.m3u8',
     'https://cp4.100.com.tw/short_video/2025/03/28/api_63_1743147372_Rqmt9qNKmh/full_hls/api_63_1743147372_Rqmt9qNKmh.m3u8',
     'https://cp4.100.com.tw/short_video/2025/03/26/api_63_1742959946_jBxdXXOTaw/full_hls/api_63_1742959946_jBxdXXOTaw.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041957_1mWiprwazK.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740043126_wJVXwIEOHh.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740042408_eJf8r036BT.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041707_yOQW9ocCUX.m3u8',
-    'https://images.debug.100.com.tw/short_video/hls/2025/02/18/api_76_1739860463_qHCzRqVkDd.m3u8',
     'https://images.debug.100.com.tw/short_video/2025/03/13/api_76_1741847328_sR96QRx6nz/full_hls/api_76_1741847328_sR96QRx6nz.m3u8',
     'https://images.debug.100.com.tw/short_video/2025/02/25/api_76_1740451086_YfIgNO1nAL/full_hls/api_76_1740451086_YfIgNO1nAL.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740034816_gyJD2rv5iJ.m3u8',
@@ -62,7 +69,6 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
       body: PageView.builder(
         scrollDirection: Axis.vertical,
         controller: pageController,
-        // itemCount: controller.showVideoList.length,
         itemBuilder: (context, index) {
           int curIndex = index % urls.length;
           String url = urls[curIndex];
@@ -71,7 +77,7 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
         onPageChanged: (index) {
           currentIndex = index;
           if (index + 1 < urls.length) {
-            VideoPreCaching.loadM3u8(urls[index + 1], downloadNow: false);
+            // VideoPreCaching.loadM3u8(urls[index + 1], downloadNow: false);
           }
         },
       ),
@@ -118,9 +124,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   }
 
   Future initPlayControl(Uri uri) async {
-    playControl = VideoPlayerController.networkUrl(uri,
-        httpHeaders: {'Connection': 'keep-alive', 'Keep-Alive': 'timeout=20'})
-      ..setLooping(true);
+    playControl = VideoPlayerController.networkUrl(uri)..setLooping(true);
     playControl.addListener(playListener);
     await playControl.initialize().then((value) {
       initialize = true;

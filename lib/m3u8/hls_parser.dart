@@ -89,7 +89,7 @@ class HlsParser {
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
     File file = File('$cachePath/${task.saveFile}');
     if (file.existsSync()) {
-      logD('从数据库中获取数据');
+      logD('从文件中获取数据');
       Uint8List fileCache = await file.readAsBytes();
       await VideoMemoryCache.put(md5, fileCache);
       return fileCache;

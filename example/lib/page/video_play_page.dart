@@ -28,6 +28,8 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     // 'https://t100upload.s3.ap-northeast-1.amazonaws.com/video/hls/2024/12/25/api_64_1734338254_NUcT15ZNmE.m3u8'))
     // 'https://t100upload.s3.ap-northeast-1.amazonaws.com/video/hls/2024/12/25/api_64_1734338254_NUcT15ZNmE_hls_00001.ts'))
     List<String> urls = [
+      'http://vjs.zencdn.net/v/oceans.mp4',
+      'https://t100upload.s3.ap-northeast-1.amazonaws.com/short_video/202502/27/api_63_1740628111_nHl0Zax1Am.mp4',
       'http://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8',
       'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mp4/.m3u8',
       'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
@@ -37,9 +39,10 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     String remoteUri = localUri.toOriginUrl();
     print('localUri: $localUri');
     print('remoteUri: $remoteUri');
-    // Uri uri = url.toLocalUri();
-    Uri uri = Uri.parse(remoteUri);
+    Uri uri = url.toLocalUri();
+    // Uri uri = Uri.parse(remoteUri);
     _controller = VideoPlayerController.networkUrl(uri)
+      ..setLooping(true)
       ..initialize().then((_) {
         setState(() {});
       });

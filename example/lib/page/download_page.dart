@@ -13,6 +13,7 @@ class DownloadPage extends StatefulWidget {
 class _DownloadPageState extends State<DownloadPage> {
   final DownloadManager _manager = DownloadManager(maxConcurrentDownloads: 2);
   final List<String> links = [
+    'http://vjs.zencdn.net/v/oceans.mp4',
     'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/main.mp4',
     'https://mirrors.edge.kernel.org/linuxmint/stable/20.3/linuxmint-20.3-xfce-64bit.iso',
     'https://filesamples.com/samples/video/mp4/sample_960x400_ocean_with_audio.mp4',
@@ -53,6 +54,9 @@ class _DownloadPageState extends State<DownloadPage> {
     await _manager.executeTask(DownloadTask(
       uri: Uri.parse(links[index]),
       priority: index,
+      startRange: 23014355,
+      // endRange: 23014356,
+      endRange: 24014356,
     ));
     if (++index >= links.length) {
       index = 0;

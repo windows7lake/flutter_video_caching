@@ -55,14 +55,21 @@ class DownloadIsolate {
     try {
       HttpClientRequest request = await client.getUrl(task.uri);
 
-      if (task.downloadedBytes > 0) {
-        logIsolate('[DownloadIsolate] downloadedBytes ${task.downloadedBytes}');
-        request.headers.add('Range', 'bytes=${task.downloadedBytes}-');
+      String range = '';
+      if (task.downloadedBytes > 0 || task.startRange > 0) {
+        int startRange = task.downloadedBytes + task.startRange;
+        range = 'bytes=$startRange-';
       }
+      if (task.endRange != null) {
+        if (range.isEmpty) range = 'bytes=0-';
+        range += '${task.endRange}';
+      }
+      logIsolate('[DownloadIsolate] range: $range');
+      request.headers.add('Range', range);
 
       final response = await request.close();
-      logIsolate('[DownloadIsolate] status code: ${response.statusCode} ${task.uri}');
-
+      logIsolate(
+          '[DownloadIsolate] status code: ${response.statusCode} ${task.uri}');
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (retryTimes > 0) {
           logIsolate('[DownloadIsolate] retry $retryTimes: ${task.uri}');
@@ -93,7 +100,8 @@ class DownloadIsolate {
       // 创建临时存储
       List<int> buffer = [];
 
-      final File saveFile = File('${task.cacheDir}/${task.saveFile}');
+      final File saveFile =
+          File('${task.cacheDir}/${task.saveFile}-${task.endRange}');
 
       await for (var data in response) {
         // 检查是否被取消或暂停
