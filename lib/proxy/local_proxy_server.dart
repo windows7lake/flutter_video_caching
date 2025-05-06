@@ -2,16 +2,18 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_video_cache/ext/uri_ext.dart';
-import 'package:flutter_video_cache/mp4/mp4_parser.dart';
 
 import '../download/download_task.dart';
+import '../ext/int_ext.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../ext/string_ext.dart';
+import '../ext/uri_ext.dart';
 import '../global/config.dart';
 import '../m3u8/hls_map.dart';
 import '../m3u8/hls_parser.dart';
+import '../memory/video_memory_cache.dart';
+import '../mp4/mp4_parser.dart';
 
 /// 本地代理服务器
 class LocalProxyServer {
@@ -94,6 +96,7 @@ class LocalProxyServer {
           );
           logD('传入Range => start: $startRange, end: $endRange');
 
+          logD('当前内存占用: ${(await VideoMemoryCache.size()).toMemorySize}');
           MP4Parser mp4parser = MP4Parser();
           Uint8List? result = await mp4parser.cacheTask(task);
           if (result != null) {
@@ -107,7 +110,8 @@ class LocalProxyServer {
               task.startRange += Config.segmentSize;
               task.endRange = task.startRange + Config.segmentSize - 1;
               result = await mp4parser.cacheTask(task);
-              if (result != null) socket.add(result);
+              if (result == null) break;
+              socket.add(result);
             }
           } else {
             result = await mp4parser.downloadTask(task);
@@ -118,7 +122,7 @@ class LocalProxyServer {
           }
           await socket.flush();
 
-          logD('返回请求数据 Origin url：$originUri');
+          logD('返回请求数据 Origin url：$originUri range: $startRange-$endRange');
           break;
         }
       }

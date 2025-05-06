@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_video_cache/flutter_video_cache.dart';
 
 import 'page/download_page.dart';
 import 'page/m3u8_parser_page.dart';

@@ -31,12 +31,12 @@ class DownloadIsolateInstance {
   @override
   String toString() {
     return 'IsolateInstance [ '
+        'isBusy: $isBusy, '
+        'task: $task, '
         'isolate: $isolate, '
         'receivePort: $receivePort '
         'controlPort: $controlPort, '
         'subscription: $subscription '
-        'task: $task, '
-        'isBusy: $isBusy)'
         ' ]';
   }
 }

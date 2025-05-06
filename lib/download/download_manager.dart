@@ -41,6 +41,10 @@ class DownloadManager {
     _isolatePool.notifyIsolate(taskId, DownloadStatus.CANCELLED);
   }
 
+  bool isMatchUrlExit(String url) {
+    return allTasks.where((task) => task.matchUrl == url).isNotEmpty;
+  }
+
   bool isUrlExit(String url) {
     return allTasks.where((task) => task.uri.toString() == url).isNotEmpty;
   }

@@ -9,7 +9,7 @@ import 'download_status.dart';
 import 'download_task.dart';
 
 void downloadIsolateEntry(SendPort mainSendPort) {
-  logV('[DownloadIsolateEntry] mainSendPort: $mainSendPort');
+  // logV('[DownloadIsolateEntry] mainSendPort: $mainSendPort');
   final receivePort = ReceivePort();
   mainSendPort.send(DownloadIsolateMsg(
     IsolateMsgType.sendPort,
@@ -17,7 +17,7 @@ void downloadIsolateEntry(SendPort mainSendPort) {
   ));
   DownloadIsolate? downloadIsolate;
   receivePort.listen((message) {
-    logV('[DownloadIsolateEntry] receive message: $message');
+    // logV('[DownloadIsolateEntry] receive message: $message');
     if (message is DownloadIsolateMsg) {
       switch (message.type) {
         case IsolateMsgType.task:
@@ -51,7 +51,6 @@ class DownloadIsolate {
   int retryTimes = 3;
 
   Future<void> start(DownloadTask task, SendPort sendPort) async {
-    logIsolate('[DownloadIsolate] START ${task.uri}');
     try {
       HttpClientRequest request = await client.getUrl(task.uri);
 
@@ -64,22 +63,22 @@ class DownloadIsolate {
         if (range.isEmpty) range = 'bytes=0-';
         range += '${task.endRange}';
       }
-      logIsolate('[DownloadIsolate] range: $range');
       request.headers.add('Range', range);
+      logIsolate('[DownloadIsolate] START ${task.uri} range: $range');
 
       final response = await request.close();
-      logIsolate(
-          '[DownloadIsolate] status code: ${response.statusCode} ${task.uri}');
+      logIsolate('[DownloadIsolate] status code: ${response.statusCode} '
+          '${task.uri} range: $range');
       if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (response.statusCode == 416) retryTimes = 0;
         if (retryTimes > 0) {
-          logIsolate('[DownloadIsolate] retry $retryTimes: ${task.uri}');
+          logIsolate('[DownloadIsolate] retry $retryTimes: '
+              '${task.uri} range: $range');
           retryTimes--;
-          task.reset();
           start(task, sendPort);
           return;
         }
-        logIsolate('[DownloadIsolate] failed: ${task.uri}');
-        task.reset();
+        logIsolate('[DownloadIsolate] failed: ${task.uri}  range: $range');
         task.status = DownloadStatus.FAILED;
         sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
         return;
@@ -100,8 +99,7 @@ class DownloadIsolate {
       // 创建临时存储
       List<int> buffer = [];
 
-      final File saveFile =
-          File('${task.cacheDir}/${task.saveFile}-${task.endRange}');
+      final File saveFile = File('${task.cacheDir}/${task.saveFileName}');
 
       await for (var data in response) {
         // 检查是否被取消或暂停
@@ -109,14 +107,14 @@ class DownloadIsolate {
           await _writeToFile(saveFile, buffer);
           task.status = DownloadStatus.PAUSED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
-          logIsolate("[DownloadIsolate] PAUSED ${task.uri} ");
+          logIsolate("[DownloadIsolate] PAUSED ${task.toString()} ");
           return;
         }
         if (_isCancelled) {
           await saveFile.delete();
           task.status = DownloadStatus.CANCELLED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
-          logIsolate("[DownloadIsolate] CANCELLED ${task.uri} ");
+          logIsolate("[DownloadIsolate] CANCELLED ${task.toString()} ");
           return;
         }
 
@@ -135,23 +133,24 @@ class DownloadIsolate {
           }
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
           lastUpdateTime = currentTime;
+          logIsolate("[DownloadIsolate] DOWNLOADING ${task.toString()}");
         }
       }
 
       task.data = buffer;
       task.status = DownloadStatus.COMPLETED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
-      logIsolate("[DownloadIsolate] COMPLETED ${task.uri}");
+      logIsolate("[DownloadIsolate] COMPLETED ${task.toString()}");
 
       await _writeToFile(saveFile, buffer);
       task.status = DownloadStatus.FINISHED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
+      logIsolate("[DownloadIsolate] FINISHED ${task.toString()}");
       task.reset();
-      logIsolate("[DownloadIsolate] FINISHED ${task.uri}");
     } catch (e) {
-      logIsolate('[DownloadIsolate] Download error: $e');
+      // logIsolate('[DownloadIsolate] Download error: $e');
     } finally {
-      logIsolate('[DownloadIsolate] close ${task.uri}');
+      // logIsolate('[DownloadIsolate] close ${task.url}');
     }
   }
 

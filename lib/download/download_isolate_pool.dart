@@ -88,7 +88,8 @@ class DownloadIsolatePool {
   }
 
   Future<DownloadTask> executeTask(DownloadTask task) async {
-    final existTask = _taskList.where((e) => e.url == task.url).firstOrNull;
+    DownloadTask? existTask =
+        _taskList.where((e) => e.matchUrl == task.matchUrl).firstOrNull;
     DownloadTask downloadTask =
         existTask == null ? await addTask(task) : existTask;
     await roundIsolate();
@@ -106,6 +107,9 @@ class DownloadIsolatePool {
   }
 
   Future<void> _runIsolateWithTask() async {
+    logW(
+        '[DownloadIsolatePool] _runIsolateWithTask ${_taskList.map((e) => e.toString() + "\n").toList()}');
+
     _taskList.sort((a, b) => b.priority - a.priority);
 
     // 检查是否有空闲的隔离实例
@@ -216,7 +220,7 @@ class DownloadIsolatePool {
     task.status = DownloadStatus.DOWNLOADING;
     isolate.bindTask(task);
     isolate.subscription?.onData((message) {
-      logV('[DownloadIsolatePool] isolateListener ${message.toString()}');
+      // logV('[DownloadIsolatePool] isolateListener ${message.toString()}');
       if (message is DownloadIsolateMsg) {
         switch (message.type) {
           case IsolateMsgType.sendPort:
@@ -238,12 +242,16 @@ class DownloadIsolatePool {
             if (isolateIndex != -1) _isolateList[isolateIndex] = isolate;
             if (task.status == DownloadStatus.COMPLETED) {
               Uint8List netData = Uint8List.fromList(task.data);
-              final md5 = '${task.url}${task.endRange}'.generateMd5;
-              VideoMemoryCache.put(md5, netData);
-            }
-            if (task.status == DownloadStatus.FINISHED) {
+              VideoMemoryCache.put(task.matchUrl, netData);
               if (taskIndex != -1) _taskList.removeAt(taskIndex);
               if (isolateIndex != -1) _isolateList[isolateIndex].reset();
+            }
+            if (task.status == DownloadStatus.FAILED) {
+              if (taskIndex != -1) _taskList.removeAt(taskIndex);
+              if (isolateIndex != -1) _isolateList[isolateIndex].reset();
+            }
+            if (task.status == DownloadStatus.FINISHED ||
+                task.status == DownloadStatus.FAILED) {
               roundIsolate();
             }
             _streamController.sink.add(task);
