@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_video_cache/precache/video_pre_caching.dart';
 
 import 'page/download_page.dart';
 import 'page/m3u8_parser_page.dart';
@@ -20,6 +21,18 @@ class _MainRouteState extends State<MainRoute> {
     'VideoPageView': const VideoPageViewPage(),
   };
   final List<String> urls = [
+    'https://video.591.com.tw/online/target/hls/union/2024/09/27/mp4/1594258-502136.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/04/17/mp4/2211160-128132.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mp4/2065926-822341.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2024/12/17/mp4/2050458-494488.mp4',
+    'http://vjs.zencdn.net/v/oceans.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/03/26/mobile/2171273-849283.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091573-822258.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091545-322856.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091543-694014.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/23/mobile/2087576-472697.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/13/mobile/2078058-141252.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mobile/2065937-110120.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041957_1mWiprwazK.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740043126_wJVXwIEOHh.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740042408_eJf8r036BT.m3u8',
@@ -43,20 +56,13 @@ class _MainRouteState extends State<MainRoute> {
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
     'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/03/26/mobile/2171273-849283.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091573-822258.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091545-322856.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091543-694014.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/01/23/mobile/2087576-472697.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/01/13/mobile/2078058-141252.m3u8',
-    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mobile/2065937-110120.m3u8',
   ];
 
   @override
   void initState() {
     super.initState();
     for (int i = 0; i < 5; i++) {
-      // VideoPreCaching.loadM3u8(urls[i]);
+      // VideoPreCaching.loadMp4(urls[i]);
     }
   }
 

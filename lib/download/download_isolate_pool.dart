@@ -107,9 +107,6 @@ class DownloadIsolatePool {
   }
 
   Future<void> _runIsolateWithTask() async {
-    logW(
-        '[DownloadIsolatePool] _runIsolateWithTask ${_taskList.map((e) => e.toString() + "\n").toList()}');
-
     _taskList.sort((a, b) => b.priority - a.priority);
 
     // 检查是否有空闲的隔离实例
