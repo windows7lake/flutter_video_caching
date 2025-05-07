@@ -148,9 +148,9 @@ class DownloadIsolate {
       logIsolate("[DownloadIsolate] FINISHED ${task.toString()}");
       task.reset();
     } catch (e) {
-      // logIsolate('[DownloadIsolate] Download error: $e');
+      logIsolate('[DownloadIsolate] Download error: $e');
     } finally {
-      // logIsolate('[DownloadIsolate] close ${task.url}');
+      logIsolate('[DownloadIsolate] close ${task.url}');
     }
   }
 

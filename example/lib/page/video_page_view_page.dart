@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_video_cache/flutter_video_cache.dart';
+import 'package:flutter_video_cache/parser/video_caching.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPageViewPage extends StatefulWidget {
@@ -14,11 +15,6 @@ class VideoPageViewPage extends StatefulWidget {
 class _VideoPageViewPageState extends State<VideoPageViewPage> {
   final PageController pageController = PageController();
   final List<String> urls = [
-    'https://video.591.com.tw/online/target/hls/union/2024/09/27/mp4/1594258-502136.mp4',
-    'https://video.591.com.tw/online/target/hls/union/2025/04/17/mp4/2211160-128132.mp4',
-    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mp4/2065926-822341.mp4',
-    'https://video.591.com.tw/online/target/hls/union/2024/12/17/mp4/2050458-494488.mp4',
-    'http://vjs.zencdn.net/v/oceans.mp4',
     'https://video.591.com.tw/online/target/hls/union/2025/03/26/mobile/2171273-849283.m3u8',
     'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091573-822258.m3u8',
     'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091545-322856.m3u8',
@@ -26,6 +22,11 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
     'https://video.591.com.tw/online/target/hls/union/2025/01/23/mobile/2087576-472697.m3u8',
     'https://video.591.com.tw/online/target/hls/union/2025/01/13/mobile/2078058-141252.m3u8',
     'https://video.591.com.tw/online/target/hls/union/2025/01/03/mobile/2065937-110120.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2024/09/27/mp4/1594258-502136.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/04/17/mp4/2211160-128132.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2025/01/03/mp4/2065926-822341.mp4',
+    'https://video.591.com.tw/online/target/hls/union/2024/12/17/mp4/2050458-494488.mp4',
+    'http://vjs.zencdn.net/v/oceans.mp4',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740041957_1mWiprwazK.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740043126_wJVXwIEOHh.m3u8',
     'https://images.debug.100.com.tw/short_video/hls/2025/02/20/api_30_1740042408_eJf8r036BT.m3u8',
@@ -75,7 +76,7 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
         onPageChanged: (index) {
           currentIndex = index;
           if (index + 1 < urls.length) {
-            // VideoPreCaching.loadM3u8(urls[index + 1], downloadNow: false);
+            VideoCaching.precache(urls[index + 1], downloadNow: false);
           }
         },
       ),

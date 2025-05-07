@@ -14,6 +14,7 @@ class DownloadTask {
   DownloadStatus status;
   int startRange;
   int? endRange;
+  String? hlsKey;
   List<int> data = [];
 
   int createAt = DateTime.now().millisecondsSinceEpoch;
@@ -29,6 +30,7 @@ class DownloadTask {
     this.status = DownloadStatus.IDLE,
     this.startRange = 0,
     this.endRange,
+    this.hlsKey,
   })  : id = _autoId.toString(),
         saveFile = fileName ??
             uri.pathSegments.lastOrNull ??
@@ -86,6 +88,9 @@ class DownloadTask {
         'Progress: $progress, '
         'DownloadedBytes: $downloadedBytes, '
         'TotalBytes: $totalBytes, '
+        'CacheDir: $cacheDir, '
+        'SaveFile: $saveFile, '
+        'HLSKey: $hlsKey, '
         ' ]';
   }
 }

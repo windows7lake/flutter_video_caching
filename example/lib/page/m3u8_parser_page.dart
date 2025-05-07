@@ -27,7 +27,7 @@ class _M3u8ParserPageState extends State<M3u8ParserPage> {
 
   void initData() {
     for (final url in urls) {
-      HlsParser().parseMediaPlaylist(Uri.parse(url)).then((value) {
+      UrlParserM3U8().parseMediaPlaylist(Uri.parse(url)).then((value) {
         if (value == null) return;
         playlists.add(value);
         setState(() {});
