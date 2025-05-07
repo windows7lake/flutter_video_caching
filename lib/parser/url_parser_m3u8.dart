@@ -232,10 +232,13 @@ class UrlParserM3U8 implements UrlParser {
     if (mediaList.isEmpty) return;
     final List<String> segments = mediaList.take(cacheSegments).toList();
     for (final String segment in segments) {
+      DownloadTask task = DownloadTask(uri: Uri.parse(segment));
       if (downloadNow) {
-        download(DownloadTask(uri: Uri.parse(segment)));
+        Uint8List? data = await cache(task);
+        if (data != null) continue;
+        download(task);
       } else {
-        push(DownloadTask(uri: Uri.parse(segment)));
+        push(task);
       }
     }
   }
@@ -274,7 +277,9 @@ class UrlParserM3U8 implements UrlParser {
 
   /// 解析M3U8分辨率列表
   Future<HlsPlaylist?> parsePlaylist(Uri uri) async {
-    Uint8List? uint8List = await download(DownloadTask(uri: uri));
+    DownloadTask task = DownloadTask(uri: uri);
+    Uint8List? uint8List = await cache(task);
+    if (uint8List == null) uint8List = await download(task);
     if (uint8List == null) return null;
     List<String> lines = readLineFromUint8List(uint8List);
     final HlsPlaylist? playList = await parseLines(lines);

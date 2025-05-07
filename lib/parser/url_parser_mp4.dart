@@ -40,10 +40,12 @@ class UrlParserMp4 implements UrlParser {
   Future<Uint8List?> download(DownloadTask task) async {
     logD('从网络中获取: ${task.url}');
     Uint8List? dataNetwork;
+    task.priority += 10;
     await VideoProxy.downloadManager.executeTask(task);
+    concurrent(task);
     await for (DownloadTask taskStream in VideoProxy.downloadManager.stream) {
       if (taskStream.status == DownloadStatus.COMPLETED &&
-          taskStream.url == task.url) {
+          taskStream.matchUrl == task.matchUrl) {
         dataNetwork = Uint8List.fromList(taskStream.data);
         break;
       }
@@ -128,14 +130,14 @@ class UrlParserMp4 implements UrlParser {
       bool isExit = VideoProxy.downloadManager.allTasks
           .where((e) => e.matchUrl == newTask.matchUrl)
           .isNotEmpty;
-      Uint8List? memoryCache = await VideoMemoryCache.get(newTask.matchUrl);
-      if (memoryCache != null) isExit = true;
+      Uint8List? dataMemory = await VideoMemoryCache.get(newTask.matchUrl);
+      if (dataMemory != null) isExit = true;
       String cachePath = await DownloadIsolatePool.createVideoCachePath();
       File file = File('$cachePath/${task.saveFileName}');
-      if (file.existsSync()) isExit = true;
+      if (await file.exists()) isExit = true;
       if (isExit) continue;
-      await VideoProxy.downloadManager.executeTask(newTask);
       logD("异步下载开始： ${newTask.toString()}");
+      await VideoProxy.downloadManager.executeTask(newTask);
       activeSize = VideoProxy.downloadManager.allTasks
           .where((e) => e.url == task.url)
           .length;

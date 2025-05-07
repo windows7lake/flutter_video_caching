@@ -90,10 +90,14 @@ class DownloadIsolatePool {
   Future<DownloadTask> executeTask(DownloadTask task) async {
     DownloadTask? existTask =
         _taskList.where((e) => e.matchUrl == task.matchUrl).firstOrNull;
-    DownloadTask downloadTask =
-        existTask == null ? await addTask(task) : existTask;
+    if (existTask != null && existTask.priority < task.priority) {
+      _taskList.removeWhere((e) => e.matchUrl == task.matchUrl);
+      await addTask(task);
+    } else if (existTask == null) {
+      await addTask(task);
+    }
     await roundIsolate();
-    return downloadTask;
+    return task;
   }
 
   Future<DownloadTask> resumeTask(DownloadTask task) async {
