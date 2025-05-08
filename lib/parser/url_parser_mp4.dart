@@ -26,7 +26,7 @@ class UrlParserMp4 implements UrlParser {
       return dataMemory;
     }
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
-    File file = File('$cachePath/${task.saveFile}');
+    File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
       logD('从文件中获取: ${file.path}');
       Uint8List dataFile = await file.readAsBytes();
