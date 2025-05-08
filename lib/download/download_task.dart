@@ -1,3 +1,4 @@
+import '../ext/list_ext.dart';
 import '../ext/string_ext.dart';
 import 'download_status.dart';
 
@@ -32,9 +33,7 @@ class DownloadTask {
     this.endRange,
     this.hlsKey,
   })  : id = _autoId.toString(),
-        saveFile = fileName ??
-            uri.pathSegments.lastOrNull ??
-            uri.toString().generateMd5 {
+        saveFile = fileName ?? uri.pathSegments.takeLast(3).join('_') {
     _autoId++;
   }
 

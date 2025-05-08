@@ -19,20 +19,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   }
 
   void initController() {
-    // 'https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH_hls.m3u8'))
-    // 'http://127.0.0.1:12000/api_1547501_1737362677_2U3MjWuhgH_hls.m3u8?redirect=https://cp4.100.com.tw/video/hls/2025/01/20'))
-    // 'http://127.0.0.1:12000?url=https://cp4.100.com.tw/video/hls/2025/01/20/api_1547501_1737362677_2U3MjWuhgH_hls_00001.ts'))
-    // 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'))
-    // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/v2/fileSequence64.ts'))
-    // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8'))
-    // 'https://t100upload.s3.ap-northeast-1.amazonaws.com/video/hls/2024/12/25/api_64_1734338254_NUcT15ZNmE.m3u8'))
-    // 'https://t100upload.s3.ap-northeast-1.amazonaws.com/video/hls/2024/12/25/api_64_1734338254_NUcT15ZNmE_hls_00001.ts'))
     List<String> urls = [
-      'http://vjs.zencdn.net/v/oceans.mp4',
-      'https://t100upload.s3.ap-northeast-1.amazonaws.com/short_video/202502/27/api_63_1740628111_nHl0Zax1Am.mp4',
-      'http://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8',
-      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mp4/.m3u8',
-      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+      // 'http://vjs.zencdn.net/v/oceans.mp4',
+      'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     ];
     var url = urls[0];
     String localUri = url.toLocalUrl();
