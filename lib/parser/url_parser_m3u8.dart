@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../ext/file_ext.dart';
 import '../ext/int_ext.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
@@ -13,8 +14,12 @@ import '../memory/video_memory_cache.dart';
 import 'url_parser.dart';
 
 class UrlParserM3U8 implements UrlParser {
-  static final List<DownloadTask> _list = <DownloadTask>[];
+  static final List<HlsSegment> _list = <HlsSegment>[];
   static String _latestUrl = '';
+
+  HlsSegment? findSegmentByUri(Uri uri) {
+    return _list.where((task) => task.url == uri.toString()).firstOrNull;
+  }
 
   @override
   bool match(Uri uri) {
@@ -29,7 +34,7 @@ class UrlParserM3U8 implements UrlParser {
           '当前共占用: ${(await VideoMemoryCache.size()).toMemorySize}');
       return dataMemory;
     }
-    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    String cachePath = await FileExt.createCachePath(task.hlsKey);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
       logD('从文件中获取: ${file.path}');
@@ -44,6 +49,7 @@ class UrlParserM3U8 implements UrlParser {
   Future<Uint8List?> download(DownloadTask task) async {
     logD('从网络中获取: ${task.url}');
     Uint8List? dataNetwork;
+    task.cacheDir = await FileExt.createCachePath(task.hlsKey);
     await VideoProxy.downloadManager.executeTask(task);
     await for (DownloadTask taskStream in VideoProxy.downloadManager.stream) {
       if (taskStream.status == DownloadStatus.COMPLETED &&
@@ -59,9 +65,10 @@ class UrlParserM3U8 implements UrlParser {
   Future<void> push(DownloadTask task) async {
     Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
     if (dataMemory != null) return;
-    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    String cachePath = await FileExt.createCachePath(task.hlsKey);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) return;
+    task.cacheDir = cachePath;
     await VideoProxy.downloadManager.addTask(task);
   }
 
@@ -72,10 +79,12 @@ class UrlParserM3U8 implements UrlParser {
     Map<String, String> headers,
   ) async {
     try {
-      DownloadTask task = DownloadTask(uri: uri);
+      DownloadTask task = DownloadTask(uri: uri, hlsKey: uri.generateMd5);
+      HlsSegment? hlsSegment = findSegmentByUri(uri);
+      if (hlsSegment != null) task.hlsKey = hlsSegment.key;
       Uint8List? data = await cache(task);
       if (data == null) {
-        concurrentLoop(task);
+        concurrentLoop(hlsSegment);
         task.priority += 10;
         data = await download(task);
       }
@@ -92,14 +101,12 @@ class UrlParserM3U8 implements UrlParser {
                 ? line.toLocalUrl()
                 : '$line?origin=${uri.origin}';
           }
-          if (lastLine.startsWith("#EXTINF")) {
+          if (lastLine.startsWith("#EXTINF") ||
+              lastLine.startsWith("#EXT-X-STREAM-INF")) {
             if (!hlsLine.startsWith('http')) {
               hlsLine = '${uri.pathPrefix}/' + hlsLine;
             }
-            concurrentAdd(DownloadTask(
-              uri: Uri.parse(hlsLine),
-              hlsKey: uri.generateMd5,
-            ));
+            concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!));
           }
           buffer.write('$line\r\n');
           lastLine = line;
@@ -145,86 +152,85 @@ class UrlParserM3U8 implements UrlParser {
     return lines;
   }
 
-  Future<void> concurrentLoop(DownloadTask task) async {
-    _latestUrl = task.matchUrl;
-    Set<String?> hlsKeys = _list.map((e) => e.hlsKey).toSet();
+  Future<void> concurrentLoop(HlsSegment? hlsSegment) async {
+    if (hlsSegment == null) return;
+    _latestUrl = hlsSegment.url;
+    Set<String?> hlsKeys = _list.map((e) => e.key).toSet();
     if (hlsKeys.length > 2) {
-      _list.where((e) => e.hlsKey == hlsKeys.first).forEach((e) {
+      _list.where((e) => e.key == hlsKeys.first).forEach((e) {
         VideoProxy.downloadManager.allTasks
-            .removeWhere((task) => task.matchUrl == e.matchUrl);
+            .removeWhere((task) => task.url == e.url);
       });
-      _list.removeWhere((e) => e.hlsKey == hlsKeys.first);
+      _list.removeWhere((e) => e.key == hlsKeys.first);
     }
-    String? url =
-        _list.where((e) => e.matchUrl == task.matchUrl).firstOrNull?.url;
-    if (url == null) return;
-    DownloadTask newTask = DownloadTask(uri: Uri.parse(url));
-    List<DownloadTask> downloading = _list
-        .where((e) => e.hlsKey == task.hlsKey)
+    HlsSegment? segment = _list.where((e) => e.url == _latestUrl).firstOrNull;
+    if (segment == null) return;
+    List<HlsSegment> downloading = _list
+        .where((e) => e.key == segment.key)
         .where((e) => e.status == DownloadStatus.DOWNLOADING)
         .toList();
     if (downloading.length >= 4) return;
-    Uint8List? cache = await VideoMemoryCache.get(task.matchUrl);
+    Uint8List? cache = await VideoMemoryCache.get(segment.url.generateMd5);
     if (cache != null) {
-      concurrentComplete(newTask);
+      concurrentComplete(segment);
       return;
     }
-    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    DownloadTask task = DownloadTask(uri: Uri.parse(segment.url));
+    String cachePath = await FileExt.createCachePath(segment.key);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
-      concurrentComplete(newTask);
+      concurrentComplete(segment);
       return;
     }
-    bool exitUri = VideoProxy.downloadManager.isMatchUrlExit(newTask.matchUrl);
+    bool exitUri = VideoProxy.downloadManager.isUrlExit(segment.url);
     if (exitUri) {
-      concurrentComplete(newTask, status: DownloadStatus.DOWNLOADING);
+      concurrentComplete(segment, status: DownloadStatus.DOWNLOADING);
       return;
     }
-    newTask.priority += 1;
-    await VideoProxy.downloadManager.executeTask(newTask);
+    task.priority += 1;
+    task.cacheDir = cachePath;
+    await VideoProxy.downloadManager.executeTask(task);
     StreamSubscription? subscription;
     subscription = VideoProxy.downloadManager.stream.listen((downloadTask) {
       if (downloadTask.status == DownloadStatus.COMPLETED &&
-          downloadTask.matchUrl == newTask.matchUrl) {
-        logD("异步下载完成： ${newTask.toString()}");
+          downloadTask.matchUrl == task.matchUrl) {
+        logD("异步下载完成： ${task.toString()}");
         subscription?.cancel();
-        concurrentComplete(newTask);
+        concurrentComplete(segment);
       }
     });
   }
 
-  void concurrentAdd(DownloadTask task) {
-    bool match = _list.where((e) => e.matchUrl == task.matchUrl).isNotEmpty;
-    if (!match) _list.add(task);
+  void concurrentAdd(HlsSegment hlsSegment) {
+    bool match = _list.where((e) => e.url == hlsSegment.url).isNotEmpty;
+    if (!match) _list.add(hlsSegment);
   }
 
-  void concurrentComplete(DownloadTask task, {DownloadStatus? status}) {
-    int index = _list.indexWhere((e) => e.matchUrl == task.matchUrl);
+  void concurrentComplete(HlsSegment hlsSegment, {DownloadStatus? status}) {
+    int index = _list.indexWhere((e) => e.url == hlsSegment.url);
     if (index == -1) return;
     _list[index].status = status ?? DownloadStatus.COMPLETED;
-    DownloadTask? latest =
-        _list.where((e) => e.matchUrl == _latestUrl).firstOrNull;
+    HlsSegment? latest = _list.where((e) => e.url == _latestUrl).firstOrNull;
     if (latest != null) {
-      List<DownloadTask> list =
-          _list.where((e) => e.hlsKey == latest.hlsKey).toList();
-      int index = list.indexWhere((e) => e.matchUrl == latest.matchUrl);
+      List<HlsSegment> list = _list.where((e) => e.key == latest.key).toList();
+      int index = list.indexWhere((e) => e.url == latest.url);
       if (index != -1 && index + 1 < list.length) {
         concurrentLoop(list[index + 1]);
         return;
       }
     }
-    Set<String?> keys = _list.map((e) => e.hlsKey).toSet();
+    Set<String?> keys = _list.map((e) => e.key).toSet();
     String? key = keys.elementAt(Random().nextInt(keys.length));
-    DownloadTask? idleTask = _list
-        .where((e) => e.hlsKey == key)
+    HlsSegment? idleSegment = _list
+        .where((e) => e.key == key)
         .where((e) => e.status == DownloadStatus.IDLE)
         .firstOrNull;
-    if (idleTask == null) {
-      _list.removeWhere((e) => e.hlsKey == key);
-      concurrentComplete(task);
+    if (idleSegment == null) {
+      _list.removeWhere((e) => e.key == key);
+      concurrentComplete(hlsSegment);
       return;
     }
-    concurrentLoop(idleTask);
+    concurrentLoop(idleSegment);
   }
 
   @override
@@ -233,7 +239,10 @@ class UrlParserM3U8 implements UrlParser {
     if (mediaList.isEmpty) return;
     final List<String> segments = mediaList.take(cacheSegments).toList();
     for (final String segment in segments) {
-      DownloadTask task = DownloadTask(uri: Uri.parse(segment));
+      DownloadTask task = DownloadTask(
+        uri: Uri.parse(segment),
+        hlsKey: url.generateMd5,
+      );
       if (downloadNow) {
         Uint8List? data = await cache(task);
         if (data != null) continue;
@@ -261,13 +270,15 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// 解析M3U8媒体播放列表
-  Future<HlsMediaPlaylist?> parseMediaPlaylist(Uri uri) async {
-    final HlsPlaylist? playList = await parsePlaylist(uri);
+  Future<HlsMediaPlaylist?> parseMediaPlaylist(Uri uri,
+      {String? hlsKey}) async {
+    final HlsPlaylist? playList = await parsePlaylist(uri, hlsKey: hlsKey);
     if (playList is HlsMasterPlaylist) {
       for (final Uri? _uri in playList.mediaPlaylistUrls) {
         if (_uri == null) continue;
         Uri masterUri = Uri.parse('${uri.pathPrefix}${_uri.path}');
-        HlsMediaPlaylist? mediaPlayList = await parseMediaPlaylist(masterUri);
+        HlsMediaPlaylist? mediaPlayList =
+            await parseMediaPlaylist(masterUri, hlsKey: uri.generateMd5);
         return mediaPlayList;
       }
     } else if (playList is HlsMediaPlaylist) {
@@ -277,8 +288,9 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// 解析M3U8分辨率列表
-  Future<HlsPlaylist?> parsePlaylist(Uri uri) async {
-    DownloadTask task = DownloadTask(uri: uri);
+  Future<HlsPlaylist?> parsePlaylist(Uri uri, {String? hlsKey}) async {
+    DownloadTask task =
+        DownloadTask(uri: uri, hlsKey: hlsKey ?? uri.generateMd5);
     Uint8List? uint8List = await cache(task);
     if (uint8List == null) uint8List = await download(task);
     if (uint8List == null) return null;
@@ -297,4 +309,16 @@ class UrlParserM3U8 implements UrlParser {
     }
     return playList;
   }
+}
+
+class HlsSegment {
+  final String key;
+  final String url;
+  DownloadStatus status;
+
+  HlsSegment({
+    required this.key,
+    required this.url,
+    this.status = DownloadStatus.IDLE,
+  });
 }

@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:flutter_video_cache/ext/log_ext.dart';
 import 'package:flutter_video_cache/flutter_video_cache.dart';
-import 'package:path_provider/path_provider.dart';
 
+import '../ext/file_ext.dart';
 import '../memory/video_memory_cache.dart';
 
 const int MAX_ISOLATE_POOL_SIZE = 1;
@@ -19,17 +18,6 @@ class DownloadIsolatePool {
 
   DownloadIsolatePool({int poolSize = MAX_ISOLATE_POOL_SIZE})
       : _poolSize = poolSize;
-
-  static String videoCachePath = "";
-
-  static Future<String> createVideoCachePath() async {
-    if (videoCachePath.isNotEmpty) return videoCachePath;
-    final appDir = await getApplicationCacheDirectory();
-    videoCachePath = '${appDir.path}/videos';
-    if (Directory(videoCachePath).existsSync()) return videoCachePath;
-    Directory(videoCachePath).createSync(recursive: true);
-    return videoCachePath;
-  }
 
   final StreamController<DownloadTask> _streamController =
       StreamController.broadcast();
@@ -80,8 +68,10 @@ class DownloadIsolatePool {
 
   Future<DownloadTask> addTask(DownloadTask task) async {
     logV('[DownloadIsolatePool] addTask: ${task.toString()}');
-    String cachePath = await createVideoCachePath();
-    task.cacheDir = cachePath;
+    if (task.cacheDir.isEmpty) {
+      String cachePath = await FileExt.createCachePath();
+      task.cacheDir = cachePath;
+    }
     task.saveFile = task.saveFile;
     _taskList.add(task);
     return task;

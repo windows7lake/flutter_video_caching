@@ -15,12 +15,12 @@ class LogInstance {
 class LocalLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    return Config.isDebug;
+    return Config.logPrint;
   }
 }
 
 logIsolate(dynamic message) {
-  if (Config.isDebug) {
+  if (Config.logPrint) {
     print(message);
   }
 }

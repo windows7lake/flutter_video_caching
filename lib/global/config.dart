@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   static const bool isDebug = kDebugMode;
+  static bool logPrint = false;
 
   static String ip = '127.0.0.1';
   static int port = 20250;

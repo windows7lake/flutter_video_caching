@@ -5,7 +5,7 @@ import 'main_route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await VideoProxy.init();
+  await VideoProxy.init(logPrint: true);
   runApp(const HomeApp());
 }
 

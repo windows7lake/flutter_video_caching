@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../download/download_isolate_pool.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
+import '../ext/file_ext.dart';
 import '../ext/int_ext.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
+import '../ext/uri_ext.dart';
 import '../global/config.dart';
 import '../memory/video_memory_cache.dart';
 import '../proxy/video_proxy.dart';
@@ -25,7 +26,7 @@ class UrlParserMp4 implements UrlParser {
       logD('从内存中获取: ${dataMemory.lengthInBytes.toMemorySize}');
       return dataMemory;
     }
-    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
       logD('从文件中获取: ${file.path}');
@@ -40,6 +41,8 @@ class UrlParserMp4 implements UrlParser {
   Future<Uint8List?> download(DownloadTask task) async {
     logD('从网络中获取: ${task.url}');
     Uint8List? dataNetwork;
+    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
+    task.cacheDir = cachePath;
     await VideoProxy.downloadManager.executeTask(task);
     await for (DownloadTask taskStream in VideoProxy.downloadManager.stream) {
       if (taskStream.status == DownloadStatus.COMPLETED &&
@@ -55,9 +58,10 @@ class UrlParserMp4 implements UrlParser {
   Future<void> push(DownloadTask task) async {
     Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
     if (dataMemory != null) return;
-    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) return;
+    task.cacheDir = cachePath;
     await VideoProxy.downloadManager.addTask(task);
   }
 
@@ -153,7 +157,7 @@ class UrlParserMp4 implements UrlParser {
   }
 
   Future<void> deleteExceedSizeFile(DownloadTask task) async {
-    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) await file.delete();
   }
@@ -174,11 +178,12 @@ class UrlParserMp4 implements UrlParser {
           .isNotEmpty;
       Uint8List? dataMemory = await VideoMemoryCache.get(newTask.matchUrl);
       if (dataMemory != null) isExit = true;
-      String cachePath = await DownloadIsolatePool.createVideoCachePath();
+      String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
       File file = File('$cachePath/${task.saveFileName}');
       if (await file.exists()) isExit = true;
       if (isExit) continue;
       logD("异步下载开始： ${newTask.toString()}");
+      newTask.cacheDir = cachePath;
       await VideoProxy.downloadManager.executeTask(newTask);
       activeSize = VideoProxy.downloadManager.allTasks
           .where((e) => e.url == task.url)
