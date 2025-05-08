@@ -30,7 +30,7 @@ class UrlParserM3U8 implements UrlParser {
       return dataMemory;
     }
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
-    File file = File('$cachePath/${task.saveFile}');
+    File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
       logD('从文件中获取: ${file.path}');
       Uint8List dataFile = await file.readAsBytes();
@@ -60,7 +60,7 @@ class UrlParserM3U8 implements UrlParser {
     Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
     if (dataMemory != null) return;
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
-    File file = File('$cachePath/${task.saveFile}');
+    File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) return;
     await VideoProxy.downloadManager.addTask(task);
   }
@@ -170,7 +170,7 @@ class UrlParserM3U8 implements UrlParser {
       return;
     }
     String cachePath = await DownloadIsolatePool.createVideoCachePath();
-    File file = File('$cachePath/${task.saveFile}');
+    File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
       concurrentComplete(newTask);
       return;
@@ -180,6 +180,7 @@ class UrlParserM3U8 implements UrlParser {
       concurrentComplete(newTask, status: DownloadStatus.DOWNLOADING);
       return;
     }
+    newTask.priority += 1;
     await VideoProxy.downloadManager.executeTask(newTask);
     StreamSubscription? subscription;
     subscription = VideoProxy.downloadManager.stream.listen((downloadTask) {

@@ -40,9 +40,7 @@ class UrlParserMp4 implements UrlParser {
   Future<Uint8List?> download(DownloadTask task) async {
     logD('从网络中获取: ${task.url}');
     Uint8List? dataNetwork;
-    task.priority += 10;
     await VideoProxy.downloadManager.executeTask(task);
-    concurrent(task);
     await for (DownloadTask taskStream in VideoProxy.downloadManager.stream) {
       if (taskStream.status == DownloadStatus.COMPLETED &&
           taskStream.matchUrl == task.matchUrl) {
@@ -51,6 +49,16 @@ class UrlParserMp4 implements UrlParser {
       }
     }
     return dataNetwork;
+  }
+
+  @override
+  Future<void> push(DownloadTask task) async {
+    Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
+    if (dataMemory != null) return;
+    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    File file = File('$cachePath/${task.saveFileName}');
+    if (await file.exists()) return;
+    await VideoProxy.downloadManager.addTask(task);
   }
 
   @override
@@ -81,28 +89,56 @@ class UrlParserMp4 implements UrlParser {
       logD('当前共占内存： ${(await VideoMemoryCache.size()).toMemorySize}');
       logD('解析链接 range： ${task.startRange}-${task.endRange}');
 
-      Uint8List? data = await cache(task);
-      if (data != null) {
-        if (rangeStart % Config.segmentSize != 0) {
-          data = data.sublist(rangeStart % Config.segmentSize);
+      int retry = 3;
+      while (retry > 0) {
+        Uint8List? data = await cache(task);
+        if (data != null) {
+          if (rangeStart % Config.segmentSize != 0) {
+            data = data.sublist(rangeStart % Config.segmentSize);
+          }
+          if (data.lengthInBytes > Config.segmentSize) {
+            await deleteExceedSizeFile(task);
+            retry--;
+            continue;
+          } else {
+            socket.add(data);
+          }
+          int count = 2;
+          while (count > 0) {
+            count--;
+            task.startRange += Config.segmentSize;
+            task.endRange = task.startRange + Config.segmentSize - 1;
+            logD('解析链接 range： ${task.startRange}-${task.endRange}');
+            data = await cache(task);
+            if (data != null) {
+              if (data.lengthInBytes > Config.segmentSize) {
+                await deleteExceedSizeFile(task);
+                retry--;
+                break;
+              } else {
+                socket.add(data);
+              }
+            }
+          }
+          break;
+        } else {
+          concurrent(task);
+          task.priority += 10;
+          data = await download(task);
+          if (rangeStart % Config.segmentSize != 0) {
+            data = data?.sublist(rangeStart % Config.segmentSize);
+          }
+          if (data != null) {
+            if (data.lengthInBytes > Config.segmentSize) {
+              await deleteExceedSizeFile(task);
+              retry--;
+              continue;
+            } else {
+              socket.add(data);
+            }
+          }
+          break;
         }
-        socket.add(data);
-        int count = 2;
-        while (count > 0) {
-          count--;
-          task.startRange += Config.segmentSize;
-          task.endRange = task.startRange + Config.segmentSize - 1;
-          logD('解析链接 range： ${task.startRange}-${task.endRange}');
-          data = await cache(task);
-          if (data == null) break;
-          socket.add(data);
-        }
-      } else {
-        data = await download(task);
-        if (rangeStart % Config.segmentSize != 0) {
-          data = data?.sublist(rangeStart % Config.segmentSize);
-        }
-        if (data != null) socket.add(data);
       }
       await socket.flush();
       logD('返回请求数据: $uri range: $startRange-$endRange');
@@ -114,6 +150,12 @@ class UrlParserMp4 implements UrlParser {
       await socket.close(); // 确保连接关闭
       logD('连接关闭\n');
     }
+  }
+
+  Future<void> deleteExceedSizeFile(DownloadTask task) async {
+    String cachePath = await DownloadIsolatePool.createVideoCachePath();
+    File file = File('$cachePath/${task.saveFileName}');
+    if (await file.exists()) await file.delete();
   }
 
   Future<void> concurrent(DownloadTask task) async {
@@ -145,8 +187,19 @@ class UrlParserMp4 implements UrlParser {
   }
 
   @override
-  void precache(String url, int cacheSegments, bool downloadNow) {}
-
-  @override
-  Future<void> push(DownloadTask task) async {}
+  void precache(String url, int cacheSegments, bool downloadNow) async {
+    int count = 0;
+    while (count < cacheSegments) {
+      DownloadTask task = DownloadTask(uri: Uri.parse(url));
+      task.startRange += Config.segmentSize * count;
+      task.endRange = task.startRange + Config.segmentSize - 1;
+      if (downloadNow) {
+        Uint8List? data = await cache(task);
+        if (data == null) download(task);
+      } else {
+        push(task);
+      }
+      count++;
+    }
+  }
 }
