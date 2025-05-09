@@ -90,7 +90,8 @@ class UrlParserMp4 implements UrlParser {
         startRange: startRange,
         endRange: endRange,
       );
-      logD('Total memory size： ${(await VideoMemoryCache.size()).toMemorySize}');
+      logD(
+          'Total memory size： ${(await VideoMemoryCache.size()).toMemorySize}');
       logD('Request range： ${task.startRange}-${task.endRange}');
 
       int retry = 3;

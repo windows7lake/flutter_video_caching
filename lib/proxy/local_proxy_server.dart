@@ -58,7 +58,7 @@ class LocalProxyServer {
 
         // Parsing request lines (compatible with non-standard requests)
         List<String>? requestLine = lines.firstOrNull?.split(' ') ?? <String>[];
-        String method = requestLine.length > 0 ? requestLine[0] : '';
+        String method = requestLine.isNotEmpty ? requestLine[0] : '';
         String path = requestLine.length > 1 ? requestLine[1] : '/';
         String protocol = requestLine.length > 2 ? requestLine[2] : 'HTTP/1.1';
 
@@ -80,7 +80,8 @@ class LocalProxyServer {
 
         String redirectUrl = path.replaceAll('/?url=', '');
         Uri originUri = redirectUrl.toOriginUri();
-        logD('Handling Connections ===========================================> \n'
+        logD(
+            'Handling Connections ===========================================> \n'
             'protocol: $protocol, method: $method, path: $path \n'
             'headers: $headers \n'
             '$originUri');
