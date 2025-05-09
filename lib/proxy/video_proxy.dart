@@ -1,7 +1,7 @@
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
-import 'package:flutter_video_cache/global/config.dart';
 
 import '../download/download_manager.dart';
+import '../global/config.dart';
 import 'local_proxy_server.dart';
 
 class VideoProxy {

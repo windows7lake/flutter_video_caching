@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter_video_cache/global/config.dart';
+
+import '../global/config.dart';
 
 extension UrlExt on String {
   /// Convert to local http address

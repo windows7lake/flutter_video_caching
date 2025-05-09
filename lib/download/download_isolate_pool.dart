@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
 
-import 'package:flutter_video_cache/ext/log_ext.dart';
-import 'package:flutter_video_cache/flutter_video_cache.dart';
-
 import '../ext/file_ext.dart';
+import '../ext/log_ext.dart';
 import '../memory/video_memory_cache.dart';
+import 'download_isolate_entry.dart';
+import 'download_isolate_instance.dart';
+import 'download_isolate_msg.dart';
+import 'download_status.dart';
+import 'download_task.dart';
 
 const int MAX_ISOLATE_POOL_SIZE = 1;
 const int MAX_TASK_PRIORITY = 9999;

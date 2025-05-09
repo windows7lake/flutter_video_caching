@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_video_cache/flutter_video_cache.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPlayPage extends StatefulWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_video_cache/parser/video_caching.dart';
+import 'package:flutter_video_caching/parser/video_caching.dart';
 
 import 'page/download_page.dart';
 import 'page/m3u8_parser_page.dart';
@@ -38,7 +38,7 @@ class _MainRouteState extends State<MainRoute> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('flutter_video_cache'),
+        title: const Text('flutter_video_caching'),
       ),
       body: ListView.builder(
         itemCount: _routes.length,

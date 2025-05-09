@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_video_cache/flutter_video_cache.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 class M3u8ParserPage extends StatefulWidget {
   const M3u8ParserPage({super.key});

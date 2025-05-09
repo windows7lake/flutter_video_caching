@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   video_player: ^2.9.3
 
-  flutter_video_cache:
+  flutter_video_caching:
     path: ../
 
 dev_dependencies:

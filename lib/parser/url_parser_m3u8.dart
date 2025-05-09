@@ -4,13 +4,18 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter_hls_parser/flutter_hls_parser.dart';
+
+import '../download/download_status.dart';
+import '../download/download_task.dart';
 import '../ext/file_ext.dart';
 import '../ext/int_ext.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
+import '../ext/string_ext.dart';
 import '../ext/uri_ext.dart';
-import '../flutter_video_cache.dart';
 import '../memory/video_memory_cache.dart';
+import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
 class UrlParserM3U8 implements UrlParser {

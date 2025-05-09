@@ -1,4 +1,4 @@
-flutter_video_cache is a Flutter plugin for caching video.
+flutter_video_caching is a Flutter plugin for caching video.
 
 ## Features
 * support m3u8, mp4.
@@ -6,14 +6,14 @@ flutter_video_cache is a Flutter plugin for caching video.
 ## Getting started
 ``` dart
 dependencies:
-  flutter_video_cache: 0.0.1
+  flutter_video_caching: 0.0.1
 ```
 
 ## Usage
 
 ### 1. Init video proxy
 ``` dart
-import 'package:flutter_video_cache/flutter_video_cache.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

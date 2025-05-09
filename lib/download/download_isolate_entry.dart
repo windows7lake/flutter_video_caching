@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:flutter_video_cache/ext/log_ext.dart';
 import 'package:synchronized/synchronized.dart';
 
+import '../ext/log_ext.dart';
 import 'download_isolate_msg.dart';
 import 'download_status.dart';
 import 'download_task.dart';
