@@ -10,7 +10,7 @@ extension UriExt on Uri {
     return newUri.toString();
   }
 
-  /// 生成MD5
+  /// Generate MD5
   String get generateMd5 {
     return md5.convert(utf8.encode(this.toString())).toString();
   }

@@ -9,7 +9,6 @@ import 'download_status.dart';
 import 'download_task.dart';
 
 void downloadIsolateEntry(SendPort mainSendPort) {
-  // logV('[DownloadIsolateEntry] mainSendPort: $mainSendPort');
   final receivePort = ReceivePort();
   mainSendPort.send(DownloadIsolateMsg(
     IsolateMsgType.sendPort,
@@ -84,25 +83,25 @@ class DownloadIsolate {
         return;
       }
 
-      // 检查 contentLength 是否有效
+      // Check if contentLength is valid
       if (response.contentLength == -1) {
         logIsolate('[DownloadIsolate] failed to get the total file size.');
       }
 
-      // 计算文件总大小
+      // Calculate the total file size
       final totalBytes = task.downloadedBytes + response.contentLength;
       task.totalBytes = response.contentLength == -1 ? 0 : totalBytes;
 
-      // 记录上一次更新进度的时间
+      // Record the time of the last update progress
       DateTime lastUpdateTime = DateTime.now();
 
-      // 创建临时存储
+      // Creating a temporary storage area
       List<int> buffer = [];
 
       final File saveFile = File('${task.cacheDir}/${task.saveFileName}');
 
       await for (var data in response) {
-        // 检查是否被取消或暂停
+        // Check if it has been cancelled or suspended
         if (_isPaused) {
           await _writeToFile(saveFile, buffer);
           task.status = DownloadStatus.PAUSED;
@@ -121,11 +120,12 @@ class DownloadIsolate {
         task.downloadedBytes += data.length;
         buffer.addAll(data);
 
-        // 计算当前时间与上一次更新时间的间隔
+        // Calculate the interval between the current time and the last update time
         final currentTime = DateTime.now();
         final timeDiff = currentTime.difference(lastUpdateTime).inMilliseconds;
 
-        // 如果时间间隔超过指定的最小更新间隔，或者已经下载完成，则更新进度
+        // If the time interval exceeds the specified minimum update interval,
+        // or the download is complete, then update progress
         if (task.status == DownloadStatus.DOWNLOADING &&
             timeDiff >= MIN_PROGRESS_UPDATE_INTERVAL) {
           if (task.totalBytes > 0) {

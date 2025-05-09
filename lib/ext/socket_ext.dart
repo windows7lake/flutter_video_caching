@@ -1,11 +1,9 @@
 import 'dart:io';
 
-/// HTTP请求 - 终止符
+/// HTTP request - terminator
 const String httpTerminal = '\r\n\r\n';
 
-/// Socket扩展
 extension SocketExtension on Socket {
-  /// 写入数据
   Future<void> append(Object data) async {
     if (data is String) {
       write('$data$httpTerminal');

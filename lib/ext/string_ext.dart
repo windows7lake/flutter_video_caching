@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_video_cache/global/config.dart';
 
 extension UrlExt on String {
-  /// 转换为本地地址
+  /// Convert to local http address
   String toLocalUrl() {
     if (!startsWith('http')) return this;
     Uri uri = Uri.parse(this);
@@ -13,12 +13,12 @@ extension UrlExt on String {
     return "$proxy${uri.path}?origin=${uri.origin}";
   }
 
-  /// 转换为本地地址
+  /// Convert to local http address
   Uri toLocalUri() {
     return Uri.parse(toLocalUrl());
   }
 
-  /// 转换为原始链接
+  /// Convert to original link
   String toOriginUrl() {
     if (!contains('?origin=')) return this;
     Uri uri = Uri.parse(this);
@@ -28,12 +28,12 @@ extension UrlExt on String {
     return '$origin$path';
   }
 
-  /// 转换为原始链接
+  /// Convert to original link
   Uri toOriginUri() {
     return Uri.parse(toOriginUrl());
   }
 
-  /// 生成MD5
+  /// Generate MD5
   String get generateMd5 {
     return md5.convert(utf8.encode(this)).toString();
   }

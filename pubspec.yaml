@@ -1,7 +1,7 @@
 name: flutter_video_cache
 description: "A video cache project, support mp4, m3u8."
-version: 0.0.1
-homepage:
+version: 0.1.0
+homepage: https://github.com/windows7lake/flutter_video_cache
 
 environment:
   sdk: ^3.0.0
@@ -17,6 +17,5 @@ dependencies:
   path_provider: ^2.1.5
   synchronized: ^3.1.0+1
   logger: ^2.5.0
-  uuid: 4.5.1
 
 flutter:

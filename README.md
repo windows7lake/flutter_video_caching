@@ -1,14 +1,12 @@
 flutter_video_cache is a Flutter plugin for caching video.
 
 ## Features
-* support m3u8
+* support m3u8, mp4.
 
 ## Getting started
 ``` dart
 dependencies:
-  flutter_video_cache:
-    git:
-      url: https://github.com/windows7lake/flutter_video_cache.git
+  flutter_video_cache: 0.0.1
 ```
 
 ## Usage
@@ -31,7 +29,7 @@ playControl = VideoPlayerController.networkUrl(url.toLocalUri());
 
 ### 3. Precache video
 ``` dart
-VideoPreCaching.loadM3u8(url);
+VideoCaching.precache(url);
 ```
 
 ### 4. Use in PageView
@@ -44,7 +42,7 @@ PageView.builder(
   },
   onPageChanged: (index) {
     if (index + 1 < urls.length) {
-      VideoPreCaching.loadM3u8(urls[index + 1], downloadNow: false);
+      VideoCaching.precache(urls[index + 1], downloadNow: false);
     }
   },
 );

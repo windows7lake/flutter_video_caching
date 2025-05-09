@@ -9,24 +9,21 @@ import '../ext/string_ext.dart';
 import '../global/config.dart';
 import '../parser/video_caching.dart';
 
-/// 本地代理服务器
 class LocalProxyServer {
-  /// 本地代理服务器
   LocalProxyServer({this.ip, this.port}) {
     Config.ip = ip ?? Config.ip;
     Config.port = port ?? Config.port;
   }
 
-  /// 代理服务器IP
+  /// Proxy Server IP
   final String? ip;
 
-  /// 代理服务器端口
+  /// Proxy Server port
   final int? port;
 
-  /// 代理服务
   ServerSocket? server;
 
-  /// 启动代理服务器
+  /// Start the proxy server
   Future<void> start() async {
     try {
       final InternetAddress internetAddress = InternetAddress(Config.ip);
@@ -41,12 +38,11 @@ class LocalProxyServer {
     }
   }
 
-  /// 关闭代理服务器
+  /// Turn off proxy server
   Future<void> close() async {
     await server?.close();
   }
 
-  /// 处理连接
   Future<void> _handleConnection(Socket socket) async {
     try {
       logV('_handleConnection start');
@@ -54,19 +50,19 @@ class LocalProxyServer {
       await for (Uint8List data in socket) {
         buffer.write(String.fromCharCodes(data));
 
-        // 检测头部结束标记（空行 \r\n\r\n）
+        // Detect the end of the header (blank line \r\n\r\n)
         if (!buffer.toString().contains(httpTerminal)) continue;
 
         String? rawHeaders = buffer.toString().split(httpTerminal).firstOrNull;
         List<String> lines = rawHeaders?.split('\r\n') ?? <String>[];
 
-        // 解析请求行（兼容非标准请求）
+        // Parsing request lines (compatible with non-standard requests)
         List<String>? requestLine = lines.firstOrNull?.split(' ') ?? <String>[];
         String method = requestLine.length > 0 ? requestLine[0] : '';
         String path = requestLine.length > 1 ? requestLine[1] : '/';
         String protocol = requestLine.length > 2 ? requestLine[2] : 'HTTP/1.1';
 
-        // 提取关键头部（如 Range、User-Agent）
+        // Extract headers (such as Range, User-Agent)
         Map<String, String> headers = <String, String>{};
         for (String line in lines.skip(1)) {
           int index = line.indexOf(':');
@@ -84,7 +80,7 @@ class LocalProxyServer {
 
         String redirectUrl = path.replaceAll('/?url=', '');
         Uri originUri = redirectUrl.toOriginUri();
-        logD('处理连接 ===========================================> \n'
+        logD('Handling Connections ===========================================> \n'
             'protocol: $protocol, method: $method, path: $path \n'
             'headers: $headers \n'
             '$originUri');
@@ -92,7 +88,7 @@ class LocalProxyServer {
         await VideoCaching.parse(socket, originUri, headers);
       }
     } catch (e) {
-      logE('⚠ ⚠ ⚠ 传输异常: $e');
+      logE('⚠ ⚠ ⚠ Connections exception: $e');
     } finally {
       await socket.close(); // 确保连接关闭
     }

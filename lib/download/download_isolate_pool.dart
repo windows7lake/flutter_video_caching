@@ -11,14 +11,21 @@ import '../memory/video_memory_cache.dart';
 const int MAX_ISOLATE_POOL_SIZE = 1;
 const int MAX_TASK_PRIORITY = 9999;
 
+/// DownloadIsolatePool manages a pool of isolates for downloading tasks.
 class DownloadIsolatePool {
+  /// List of isolates in the pool.
   final List<DownloadIsolateInstance> _isolateList = [];
+
+  /// List of tasks in the pool.
   final List<DownloadTask> _taskList = [];
+
+  /// The maximum number of isolates in the pool.
   final int _poolSize;
 
   DownloadIsolatePool({int poolSize = MAX_ISOLATE_POOL_SIZE})
       : _poolSize = poolSize;
 
+  /// Stream controller for broadcasting download task updates.
   final StreamController<DownloadTask> _streamController =
       StreamController.broadcast();
 
@@ -103,7 +110,7 @@ class DownloadIsolatePool {
   Future<void> _runIsolateWithTask() async {
     _taskList.sort((a, b) => b.priority - a.priority);
 
-    // 检查是否有空闲的隔离实例
+    // Check if there are idle isolate instances
     List<DownloadIsolateInstance> isolatePool =
         _isolateList.where((isolate) => !isolate.isBusy).toList();
     if (isolatePool.isNotEmpty) {
@@ -114,7 +121,7 @@ class DownloadIsolatePool {
       }
     }
 
-    // 检查是否达到隔离实例池的最大个数
+    // Check whether the maximum number of isolated instance pools has been reached
     final tasks = prepareTasks;
     if (tasks.isNotEmpty && _isolateList.length < _poolSize) {
       for (int i = 0; i < tasks.length; i++) {
@@ -124,7 +131,7 @@ class DownloadIsolatePool {
       }
     }
 
-    // 检查是否有正在下载的隔离实例且优先级较低
+    // Check if there is an isolated instance being downloaded with a lower priority
     for (DownloadTask task in prepareTasks) {
       List<DownloadIsolateInstance> busyIsolate =
           _isolateList.where((isolate) => isolate.isBusy).toList();

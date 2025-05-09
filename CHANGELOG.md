@@ -1,3 +1,3 @@
-## 0.0.1
+## 0.1.0
 
-* TODO: Describe initial release.
+- Play and cache video when playing, support m3u8 and mp4 formats.

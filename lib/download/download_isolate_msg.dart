@@ -1,5 +1,6 @@
 enum IsolateMsgType { sendPort, task }
 
+/// Message sent to or from the download isolate.
 class DownloadIsolateMsg {
   final IsolateMsgType type;
   final dynamic data;

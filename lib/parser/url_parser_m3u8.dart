@@ -30,14 +30,14 @@ class UrlParserM3U8 implements UrlParser {
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
     if (dataMemory != null) {
-      logD('从内存中获取: ${dataMemory.lengthInBytes.toMemorySize}, '
-          '当前共占用: ${(await VideoMemoryCache.size()).toMemorySize}');
+      logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}, '
+          'total memory size: ${(await VideoMemoryCache.size()).toMemorySize}');
       return dataMemory;
     }
     String cachePath = await FileExt.createCachePath(task.hlsKey);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
-      logD('从文件中获取: ${file.path}');
+      logD('From file: ${file.path}');
       Uint8List dataFile = await file.readAsBytes();
       await VideoMemoryCache.put(task.matchUrl, dataFile);
       return dataFile;
@@ -47,7 +47,7 @@ class UrlParserM3U8 implements UrlParser {
 
   @override
   Future<Uint8List?> download(DownloadTask task) async {
-    logD('从网络中获取: ${task.url}');
+    logD('From network: ${task.url}');
     Uint8List? dataNetwork;
     task.cacheDir = await FileExt.createCachePath(task.hlsKey);
     await VideoProxy.downloadManager.executeTask(task);
@@ -125,14 +125,14 @@ class UrlParserM3U8 implements UrlParser {
       await socket.append(responseHeaders);
       await socket.append(data);
       await socket.flush();
-      logD('返回请求数据 $uri');
+      logD('Return request data: $uri');
       return true;
     } catch (e) {
-      logE('⚠ ⚠ ⚠ UrlParserM3U8 解析异常: $e');
+      logE('[UrlParserM3U8] ⚠ ⚠ ⚠ parse error: $e');
       return false;
     } finally {
-      await socket.close(); // 确保连接关闭
-      logD('连接关闭\n');
+      await socket.close();
+      logD('Connection closed\n');
     }
   }
 
@@ -194,7 +194,7 @@ class UrlParserM3U8 implements UrlParser {
     subscription = VideoProxy.downloadManager.stream.listen((downloadTask) {
       if (downloadTask.status == DownloadStatus.COMPLETED &&
           downloadTask.matchUrl == task.matchUrl) {
-        logD("异步下载完成： ${task.toString()}");
+        logD("Asynchronous download completed： ${task.toString()}");
         subscription?.cancel();
         concurrentComplete(segment);
       }
@@ -253,7 +253,7 @@ class UrlParserM3U8 implements UrlParser {
     }
   }
 
-  /// 解析M3U8 ts文件
+  /// Parsing M3U8 ts files
   Future<List<String>> parseSegment(Uri uri) async {
     final HlsMediaPlaylist? playList = await parseMediaPlaylist(uri);
     if (playList == null) return <String>[];
@@ -269,7 +269,7 @@ class UrlParserM3U8 implements UrlParser {
     return segments;
   }
 
-  /// 解析M3U8媒体播放列表
+  /// Parsing M3U8 media playlist
   Future<HlsMediaPlaylist?> parseMediaPlaylist(Uri uri,
       {String? hlsKey}) async {
     final HlsPlaylist? playList = await parsePlaylist(uri, hlsKey: hlsKey);
@@ -287,7 +287,7 @@ class UrlParserM3U8 implements UrlParser {
     return null;
   }
 
-  /// 解析M3U8分辨率列表
+  /// Parsing M3U8 resolution list
   Future<HlsPlaylist?> parsePlaylist(Uri uri, {String? hlsKey}) async {
     DownloadTask task =
         DownloadTask(uri: uri, hlsKey: hlsKey ?? uri.generateMd5);
@@ -299,7 +299,7 @@ class UrlParserM3U8 implements UrlParser {
     return playList;
   }
 
-  /// 解析M3U8数据行
+  /// Parsing M3U8 data lines
   Future<HlsPlaylist?> parseLines(List<String> lines) async {
     HlsPlaylist? playList;
     try {

@@ -23,13 +23,13 @@ class UrlParserMp4 implements UrlParser {
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
     if (dataMemory != null) {
-      logD('从内存中获取: ${dataMemory.lengthInBytes.toMemorySize}');
+      logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}');
       return dataMemory;
     }
     String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
-      logD('从文件中获取: ${file.path}');
+      logD('From file: ${file.path}');
       Uint8List dataFile = await file.readAsBytes();
       await VideoMemoryCache.put(task.matchUrl, dataFile);
       return dataFile;
@@ -39,7 +39,7 @@ class UrlParserMp4 implements UrlParser {
 
   @override
   Future<Uint8List?> download(DownloadTask task) async {
-    logD('从网络中获取: ${task.url}');
+    logD('From network: ${task.url}');
     Uint8List? dataNetwork;
     String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     task.cacheDir = cachePath;
@@ -90,8 +90,8 @@ class UrlParserMp4 implements UrlParser {
         startRange: startRange,
         endRange: endRange,
       );
-      logD('当前共占内存： ${(await VideoMemoryCache.size()).toMemorySize}');
-      logD('解析链接 range： ${task.startRange}-${task.endRange}');
+      logD('Total memory size： ${(await VideoMemoryCache.size()).toMemorySize}');
+      logD('Request range： ${task.startRange}-${task.endRange}');
 
       int retry = 3;
       while (retry > 0) {
@@ -112,7 +112,7 @@ class UrlParserMp4 implements UrlParser {
             count--;
             task.startRange += Config.segmentSize;
             task.endRange = task.startRange + Config.segmentSize - 1;
-            logD('解析链接 range： ${task.startRange}-${task.endRange}');
+            logD('Request range： ${task.startRange}-${task.endRange}');
             data = await cache(task);
             if (data != null) {
               if (data.lengthInBytes > Config.segmentSize) {
@@ -145,14 +145,14 @@ class UrlParserMp4 implements UrlParser {
         }
       }
       await socket.flush();
-      logD('返回请求数据: $uri range: $startRange-$endRange');
+      logD('Return request data: $uri range: $startRange-$endRange');
       return true;
     } catch (e) {
-      logE('⚠ ⚠ ⚠ UrlParserMp4 解析异常: $e');
+      logE('[UrlParserMp4] ⚠ ⚠ ⚠ parse error: $e');
       return false;
     } finally {
-      await socket.close(); // 确保连接关闭
-      logD('连接关闭\n');
+      await socket.close();
+      logD('Connection closed\n');
     }
   }
 
@@ -182,7 +182,7 @@ class UrlParserMp4 implements UrlParser {
       File file = File('$cachePath/${task.saveFileName}');
       if (await file.exists()) isExit = true;
       if (isExit) continue;
-      logD("异步下载开始： ${newTask.toString()}");
+      logD("Asynchronous download start： ${newTask.toString()}");
       newTask.cacheDir = cachePath;
       await VideoProxy.downloadManager.executeTask(newTask);
       activeSize = VideoProxy.downloadManager.allTasks
