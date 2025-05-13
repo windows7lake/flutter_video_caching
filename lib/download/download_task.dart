@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../ext/list_ext.dart';
 import '../ext/string_ext.dart';
 import 'download_status.dart';
@@ -17,6 +19,7 @@ class DownloadTask {
   int? endRange;
   String? hlsKey;
   List<int> data = [];
+  File? file;
 
   int createAt = DateTime.now().millisecondsSinceEpoch;
 

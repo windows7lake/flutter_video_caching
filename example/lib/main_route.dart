@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_video_caching/parser/video_caching.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 import 'page/download_page.dart';
 import 'page/m3u8_parser_page.dart';
+import 'page/storage_cache_page.dart';
 import 'page/video_page_view_page.dart';
 import 'page/video_play_page.dart';
 
@@ -19,6 +20,7 @@ class _MainRouteState extends State<MainRoute> {
     'M3u8Parser': const M3u8ParserPage(),
     'VideoPlay': const VideoPlayPage(),
     'VideoPageView': const VideoPageViewPage(),
+    'StorageCache': const StorageCachePage(),
   };
   final List<String> urls = [
     'http://vjs.zencdn.net/v/oceans.mp4',

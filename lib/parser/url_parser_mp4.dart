@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../cache/lru_cache_singleton.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/file_ext.dart';
@@ -9,7 +10,6 @@ import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../ext/uri_ext.dart';
 import '../global/config.dart';
-import '../memory/video_memory_cache.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
@@ -21,17 +21,17 @@ class UrlParserMp4 implements UrlParser {
 
   @override
   Future<Uint8List?> cache(DownloadTask task) async {
-    Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
+    Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) {
       logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}');
       return dataMemory;
     }
-    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
-    File file = File('$cachePath/${task.saveFileName}');
-    if (await file.exists()) {
-      logD('From file: ${file.path}');
-      Uint8List dataFile = await file.readAsBytes();
-      await VideoMemoryCache.put(task.matchUrl, dataFile);
+    String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
+        '/${task.saveFileName}';
+    Uint8List? dataFile = await LruCacheSingleton().storageGet(filePath);
+    if (dataFile != null) {
+      logD('From file: ${filePath}');
+      await LruCacheSingleton().memoryPut(task.matchUrl, dataFile);
       return dataFile;
     }
     return null;
@@ -56,7 +56,7 @@ class UrlParserMp4 implements UrlParser {
 
   @override
   Future<void> push(DownloadTask task) async {
-    Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
+    Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) return;
     String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
@@ -90,8 +90,7 @@ class UrlParserMp4 implements UrlParser {
         startRange: startRange,
         endRange: endRange,
       );
-      logD(
-          'Total memory size： ${(await VideoMemoryCache.size()).toMemorySize}');
+      logD('Total memory size： ${await LruCacheSingleton().memoryMbSize()}');
       logD('Request range： ${task.startRange}-${task.endRange}');
 
       int retry = 3;
@@ -177,7 +176,8 @@ class UrlParserMp4 implements UrlParser {
       bool isExit = VideoProxy.downloadManager.allTasks
           .where((e) => e.matchUrl == newTask.matchUrl)
           .isNotEmpty;
-      Uint8List? dataMemory = await VideoMemoryCache.get(newTask.matchUrl);
+      Uint8List? dataMemory =
+          await LruCacheSingleton().memoryGet(newTask.matchUrl);
       if (dataMemory != null) isExit = true;
       String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
       File file = File('$cachePath/${task.saveFileName}');

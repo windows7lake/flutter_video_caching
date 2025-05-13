@@ -80,8 +80,7 @@ class LocalProxyServer {
 
         String redirectUrl = path.replaceAll('/?url=', '');
         Uri originUri = redirectUrl.toOriginUri();
-        logD(
-            'Handling Connections ===========================================> \n'
+        logD('Handling Connections ========================================> \n'
             'protocol: $protocol, method: $method, path: $path \n'
             'headers: $headers \n'
             '$originUri');

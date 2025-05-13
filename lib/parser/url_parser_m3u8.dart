@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 
+import '../cache/lru_cache_singleton.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
 import '../ext/file_ext.dart';
@@ -14,7 +15,6 @@ import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
 import '../ext/string_ext.dart';
 import '../ext/uri_ext.dart';
-import '../memory/video_memory_cache.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
@@ -33,18 +33,18 @@ class UrlParserM3U8 implements UrlParser {
 
   @override
   Future<Uint8List?> cache(DownloadTask task) async {
-    Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
+    Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) {
       logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}, '
-          'total memory size: ${(await VideoMemoryCache.size()).toMemorySize}');
+          'total memory size: ${await LruCacheSingleton().memoryMbSize()}');
       return dataMemory;
     }
-    String cachePath = await FileExt.createCachePath(task.hlsKey);
-    File file = File('$cachePath/${task.saveFileName}');
-    if (await file.exists()) {
-      logD('From file: ${file.path}');
-      Uint8List dataFile = await file.readAsBytes();
-      await VideoMemoryCache.put(task.matchUrl, dataFile);
+    String filePath =
+        '${await FileExt.createCachePath(task.hlsKey)}/${task.saveFileName}';
+    Uint8List? dataFile = await LruCacheSingleton().storageGet(filePath);
+    if (dataFile != null) {
+      logD('From file: ${filePath}');
+      await LruCacheSingleton().memoryPut(task.matchUrl, dataFile);
       return dataFile;
     }
     return null;
@@ -68,7 +68,7 @@ class UrlParserM3U8 implements UrlParser {
 
   @override
   Future<void> push(DownloadTask task) async {
-    Uint8List? dataMemory = await VideoMemoryCache.get(task.matchUrl);
+    Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) return;
     String cachePath = await FileExt.createCachePath(task.hlsKey);
     File file = File('$cachePath/${task.saveFileName}');
@@ -175,7 +175,8 @@ class UrlParserM3U8 implements UrlParser {
         .where((e) => e.status == DownloadStatus.DOWNLOADING)
         .toList();
     if (downloading.length >= 4) return;
-    Uint8List? cache = await VideoMemoryCache.get(segment.url.generateMd5);
+    Uint8List? cache =
+        await LruCacheSingleton().memoryGet(segment.url.generateMd5);
     if (cache != null) {
       concurrentComplete(segment);
       return;

@@ -39,7 +39,7 @@ void downloadIsolateEntry(SendPort mainSendPort) {
   });
 }
 
-/// 定义进度更新的最小时间间隔（毫秒）
+/// The minimum interval for updating progress in milliseconds.
 const int MIN_PROGRESS_UPDATE_INTERVAL = 500;
 
 class DownloadIsolate {
@@ -98,7 +98,8 @@ class DownloadIsolate {
       // Creating a temporary storage area
       List<int> buffer = [];
 
-      final File saveFile = File('${task.cacheDir}/${task.saveFileName}');
+      String savePath = '${task.cacheDir}/${task.saveFileName}';
+      File saveFile = File(savePath);
 
       await for (var data in response) {
         // Check if it has been cancelled or suspended
@@ -143,6 +144,7 @@ class DownloadIsolate {
       logIsolate("[DownloadIsolate] COMPLETED ${task.toString()}");
 
       await _writeToFile(saveFile, buffer);
+      task.file = saveFile;
       task.status = DownloadStatus.FINISHED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
       logIsolate("[DownloadIsolate] FINISHED ${task.toString()}");

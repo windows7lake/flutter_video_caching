@@ -12,8 +12,13 @@ class VideoProxy {
   static Future<void> init({
     String? ip,
     int? port,
+    int maxMemoryCacheSize = 100,
+    int maxStorageCacheSize = 1024,
     bool logPrint = false,
   }) async {
+    Config.memoryCacheSize = maxMemoryCacheSize * Config.mbSize;
+    Config.storageCacheSize = maxStorageCacheSize * Config.mbSize;
+
     Config.logPrint = logPrint;
     _localProxyServer = LocalProxyServer(ip: ip, port: port);
     await _localProxyServer.start();

@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
 
+import '../cache/lru_cache_singleton.dart';
 import '../ext/file_ext.dart';
 import '../ext/log_ext.dart';
-import '../memory/video_memory_cache.dart';
 import 'download_isolate_entry.dart';
 import 'download_isolate_instance.dart';
 import 'download_isolate_msg.dart';
@@ -243,9 +243,12 @@ class DownloadIsolatePool {
             if (isolateIndex != -1) _isolateList[isolateIndex] = isolate;
             if (task.status == DownloadStatus.COMPLETED) {
               Uint8List netData = Uint8List.fromList(task.data);
-              VideoMemoryCache.put(task.matchUrl, netData);
+              LruCacheSingleton().memoryPut(task.matchUrl, netData);
               if (taskIndex != -1) _taskList.removeAt(taskIndex);
               if (isolateIndex != -1) _isolateList[isolateIndex].reset();
+            }
+            if (task.status == DownloadStatus.FINISHED && task.file != null) {
+              LruCacheSingleton().storagePut(task.file!.path, task.file!);
             }
             if (task.status == DownloadStatus.FAILED) {
               if (taskIndex != -1) _taskList.removeAt(taskIndex);
