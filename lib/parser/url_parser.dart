@@ -4,15 +4,21 @@ import 'dart:typed_data';
 import '../download/download_task.dart';
 
 abstract class UrlParser {
+  /// Parses the given [url] and returns a [Uri] object, determine if the link is resolved.
   bool match(Uri uri);
 
+  /// Get the cache data from memory or file.
   Future<Uint8List?> cache(DownloadTask task);
 
+  /// Download the data from network.
   Future<Uint8List?> download(DownloadTask task);
 
+  /// Push the task to the download manager.
   Future<void> push(DownloadTask task);
 
+  /// Parse the data from the socket.
   Future<bool> parse(Socket socket, Uri uri, Map<String, String> headers);
 
+  /// Precache the video URL
   void precache(String url, int cacheSegments, bool downloadNow);
 }

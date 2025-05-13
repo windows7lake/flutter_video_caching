@@ -12,6 +12,7 @@ class VideoCaching {
     UrlParserDefault(),
   ];
 
+  /// Parse the URL and cache the video
   static Future<void> parse(
     Socket socket,
     Uri uri,
@@ -24,6 +25,11 @@ class VideoCaching {
     }
   }
 
+  /// Precache the video URL
+  ///
+  /// [url]: The URL to be precached.<br>
+  /// [cacheSegments]: The number of segments to be cached, default is 2.<br>
+  /// [downloadNow]: Whether to download the segments now, default is true, false will be pushed to the queue.
   static void precache(
     String url, {
     int cacheSegments = 2,

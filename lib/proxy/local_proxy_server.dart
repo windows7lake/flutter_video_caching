@@ -31,6 +31,7 @@ class LocalProxyServer {
       logD('Proxy server started ${server?.address.address}:${server?.port}');
       server?.listen(_handleConnection);
     } on SocketException catch (e) {
+      // If the port is occupied, try to use the next port
       if (e.osError?.errorCode == 98) {
         Config.port = Config.port + 1;
         start();

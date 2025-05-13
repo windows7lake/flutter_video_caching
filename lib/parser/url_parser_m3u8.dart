@@ -18,6 +18,7 @@ import '../ext/uri_ext.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
+/// M3U8 URL parser
 class UrlParserM3U8 implements UrlParser {
   static final List<HlsSegment> _list = <HlsSegment>[];
   static String _latestUrl = '';
@@ -32,6 +33,8 @@ class UrlParserM3U8 implements UrlParser {
         uri.path.toLowerCase().endsWith('.ts');
   }
 
+  /// Get the cache data from memory or file.
+  /// If there is no cache data, return null.
   @override
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -51,6 +54,7 @@ class UrlParserM3U8 implements UrlParser {
     return null;
   }
 
+  /// Download the data from network.
   @override
   Future<Uint8List?> download(DownloadTask task) async {
     logD('From network: ${task.url}');
@@ -67,6 +71,8 @@ class UrlParserM3U8 implements UrlParser {
     return dataNetwork;
   }
 
+  /// Push the task to the download manager.
+  /// If the task is already in the download manager, do nothing.
   @override
   Future<void> push(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -78,6 +84,10 @@ class UrlParserM3U8 implements UrlParser {
     await VideoProxy.downloadManager.addTask(task);
   }
 
+  /// Parse the data from socket.
+  /// If the request is not valid, return false.
+  ///
+  /// After parsing m3u8 file, it will replace the url with the local url.
   @override
   Future<bool> parse(
     Socket socket,
@@ -142,6 +152,7 @@ class UrlParserM3U8 implements UrlParser {
     }
   }
 
+  /// Read the lines from Uint8List and decode them to String.
   List<String> readLineFromUint8List(Uint8List uint8List) {
     List<String> lines = [];
     Utf8Codec codec = Utf8Codec();
@@ -158,6 +169,7 @@ class UrlParserM3U8 implements UrlParser {
     return lines;
   }
 
+  /// Asynchronous downloading of ts files.
   Future<void> concurrentLoop(HlsSegment? hlsSegment) async {
     if (hlsSegment == null) return;
     _latestUrl = hlsSegment.url;
@@ -240,6 +252,10 @@ class UrlParserM3U8 implements UrlParser {
     concurrentLoop(idleSegment);
   }
 
+  /// Pre-cache the data from network.
+  ///
+  /// [cacheSegments] is the number of segments to cache.
+  /// [downloadNow] is whether to download the data now or just push the task to the queue.
   @override
   void precache(String url, int cacheSegments, bool downloadNow) async {
     List<String> mediaList = await parseSegment(Uri.parse(url));

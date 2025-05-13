@@ -1,3 +1,7 @@
+## 0.1.3
+
+- feat: LruCacheSingleton export more function
+
 ## 0.1.2
 
 - feat: add support for max cache size of memory and storage

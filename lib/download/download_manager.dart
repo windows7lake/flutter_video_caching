@@ -5,7 +5,7 @@ import 'download_task.dart';
 class DownloadManager {
   late DownloadIsolatePool _isolatePool;
 
-  DownloadManager({int maxConcurrentDownloads = MAX_ISOLATE_POOL_SIZE}) {
+  DownloadManager([int maxConcurrentDownloads = MAX_ISOLATE_POOL_SIZE]) {
     _isolatePool = DownloadIsolatePool(poolSize: maxConcurrentDownloads);
   }
 

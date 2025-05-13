@@ -17,6 +17,8 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
     'http://vjs.zencdn.net/v/oceans.mp4',
     'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
+    'https://www.tootootool.com/wp-content/uploads/2020/11/SampleVideo_1280x720_5mb.mkv',
+    'https://www.tootootool.com/wp-content/uploads/2020/11/SampleVideo_176x144_5mb.3gp',
   ];
   Timer? timer;
   int currentIndex = 0;
@@ -181,10 +183,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                 Positioned.fill(
                   top: null,
                   bottom: 120,
-                  child: SizedBox(
-                    height: 20,
-                    child: const Icon(Icons.refresh),
-                  ),
+                  child: CircularProgressIndicator(),
                 ),
             ],
           )
@@ -194,7 +193,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               onPressed: () {
                 setState(() {});
               },
-              child: const Icon(Icons.refresh),
+              child: CircularProgressIndicator(),
             ),
           );
   }

@@ -11,7 +11,7 @@ class DownloadPage extends StatefulWidget {
 }
 
 class _DownloadPageState extends State<DownloadPage> {
-  final DownloadManager _manager = DownloadManager(maxConcurrentDownloads: 2);
+  final DownloadManager _manager = DownloadManager(2);
   final List<String> links = [
     'http://vjs.zencdn.net/v/oceans.mp4',
     'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/main.mp4',

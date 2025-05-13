@@ -5,22 +5,49 @@ import '../ext/string_ext.dart';
 import 'download_status.dart';
 
 class DownloadTask {
+  /// Unique ID for the task
   final String id;
+
+  /// The URI of the file to be downloaded
   final Uri uri;
 
+  /// The priority of the task (default is 1)
   int priority;
+
+  /// The directory where the file will be cached
   String cacheDir;
+
+  /// The name of the file to be saved
   String saveFile;
+
+  /// The progress of the download (0.0 to 1.0)
   double progress;
+
+  /// The number of bytes downloaded
   int downloadedBytes;
+
+  /// The total number of bytes to be downloaded
   int totalBytes;
+
+  /// The status of the download (IDLE, DOWNLOADING, PAUSED, COMPLETED, CANCELLED)
   DownloadStatus status;
+
+  /// The start range for the download (for partial downloads)
   int startRange;
+
+  /// The end range for the download (for partial downloads)
   int? endRange;
+
+  /// The HLS key for the download (if applicable)
   String? hlsKey;
+
+  /// The list of data chunks downloaded
   List<int> data = [];
+
+  /// The file where the downloaded data will be saved
   File? file;
 
+  /// Task create time
   int createAt = DateTime.now().millisecondsSinceEpoch;
 
   DownloadTask({

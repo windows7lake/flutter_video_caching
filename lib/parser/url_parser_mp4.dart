@@ -13,12 +13,15 @@ import '../global/config.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
+/// MP4 URL parser
 class UrlParserMp4 implements UrlParser {
   @override
   bool match(Uri uri) {
     return uri.path.toLowerCase().endsWith('.mp4');
   }
 
+  /// Get the cache data from memory or file.
+  /// If there is no cache data, return null.
   @override
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -37,6 +40,7 @@ class UrlParserMp4 implements UrlParser {
     return null;
   }
 
+  /// Download the data from network.
   @override
   Future<Uint8List?> download(DownloadTask task) async {
     logD('From network: ${task.url}');
@@ -54,6 +58,8 @@ class UrlParserMp4 implements UrlParser {
     return dataNetwork;
   }
 
+  /// Push the task to the download manager.
+  /// If the task is already in the download manager, do nothing.
   @override
   Future<void> push(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -65,6 +71,11 @@ class UrlParserMp4 implements UrlParser {
     await VideoProxy.downloadManager.addTask(task);
   }
 
+  /// Parse the request and return the data.
+  /// If the request is not valid, return false.
+  ///
+  /// Large file download is divided into segments, and each segment is 2Mb by default.
+  /// The segment size can be changed by modifying the `Config.segmentSize` value.
   @override
   Future<bool> parse(
     Socket socket,
@@ -157,12 +168,21 @@ class UrlParserMp4 implements UrlParser {
     }
   }
 
+  /// Delete the file if it exceeds the size limit.
+  /// Sometimes because network problem, the download file size is larger than
+  /// the segment size, so we need to delete and re-download the file.
+  /// Or it may lead to source error.
   Future<void> deleteExceedSizeFile(DownloadTask task) async {
     String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) await file.delete();
   }
 
+  /// Download task concurrently.<br>
+  /// The maximum number of concurrent downloads is 3. Too many concurrent
+  /// connections will result in long waiting times.<br>
+  /// If the number of concurrent downloads is less than 3, create a new task and
+  /// add it to the download queue.<br>
   Future<void> concurrent(DownloadTask task) async {
     int activeSize = VideoProxy.downloadManager.allTasks
         .where((e) => e.url == task.url)
@@ -193,6 +213,10 @@ class UrlParserMp4 implements UrlParser {
     }
   }
 
+  /// Pre-cache the data from network.
+  ///
+  /// [cacheSegments] is the number of segments to cache.
+  /// [downloadNow] is whether to download the data now or just push the task to the queue.
   @override
   void precache(String url, int cacheSegments, bool downloadNow) async {
     int count = 0;
