@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter_video_caching/ext/int_ext.dart';
-
 import 'lru_cache_impl.dart';
 
 class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
@@ -59,15 +57,11 @@ class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
             '$runtimeType.sizeOf() is reporting inconsistent results!');
       }
 
-      print(
-          "11 ========> size: ${size.toMemorySize} maxSize: ${maxSize.toMemorySize}");
       if (size <= maxSize) return;
 
       final sortedEntries = map.entries.toList()
         ..sort((a, b) => a.value.dataTime.compareTo(b.value.dataTime));
 
-      print(
-          "22 ========> size: ${size.toMemorySize} maxSize: ${maxSize.toMemorySize}");
       int removeSize = 0;
       List<String> keysToRemove = [];
       for (final entry in sortedEntries) {
@@ -78,8 +72,6 @@ class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
           break;
         }
       }
-      print(
-          "33 ========> size: ${size.toMemorySize} maxSize: ${maxSize.toMemorySize}");
       for (final key in keysToRemove) {
         FileSystemEntity? toEvict = map[key];
         if (toEvict != null) {
@@ -89,8 +81,6 @@ class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
           evictionCount++;
         }
       }
-      print(
-          "44 ========> size: ${size.toMemorySize} maxSize: ${maxSize.toMemorySize}");
     });
   }
 }
