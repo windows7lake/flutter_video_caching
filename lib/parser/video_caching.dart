@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'url_parser.dart';
+import 'url_parser_default.dart';
 import 'url_parser_m3u8.dart';
 import 'url_parser_mp4.dart';
 
@@ -8,6 +9,7 @@ class VideoCaching {
   static final List<UrlParser> _parsers = [
     UrlParserM3U8(),
     UrlParserMp4(),
+    UrlParserDefault(),
   ];
 
   static Future<void> parse(

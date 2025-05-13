@@ -13,10 +13,10 @@ import '../global/config.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
-class UrlParserMp4 implements UrlParser {
+class UrlParserDefault implements UrlParser {
   @override
   bool match(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.mp4');
+    return true;
   }
 
   @override

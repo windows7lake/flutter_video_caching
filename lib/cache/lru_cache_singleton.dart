@@ -31,7 +31,15 @@ class LruCacheSingleton {
     return _memoryCache.put(key, value);
   }
 
-  Future<String> memoryMbSize() async {
+  Future<void> memoryRemove(String key) {
+    return _memoryCache.remove(key);
+  }
+
+  Future<void> memoryClear() {
+    return _memoryCache.clear();
+  }
+
+  Future<String> memoryFormatSize() async {
     return _memoryCache.size.toMemorySize;
   }
 
@@ -49,7 +57,16 @@ class LruCacheSingleton {
     await _storageCache.put(key, value);
   }
 
-  Future<String> storageMbSize() async {
+  Future<void> storageRemove(String key) async {
+    await _storageInit();
+    await _storageCache.remove(key);
+  }
+
+  Future<void> storageClear() async {
+    await _storageCache.clear();
+  }
+
+  Future<String> storageFormatSize() async {
     await _storageInit();
     return _storageCache.size.toMemorySize;
   }

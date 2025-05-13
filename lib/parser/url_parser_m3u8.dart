@@ -28,7 +28,8 @@ class UrlParserM3U8 implements UrlParser {
 
   @override
   bool match(Uri uri) {
-    return uri.path.endsWith('.m3u8') || uri.path.endsWith('.ts');
+    return uri.path.toLowerCase().endsWith('.m3u8') ||
+        uri.path.toLowerCase().endsWith('.ts');
   }
 
   @override
@@ -36,7 +37,7 @@ class UrlParserM3U8 implements UrlParser {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) {
       logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}, '
-          'total memory size: ${await LruCacheSingleton().memoryMbSize()}');
+          'total memory size: ${await LruCacheSingleton().memoryFormatSize()}');
       return dataMemory;
     }
     String filePath =
