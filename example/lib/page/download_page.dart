@@ -54,9 +54,6 @@ class _DownloadPageState extends State<DownloadPage> {
     await _manager.executeTask(DownloadTask(
       uri: Uri.parse(links[index]),
       priority: index,
-      startRange: 23014355,
-      // endRange: 23014356,
-      endRange: 24014356,
     ));
     if (++index >= links.length) {
       index = 0;
