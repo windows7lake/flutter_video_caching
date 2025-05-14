@@ -113,15 +113,16 @@ class UrlParserM3U8 implements UrlParser {
         StringBuffer buffer = StringBuffer();
         for (String line in lines) {
           String hlsLine = line.trim();
+          String? encryptKeyUri;
           if (hlsLine.startsWith("#EXT-X-KEY")) {
             Match? match = RegExp(r'URI="([^"]+)"').firstMatch(hlsLine);
             if (match != null && match.groupCount >= 1) {
-              String? uriValue = match.group(1);
-              if (uriValue != null) {
-                String newUri = uriValue.startsWith('http')
-                    ? uriValue.toLocalUrl()
-                    : '$uriValue?origin=${uri.origin}';
-                line = hlsLine.replaceAll(uriValue, newUri);
+              encryptKeyUri = match.group(1);
+              if (encryptKeyUri != null) {
+                String newUri = encryptKeyUri.startsWith('http')
+                    ? encryptKeyUri.toLocalUrl()
+                    : '$encryptKeyUri?origin=${uri.origin}';
+                line = hlsLine.replaceAll(encryptKeyUri, newUri);
               }
             }
           }
@@ -130,6 +131,13 @@ class UrlParserM3U8 implements UrlParser {
             line = line.startsWith('http')
                 ? line.toLocalUrl()
                 : '$line?origin=${uri.origin}';
+          }
+          // Setting HLS segment to same key, it will be downloaded in the same directory.
+          if (hlsLine.startsWith("#EXT-X-KEY") && encryptKeyUri != null) {
+            if (!encryptKeyUri.startsWith('http')) {
+              encryptKeyUri = '${uri.pathPrefix}/' + encryptKeyUri;
+            }
+            concurrentAdd(HlsSegment(url: encryptKeyUri, key: task.hlsKey!));
           }
           if (lastLine.startsWith("#EXTINF") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {

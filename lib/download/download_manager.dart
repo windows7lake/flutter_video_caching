@@ -41,6 +41,26 @@ class DownloadManager {
     _isolatePool.notifyIsolate(taskId, DownloadStatus.CANCELLED);
   }
 
+  void pauseAllTasks() {
+    for (var isolate in _isolatePool.isolateList) {
+      String? taskId = isolate.task?.id;
+      if (taskId != null) {
+        _isolatePool.notifyIsolate(taskId, DownloadStatus.PAUSED);
+      }
+    }
+  }
+
+  void removeAllTask() {
+    for (var isolate in _isolatePool.isolateList) {
+      String? taskId = isolate.task?.id;
+      if (taskId != null) {
+        _isolatePool.notifyIsolate(taskId, DownloadStatus.CANCELLED);
+        isolate.reset();
+      }
+    }
+    allTasks.clear();
+  }
+
   bool isMatchUrlExit(String url) {
     return allTasks.where((task) => task.matchUrl == url).isNotEmpty;
   }

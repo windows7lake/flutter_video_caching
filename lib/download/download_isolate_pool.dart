@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
 
+import 'package:flutter_video_caching/global/config.dart';
+
 import '../cache/lru_cache_singleton.dart';
 import '../ext/file_ext.dart';
 import '../ext/log_ext.dart';
@@ -40,6 +42,8 @@ class DownloadIsolatePool {
       .where((task) => task.status != DownloadStatus.DOWNLOADING)
       .toList();
 
+  List<DownloadIsolateInstance> get isolateList => _isolateList;
+
   Future<void> dispose() async {
     for (var isolate in _isolateList) {
       await isolate.subscription?.cancel();
@@ -50,6 +54,7 @@ class DownloadIsolatePool {
       isolate.receivePort.close();
       isolate.isolate.kill(priority: Isolate.immediate);
     }
+    _isolateList.clear();
     await _streamController.close();
     DownloadTask.resetId();
   }
@@ -229,6 +234,10 @@ class DownloadIsolatePool {
             isolate.task!.status = DownloadStatus.DOWNLOADING;
             isolate.controlPort = message.data as SendPort;
             isolate.controlPort!.send(DownloadIsolateMsg(
+              IsolateMsgType.logPrint,
+              Config.logPrint,
+            ));
+            isolate.controlPort!.send(DownloadIsolateMsg(
               IsolateMsgType.task,
               isolate.task,
             ));
@@ -259,6 +268,8 @@ class DownloadIsolatePool {
               roundIsolate();
             }
             _streamController.sink.add(task);
+            break;
+          default:
             break;
         }
       }

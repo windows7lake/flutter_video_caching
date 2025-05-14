@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter_video_caching/global/config.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../ext/log_ext.dart';
@@ -19,6 +20,11 @@ void downloadIsolateEntry(SendPort mainSendPort) {
     // logV('[DownloadIsolateEntry] receive message: $message');
     if (message is DownloadIsolateMsg) {
       switch (message.type) {
+        case IsolateMsgType.logPrint:
+          if (message.data != null && message.data is bool) {
+            Config.logPrint = message.data as bool;
+          }
+          break;
         case IsolateMsgType.task:
           if (message.data == null) break;
           final task = message.data as DownloadTask;
@@ -161,7 +167,6 @@ class DownloadIsolate {
   }
 
   Future<void> cancel() async {
-    _isPaused = true;
     _isCancelled = true;
   }
 

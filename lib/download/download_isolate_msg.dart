@@ -1,4 +1,4 @@
-enum IsolateMsgType { sendPort, task }
+enum IsolateMsgType { sendPort, task, logPrint }
 
 /// Message sent to or from the download isolate.
 class DownloadIsolateMsg {
