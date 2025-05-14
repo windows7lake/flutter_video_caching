@@ -106,7 +106,7 @@ class UrlParserDefault implements UrlParser {
             retry--;
             continue;
           } else {
-            socket.add(data);
+            await socket.append(data);
           }
           int count = 2;
           while (count > 0) {
@@ -121,7 +121,7 @@ class UrlParserDefault implements UrlParser {
                 retry--;
                 break;
               } else {
-                socket.add(data);
+                await socket.append(data);
               }
             }
           }
@@ -139,7 +139,7 @@ class UrlParserDefault implements UrlParser {
               retry--;
               continue;
             } else {
-              socket.add(data);
+              await socket.append(data);
             }
           }
           break;

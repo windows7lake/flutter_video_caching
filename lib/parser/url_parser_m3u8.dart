@@ -30,6 +30,7 @@ class UrlParserM3U8 implements UrlParser {
   @override
   bool match(Uri uri) {
     return uri.path.toLowerCase().endsWith('.m3u8') ||
+        uri.path.toLowerCase().endsWith('.key') ||
         uri.path.toLowerCase().endsWith('.ts');
   }
 
@@ -105,12 +106,25 @@ class UrlParserM3U8 implements UrlParser {
         data = await download(task);
       }
       if (data == null) return false;
+      String contentType = 'application/octet-stream';
       if (task.url.endsWith('.m3u8')) {
         List<String> lines = readLineFromUint8List(data);
         String lastLine = '';
         StringBuffer buffer = StringBuffer();
         for (String line in lines) {
           String hlsLine = line.trim();
+          if (hlsLine.startsWith("#EXT-X-KEY")) {
+            Match? match = RegExp(r'URI="([^"]+)"').firstMatch(hlsLine);
+            if (match != null && match.groupCount >= 1) {
+              String? uriValue = match.group(1);
+              if (uriValue != null) {
+                String newUri = uriValue.startsWith('http')
+                    ? uriValue.toLocalUrl()
+                    : '$uriValue?origin=${uri.origin}';
+                line = hlsLine.replaceAll(uriValue, newUri);
+              }
+            }
+          }
           if (lastLine.startsWith("#EXTINF") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
             line = line.startsWith('http')
@@ -128,15 +142,18 @@ class UrlParserM3U8 implements UrlParser {
           lastLine = line;
         }
         data = Uint8List.fromList(buffer.toString().codeUnits);
+        contentType = 'application/vnd.apple.mpegurl';
+      } else if (task.url.endsWith('.key')) {
+        contentType = 'application/octet-stream';
+        logW(data.length);
+      } else if (task.url.endsWith('.ts')) {
+        contentType = 'video/MP2T';
       }
-      String contentType = uri.path.endsWith('.m3u8')
-          ? 'application/vnd.apple.mpegurl'
-          : 'video/MP2T';
       String responseHeaders = <String>[
         'HTTP/1.1 200 OK',
-        'Accept-Ranges: bytes',
         'Content-Type: $contentType',
         'Connection: keep-alive',
+        if (contentType == 'video/MP2T') 'Accept-Ranges: bytes',
       ].join('\r\n');
       await socket.append(responseHeaders);
       await socket.append(data);

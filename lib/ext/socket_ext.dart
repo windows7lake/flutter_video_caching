@@ -9,10 +9,8 @@ extension SocketExtension on Socket {
       write('$data$httpTerminal');
     } else if (data is Stream<List<int>>) {
       await addStream(data);
-      write(httpTerminal);
     } else if (data is List<int>) {
       add(data);
-      write(httpTerminal);
     }
   }
 }

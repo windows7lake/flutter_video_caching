@@ -21,6 +21,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   void initController() {
     List<String> urls = [
       // 'http://vjs.zencdn.net/v/oceans.mp4',
+      'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
       'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     ];
     var url = urls[0];
@@ -66,7 +67,11 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
                 onPressed: () {
                   setState(() {});
                 },
-                child: const Icon(Icons.refresh),
+                child: SizedBox(
+                  height: 100,
+                  width: 100,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               ),
             ),
       floatingActionButton: FloatingActionButton(

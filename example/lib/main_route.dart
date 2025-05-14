@@ -32,7 +32,7 @@ class _MainRouteState extends State<MainRoute> {
   void initState() {
     super.initState();
     for (int i = 0; i < 3; i++) {
-      VideoCaching.precache(urls[i]);
+      // VideoCaching.precache(urls[i]);
     }
   }
 

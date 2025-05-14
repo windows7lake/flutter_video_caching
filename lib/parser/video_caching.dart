@@ -21,6 +21,7 @@ class VideoCaching {
     for (UrlParser parser in _parsers) {
       if (parser.match(uri)) {
         await parser.parse(socket, uri, headers);
+        break;
       }
     }
   }

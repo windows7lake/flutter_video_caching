@@ -1,3 +1,7 @@
+## 0.1.4
+
+- fixed: m3u8 parse EXT-X-KEY failed
+
 ## 0.1.3
 
 - feat: LruCacheSingleton export more function

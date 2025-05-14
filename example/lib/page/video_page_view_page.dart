@@ -138,64 +138,74 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return initialize
-        ? Stack(
-            alignment: Alignment.center,
-            children: [
-              AspectRatio(
-                aspectRatio: playControl.value.aspectRatio,
-                child: VideoPlayer(playControl),
-              ),
-              GestureDetector(
-                onTap: () {
-                  if (playControl.value.isPlaying) {
-                    playControl.pause();
-                  } else {
-                    playControl.play();
-                  }
-                  setState(() {});
-                },
-                child: playControl.value.isPlaying
-                    ? const Icon(
-                        Icons.pause,
-                        size: 30,
-                        color: Colors.white,
-                      )
-                    : const Icon(
-                        Icons.play_arrow,
-                        size: 30,
-                        color: Colors.white,
-                      ),
-              ),
-              Positioned.fill(
-                top: null,
-                bottom: 100,
-                child: SizedBox(
-                  height: 20,
-                  child: VideoProgressIndicator(
-                    playControl,
-                    allowScrubbing: true,
-                    seekCallback: () {},
+    if (initialize) {
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          AspectRatio(
+            aspectRatio: playControl.value.aspectRatio,
+            child: VideoPlayer(playControl),
+          ),
+          GestureDetector(
+            onTap: () {
+              if (playControl.value.isPlaying) {
+                playControl.pause();
+              } else {
+                playControl.play();
+              }
+              setState(() {});
+            },
+            child: playControl.value.isPlaying
+                ? const Icon(
+                    Icons.pause,
+                    size: 30,
+                    color: Colors.white,
+                  )
+                : const Icon(
+                    Icons.play_arrow,
+                    size: 30,
+                    color: Colors.white,
                   ),
-                ),
+          ),
+          Positioned.fill(
+            top: null,
+            bottom: 100,
+            child: SizedBox(
+              height: 20,
+              child: VideoProgressIndicator(
+                playControl,
+                allowScrubbing: true,
+                seekCallback: () {},
               ),
-              if (showLoading)
-                Positioned.fill(
-                  top: null,
-                  bottom: 120,
-                  child: CircularProgressIndicator(),
-                ),
-            ],
-          )
-        : Container(
-            alignment: Alignment.center,
-            child: TextButton(
-              onPressed: () {
-                setState(() {});
-              },
-              child: CircularProgressIndicator(),
             ),
-          );
+          ),
+          if (showLoading)
+            Positioned.fill(
+              top: null,
+              bottom: 350,
+              child: SizedBox(
+                height: 100,
+                width: 100,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
+      );
+    } else {
+      return Container(
+        alignment: Alignment.center,
+        child: TextButton(
+          onPressed: () {
+            setState(() {});
+          },
+          child: SizedBox(
+            height: 100,
+            width: 100,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+      );
+    }
   }
 }
 
