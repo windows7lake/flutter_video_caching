@@ -27,13 +27,6 @@ class UrlParserM3U8 implements UrlParser {
     return _list.where((task) => task.url == uri.toString()).firstOrNull;
   }
 
-  @override
-  bool match(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.m3u8') ||
-        uri.path.toLowerCase().endsWith('.key') ||
-        uri.path.toLowerCase().endsWith('.ts');
-  }
-
   /// Get the cache data from memory or file.
   /// If there is no cache data, return null.
   @override
@@ -107,7 +100,7 @@ class UrlParserM3U8 implements UrlParser {
       }
       if (data == null) return false;
       String contentType = 'application/octet-stream';
-      if (task.url.endsWith('.m3u8')) {
+      if (task.uri.path.endsWith('.m3u8')) {
         List<String> lines = readLineFromUint8List(data);
         String lastLine = '';
         StringBuffer buffer = StringBuffer();
@@ -121,7 +114,7 @@ class UrlParserM3U8 implements UrlParser {
               if (encryptKeyUri != null) {
                 String newUri = encryptKeyUri.startsWith('http')
                     ? encryptKeyUri.toLocalUrl()
-                    : '$encryptKeyUri?origin=${uri.origin}';
+                    : '$encryptKeyUri${encryptKeyUri.contains('?') ? '&' : '?'}origin=${uri.origin}';
                 line = hlsLine.replaceAll(encryptKeyUri, newUri);
               }
             }
@@ -130,7 +123,7 @@ class UrlParserM3U8 implements UrlParser {
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
             line = line.startsWith('http')
                 ? line.toLocalUrl()
-                : '$line?origin=${uri.origin}';
+                : '$line${line.contains('?') ? '&' : '?'}origin=${uri.origin}';
           }
           // Setting HLS segment to same key, it will be downloaded in the same directory.
           if (hlsLine.startsWith("#EXT-X-KEY") && encryptKeyUri != null) {
@@ -151,10 +144,10 @@ class UrlParserM3U8 implements UrlParser {
         }
         data = Uint8List.fromList(buffer.toString().codeUnits);
         contentType = 'application/vnd.apple.mpegurl';
-      } else if (task.url.endsWith('.key')) {
+      } else if (task.uri.path.endsWith('.key')) {
         contentType = 'application/octet-stream';
         logW(data.length);
-      } else if (task.url.endsWith('.ts')) {
+      } else if (task.uri.path.endsWith('.ts')) {
         contentType = 'video/MP2T';
       }
       String responseHeaders = <String>[

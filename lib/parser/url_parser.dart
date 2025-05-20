@@ -4,9 +4,6 @@ import 'dart:typed_data';
 import '../download/download_task.dart';
 
 abstract class UrlParser {
-  /// Parses the given [url] and returns a [Uri] object, determine if the link is resolved.
-  bool match(Uri uri);
-
   /// Get the cache data from memory or file.
   Future<Uint8List?> cache(DownloadTask task);
 

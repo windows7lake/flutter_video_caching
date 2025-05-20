@@ -1,8 +1,14 @@
+## 0.1.6
+
+- fixed: video pre-caching concurrent error handling
+- fixed: url with query string not work
+
 ## 0.1.5
 
 - fixed: isolate log print failed
 - fixed: m3u8 encrypted key saved in error directory
-- feat: add support for m3u8 encrypted video
+- fixed: preview video with error type
+- fixed: url with query string not work
 
 ## 0.1.4
 

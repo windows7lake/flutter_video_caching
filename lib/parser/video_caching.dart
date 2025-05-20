@@ -1,29 +1,15 @@
 import 'dart:io';
 
-import 'url_parser.dart';
-import 'url_parser_default.dart';
-import 'url_parser_m3u8.dart';
-import 'url_parser_mp4.dart';
+import 'url_parser_factory.dart';
 
 class VideoCaching {
-  static final List<UrlParser> _parsers = [
-    UrlParserM3U8(),
-    UrlParserMp4(),
-    UrlParserDefault(),
-  ];
-
   /// Parse the URL and cache the video
   static Future<void> parse(
     Socket socket,
     Uri uri,
     Map<String, String> headers,
   ) async {
-    for (UrlParser parser in _parsers) {
-      if (parser.match(uri)) {
-        await parser.parse(socket, uri, headers);
-        break;
-      }
-    }
+    await UrlParserFactory.createParser(uri).parse(socket, uri, headers);
   }
 
   /// Precache the video URL
@@ -36,11 +22,7 @@ class VideoCaching {
     int cacheSegments = 2,
     bool downloadNow = true,
   }) {
-    for (UrlParser parser in _parsers) {
-      if (parser.match(Uri.parse(url))) {
-        parser.precache(url, cacheSegments, downloadNow);
-        break;
-      }
-    }
+    UrlParserFactory.createParser(Uri.parse(url))
+        .precache(url, cacheSegments, downloadNow);
   }
 }

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_video_caching/cache/lru_cache_storage.dart';
 import 'package:flutter_video_caching/ext/int_ext.dart';
+import 'package:synchronized/synchronized.dart';
 
 import '../ext/file_ext.dart';
 import '../global/config.dart';
@@ -19,6 +20,7 @@ class LruCacheSingleton {
     _storageCache = LruCacheStorage(Config.storageCacheSize);
   }
 
+  Lock _lock = Lock();
   late LruCacheMemory _memoryCache;
   late LruCacheStorage _storageCache;
   bool _isStorageInit = false;
@@ -76,16 +78,18 @@ class LruCacheSingleton {
   }
 
   Future<void> _storageInit() async {
-    if (_isStorageInit) return;
-    _isStorageInit = true;
-    Directory cacheDir = Directory(await FileExt.createCachePath());
-    if (!(await cacheDir.exists())) return;
-    for (FileSystemEntity file in cacheDir.listSync(recursive: true)) {
-      FileStat stat = await file.stat();
-      if (stat.type == FileSystemEntityType.file) {
-        _storageCache.map[file.path] = file;
-        _storageCache.size += stat.size;
+    await _lock.synchronized(() async {
+      if (_isStorageInit) return;
+      _isStorageInit = true;
+      Directory cacheDir = Directory(await FileExt.createCachePath());
+      if (!(await cacheDir.exists())) return;
+      for (FileSystemEntity file in cacheDir.listSync(recursive: true)) {
+        FileStat stat = await file.stat();
+        if (stat.type == FileSystemEntityType.file) {
+          _storageCache.map[file.path] = file;
+          _storageCache.size += stat.size;
+        }
       }
-    }
+    });
   }
 }

@@ -15,11 +15,6 @@ import 'url_parser.dart';
 
 /// MP4 URL parser
 class UrlParserMp4 implements UrlParser {
-  @override
-  bool match(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.mp4');
-  }
-
   /// Get the cache data from memory or file.
   /// If there is no cache data, return null.
   @override
@@ -85,79 +80,74 @@ class UrlParserMp4 implements UrlParser {
     try {
       RegExp exp = RegExp(r'bytes=(\d+)-(\d*)');
       RegExpMatch? rangeMatch = exp.firstMatch(headers['range'] ?? '');
-      int rangeStart = int.parse(rangeMatch?.group(1) ?? '0');
-      String responseHeaders = <String>[
-        rangeStart > 0 ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
+      int rangeStart = int.tryParse(rangeMatch?.group(1) ?? '0') ?? 0;
+      int rangeEnd = int.tryParse(rangeMatch?.group(2) ?? '0') ?? 0;
+      bool partial = rangeStart > 0 || rangeEnd > 0;
+      List<String> responseHeaders = <String>[
+        partial ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
         'Accept-Ranges: bytes',
         'Content-Type: video/mp4',
         'Connection: keep-alive',
-      ].join('\r\n');
-      await socket.append(responseHeaders);
+      ];
 
-      int startRange = rangeStart - (rangeStart % Config.segmentSize);
-      int endRange = startRange + Config.segmentSize - 1;
-      DownloadTask task = DownloadTask(
-        uri: uri,
-        startRange: startRange,
-        endRange: endRange,
-      );
-      logD(
-          'Total memory size： ${await LruCacheSingleton().memoryFormatSize()}');
-      logD('Request range： ${task.startRange}-${task.endRange}');
+      if (Platform.isAndroid) {
+        await parseAndroid(socket, uri, responseHeaders, rangeStart, rangeEnd);
+      } else {
+        if (rangeStart == 0 && rangeEnd == 1) {
+          int contentLength = await head(uri);
+          responseHeaders.add('content-range: bytes 0-1/$contentLength');
+          await socket.append(responseHeaders.join('\r\n'));
+          await socket.append([0]);
+          await socket.close();
+          return true;
+        }
 
-      int retry = 3;
-      while (retry > 0) {
-        Uint8List? data = await cache(task);
-        if (data != null) {
-          if (rangeStart % Config.segmentSize != 0) {
-            data = data.sublist(rangeStart % Config.segmentSize);
+        int contentLength = rangeEnd - rangeStart + 1;
+        responseHeaders.add('content-length: $contentLength');
+        await socket.append(responseHeaders.join('\r\n'));
+        logD('content-range：$rangeStart-$rangeEnd');
+        logD('content-length：$contentLength');
+
+        bool downloading = true;
+        int startRange = rangeStart - (rangeStart % Config.segmentSize);
+        int endRange = startRange + Config.segmentSize - 1;
+        while (downloading) {
+          DownloadTask task = DownloadTask(
+            uri: uri,
+            startRange: startRange,
+            endRange: endRange,
+          );
+          logD('Request range：${task.startRange}-${task.endRange}');
+          logD('Request length：${task.endRange! - task.startRange}');
+
+          Uint8List? data = await cache(task);
+          if (data == null) {
+            concurrent(task);
+            task.priority += 10;
+            data = await download(task);
           }
-          if (data.lengthInBytes > Config.segmentSize) {
-            await deleteExceedSizeFile(task);
-            retry--;
-            continue;
-          } else {
-            await socket.append(data);
-          }
-          int count = 2;
-          while (count > 0) {
-            count--;
-            task.startRange += Config.segmentSize;
-            task.endRange = task.startRange + Config.segmentSize - 1;
-            logD('Request range： ${task.startRange}-${task.endRange}');
-            data = await cache(task);
-            if (data != null) {
-              if (data.lengthInBytes > Config.segmentSize) {
-                await deleteExceedSizeFile(task);
-                retry--;
-                break;
-              } else {
-                await socket.append(data);
-              }
+
+          if (data == null) return false;
+          int startIndex = startRange % Config.segmentSize;
+          if (startIndex != 0) {
+            int? endIndex;
+            if (data.length > contentLength) {
+              endIndex = startIndex + contentLength;
+              logD('startIndex: $startIndex endIndex : $endIndex');
+              logD('start length: ${endIndex - startIndex}');
             }
+            data = data.sublist(startIndex, endIndex);
           }
-          break;
-        } else {
-          concurrent(task);
-          task.priority += 10;
-          data = await download(task);
-          if (rangeStart % Config.segmentSize != 0) {
-            data = data?.sublist(rangeStart % Config.segmentSize);
+          await socket.append(data);
+          startRange += Config.segmentSize;
+          endRange = startRange + Config.segmentSize - 1;
+          if (startRange > rangeEnd) {
+            // logW('startRange: $startRange > rangeEnd: $rangeEnd');
+            downloading = false;
           }
-          if (data != null) {
-            if (data.lengthInBytes > Config.segmentSize) {
-              await deleteExceedSizeFile(task);
-              retry--;
-              continue;
-            } else {
-              await socket.append(data);
-            }
-          }
-          break;
         }
       }
       await socket.flush();
-      logD('Return request data: $uri range: $startRange-$endRange');
       return true;
     } catch (e) {
       logE('[UrlParserMp4] ⚠ ⚠ ⚠ parse error: $e');
@@ -166,6 +156,87 @@ class UrlParserMp4 implements UrlParser {
       await socket.close();
       logD('Connection closed\n');
     }
+  }
+
+  Future<void> parseAndroid(
+    Socket socket,
+    Uri uri,
+    List<String> responseHeaders,
+    int rangeStart,
+    int rangeEnd,
+  ) async {
+    await socket.append(responseHeaders.join('\r\n'));
+    int startRange = rangeStart - (rangeStart % Config.segmentSize);
+    int endRange = startRange + Config.segmentSize - 1;
+    DownloadTask task = DownloadTask(
+      uri: uri,
+      startRange: startRange,
+      endRange: endRange,
+    );
+    logD('Total memory： ${await LruCacheSingleton().memoryFormatSize()}');
+    logD('Request range： ${task.startRange}-${task.endRange}');
+
+    int retry = 3;
+    while (retry > 0) {
+      Uint8List? data = await cache(task);
+      if (data != null) {
+        if (rangeStart % Config.segmentSize != 0) {
+          data = data.sublist(rangeStart % Config.segmentSize);
+        }
+        if (data.lengthInBytes > Config.segmentSize) {
+          await deleteExceedSizeFile(task);
+          retry--;
+          continue;
+        } else {
+          await socket.append(data);
+        }
+        int count = 2;
+        while (count > 0) {
+          count--;
+          task.startRange += Config.segmentSize;
+          task.endRange = task.startRange + Config.segmentSize - 1;
+          logD('Request range： ${task.startRange}-${task.endRange}');
+          data = await cache(task);
+          if (data != null) {
+            if (data.lengthInBytes > Config.segmentSize) {
+              await deleteExceedSizeFile(task);
+              retry--;
+              break;
+            } else {
+              await socket.append(data);
+            }
+          }
+        }
+        break;
+      } else {
+        concurrent(task);
+        task.priority += 10;
+        data = await download(task);
+        if (rangeStart % Config.segmentSize != 0) {
+          data = data?.sublist(rangeStart % Config.segmentSize);
+        }
+        if (data != null) {
+          if (data.lengthInBytes > Config.segmentSize) {
+            await deleteExceedSizeFile(task);
+            retry--;
+            continue;
+          } else {
+            await socket.append(data);
+          }
+        }
+        break;
+      }
+    }
+    await socket.flush();
+    logD('Return request data: $uri range: $startRange-$endRange');
+  }
+
+  Future<int> head(Uri uri) async {
+    HttpClient client = HttpClient();
+    HttpClientRequest request = await client.headUrl(uri);
+    HttpClientResponse response = await request.close();
+    client.close();
+    return response.contentLength;
   }
 
   /// Delete the file if it exceeds the size limit.

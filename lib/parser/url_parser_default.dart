@@ -15,11 +15,6 @@ import 'url_parser.dart';
 
 class UrlParserDefault implements UrlParser {
   @override
-  bool match(Uri uri) {
-    return true;
-  }
-
-  @override
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) {
