@@ -1,3 +1,9 @@
+## 0.1.5
+
+- fixed: isolate log print failed
+- fixed: m3u8 encrypted key saved in error directory
+- feat: add support for m3u8 encrypted video
+
 ## 0.1.4
 
 - fixed: m3u8 parse EXT-X-KEY failed

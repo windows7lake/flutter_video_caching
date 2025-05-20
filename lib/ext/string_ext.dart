@@ -10,8 +10,15 @@ extension UrlExt on String {
     if (!startsWith('http')) return this;
     Uri uri = Uri.parse(this);
     if (uri.host == Config.ip && uri.port == Config.port) return this;
-    String proxy = 'http://${Config.ip}:${Config.port}';
-    return "$proxy${uri.path}?origin=${uri.origin}";
+    Map<String, String> queryParameters = {...uri.queryParameters};
+    queryParameters.putIfAbsent('origin', () => uri.origin);
+    uri = uri.replace(
+      scheme: 'http',
+      host: Config.ip,
+      port: Config.port,
+      queryParameters: queryParameters,
+    );
+    return uri.toString();
   }
 
   /// Convert to local http address
@@ -21,12 +28,18 @@ extension UrlExt on String {
 
   /// Convert to original link
   String toOriginUrl() {
-    if (!contains('?origin=')) return this;
     Uri uri = Uri.parse(this);
-    String? origin = uri.queryParameters['origin'];
-    String? path = uri.path;
+    Map<String, String> queryParameters = {...uri.queryParameters};
+    if (!queryParameters.containsKey('origin')) return this;
+    String? origin = queryParameters['origin'];
     if (origin == null) return this;
-    return '$origin$path';
+    Uri originUri = Uri.parse(origin);
+    queryParameters.remove('origin');
+    originUri = originUri.replace(
+      path: uri.path,
+      queryParameters: queryParameters.isNotEmpty ? queryParameters : null,
+    );
+    return originUri.toString();
   }
 
   /// Convert to original link

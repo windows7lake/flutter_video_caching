@@ -39,6 +39,7 @@ class VideoCaching {
     for (UrlParser parser in _parsers) {
       if (parser.match(Uri.parse(url))) {
         parser.precache(url, cacheSegments, downloadNow);
+        break;
       }
     }
   }
