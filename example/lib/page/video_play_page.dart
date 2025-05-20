@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:video_player/video_player.dart';
 
@@ -30,8 +31,8 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     var url = urls[0];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
-    print('localUri: $localUri');
-    print('remoteUri: $remoteUri');
+    logD('localUri: $localUri');
+    logD('remoteUri: $remoteUri');
     Uri uri = url.toLocalUri();
     // Uri uri = Uri.parse(remoteUri);
     _controller = VideoPlayerController.networkUrl(uri)

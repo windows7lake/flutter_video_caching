@@ -39,6 +39,7 @@ class _DownloadPageState extends State<DownloadPage> {
     });
   }
 
+  // ignore: unused_element
   void _addTaskMore() async {
     for (var i = 0; i < 6; i++) {
       await _manager.addTask(DownloadTask(

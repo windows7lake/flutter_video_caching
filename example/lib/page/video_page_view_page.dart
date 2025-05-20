@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:video_player/video_player.dart';
 
@@ -111,7 +112,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   void playListener() {
     if (playControl.value.hasError) {
-      print("errorDescription: ${playControl.value.errorDescription}");
+      logE("errorDescription: ${playControl.value.errorDescription}");
       if (playControl.value.errorDescription!.contains("Source error")) {
         Uri uri = Uri.parse(widget.url);
         initPlayControl(uri);

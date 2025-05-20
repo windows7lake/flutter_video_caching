@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/ext/string_ext.dart';
 import 'package:fplayer/fplayer.dart';
 import 'package:screen_brightness/screen_brightness.dart';
@@ -20,7 +21,9 @@ class _FPlayerPageState extends State<FPlayerPage> {
     VideoItem(
       title: '第一集',
       subTitle: '视频1副标题',
-      url: 'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8'.toLocalUrl(),
+      url:
+          'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8'
+              .toLocalUrl(),
     ),
     VideoItem(
       title: '第二集',
@@ -86,7 +89,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
     try {
       await player.setDataSource(url, autoPlay: true, showCover: true);
     } catch (error) {
-      print("播放-异常: $error");
+      logW("播放-异常: $error");
       return;
     }
   }
@@ -169,7 +172,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
                 });
               },
               settingFun: () {
-                print('设置按钮点击事件');
+                logD('设置按钮点击事件');
               },
               // 自定义倍速列表
               speedList: speedList,
@@ -201,13 +204,13 @@ class _FPlayerPageState extends State<FPlayerPage> {
                 try {
                   if (seekTime >= 1) {
                     /// seekTo必须在FState.prepared
-                    print('seekTo');
+                    logD('seekTo');
                     await player.seekTo(seekTime);
-                    // print("视频快进-$seekTime");
+                    // logD("视频快进-$seekTime");
                     seekTime = 0;
                   }
                 } catch (error) {
-                  print("视频初始化完快进-异常: $error");
+                  logD("视频初始化完快进-异常: $error");
                 }
               },
             ),
@@ -274,7 +277,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
     try {
       await ScreenBrightness().resetApplicationScreenBrightness();
     } catch (e) {
-      print(e);
+      logE(e);
       throw 'Failed to reset brightness';
     }
     player.release();
