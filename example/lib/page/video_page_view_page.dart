@@ -14,6 +14,12 @@ class VideoPageViewPage extends StatefulWidget {
 class _VideoPageViewPageState extends State<VideoPageViewPage> {
   final PageController pageController = PageController();
   final List<String> urls = [
+    'https://cp4.100.com.tw/short_video/2025/03/28/api_63_1743147983_tvUvhzQHuZ/full_hls/api_63_1743147983_tvUvhzQHuZ.m3u8',
+    'https://cp4.100.com.tw/short_video/2025/03/28/api_63_1743147372_Rqmt9qNKmh/full_hls/api_63_1743147372_Rqmt9qNKmh.m3u8',
+    'https://cp4.100.com.tw/short_video/2025/03/26/api_63_1742959946_jBxdXXOTaw/full_hls/api_63_1742959946_jBxdXXOTaw.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/03/26/mobile/2171273-849283.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091573-822258.m3u8',
+    'https://video.591.com.tw/online/target/hls/union/2025/02/04/mobile/2091545-322856.m3u8',
     'http://vjs.zencdn.net/v/oceans.mp4',
     'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',

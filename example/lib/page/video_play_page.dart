@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:video_player/video_player.dart';
@@ -11,6 +13,7 @@ class VideoPlayPage extends StatefulWidget {
 
 class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
+  Timer? timer;
 
   @override
   void initState() {
@@ -20,9 +23,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
 
   void initController() {
     List<String> urls = [
-      // 'http://vjs.zencdn.net/v/oceans.mp4',
-      'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
       'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
+      'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
+      'http://vjs.zencdn.net/v/oceans.mp4',
     ];
     var url = urls[0];
     String localUri = url.toLocalUrl();
@@ -35,6 +38,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
       ..setLooping(true)
       ..initialize().then((_) {
         setState(() {});
+        timer = Timer(const Duration(milliseconds: 200), () {
+          _controller.play();
+        });
       });
   }
 
@@ -91,6 +97,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
 
   @override
   void dispose() {
+    timer?.cancel();
     _controller.dispose();
     VideoProxy.downloadManager.removeAllTask();
     super.dispose();
