@@ -1,3 +1,7 @@
+## 0.1.7
+
+- fixed: parse and download mp4 failed on iOS
+
 ## 0.1.6
 
 - fixed: video pre-caching concurrent error handling
