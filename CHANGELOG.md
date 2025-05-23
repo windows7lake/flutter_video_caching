@@ -1,3 +1,8 @@
+## 0.1.8
+
+- fixed: toLocalUrl may parse error in some cases
+- fixed: write error: PathNotFoundException: Cannot open file (#3)
+
 ## 0.1.7
 
 - fixed: parse and download mp4 failed on iOS
