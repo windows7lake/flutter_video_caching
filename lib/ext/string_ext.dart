@@ -11,7 +11,8 @@ extension UrlExt on String {
     Uri uri = Uri.parse(this);
     if (uri.host == Config.ip && uri.port == Config.port) return this;
     Map<String, String> queryParameters = {...uri.queryParameters};
-    queryParameters.putIfAbsent('origin', () => uri.origin);
+    queryParameters.putIfAbsent(
+        'origin', () => base64Url.encode(utf8.encode(uri.origin)));
     uri = uri.replace(
       scheme: 'http',
       host: Config.ip,
@@ -32,6 +33,9 @@ extension UrlExt on String {
     Map<String, String> queryParameters = {...uri.queryParameters};
     if (!queryParameters.containsKey('origin')) return this;
     String? origin = queryParameters['origin'];
+    if (origin != null && origin.isNotEmpty) {
+      origin = utf8.decode(base64Url.decode(origin));
+    }
     if (origin == null) return this;
     Uri originUri = Uri.parse(origin);
     queryParameters.remove('origin');

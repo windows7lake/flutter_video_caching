@@ -114,7 +114,8 @@ class UrlParserM3U8 implements UrlParser {
               if (encryptKeyUri != null) {
                 String newUri = encryptKeyUri.startsWith('http')
                     ? encryptKeyUri.toLocalUrl()
-                    : '$encryptKeyUri${encryptKeyUri.contains('?') ? '&' : '?'}origin=${uri.origin}';
+                    : '$encryptKeyUri${encryptKeyUri.contains('?') ? '&' : '?'}'
+                        'origin=${base64Url.encode(utf8.encode(uri.origin))}';
                 line = hlsLine.replaceAll(encryptKeyUri, newUri);
               }
             }
@@ -123,7 +124,8 @@ class UrlParserM3U8 implements UrlParser {
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
             line = line.startsWith('http')
                 ? line.toLocalUrl()
-                : '$line${line.contains('?') ? '&' : '?'}origin=${uri.origin}';
+                : '$line${line.contains('?') ? '&' : '?'}'
+                    'origin=${base64Url.encode(utf8.encode(uri.origin))}';
           }
           // Setting HLS segment to same key, it will be downloaded in the same directory.
           if (hlsLine.startsWith("#EXT-X-KEY") && encryptKeyUri != null) {
