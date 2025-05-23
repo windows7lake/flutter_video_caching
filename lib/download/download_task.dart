@@ -83,10 +83,11 @@ class DownloadTask {
 
   String get saveFileName {
     StringBuffer sb = StringBuffer();
-    sb.write(saveFile);
     if (endRange != null) {
-      sb.write("-$endRange");
+      sb.write("$endRange-");
     }
+    String? extensionName = saveFile.split(".").lastOrNull;
+    sb.write('${saveFile.generateMd5}.$extensionName');
     return sb.toString();
   }
 
