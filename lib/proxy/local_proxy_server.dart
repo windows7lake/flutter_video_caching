@@ -44,7 +44,6 @@ class LocalProxyServer {
     await server?.close();
   }
 
-
   Future<void> _handleConnection(Socket socket) async {
     try {
       logV('_handleConnection start');
