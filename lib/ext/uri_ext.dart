@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 extension UriExt on Uri {
-  String get pathPrefix {
+  String pathPrefix([int relativePath = 0]) {
     if (pathSegments.isEmpty) throw Exception("Path segments are empty");
-    List<String> segments = pathSegments.sublist(0, pathSegments.length - 1);
+    List<String> segments =
+        pathSegments.sublist(0, pathSegments.length - 1 - relativePath);
     Uri newUri = replace(pathSegments: segments);
     return newUri.toString();
   }

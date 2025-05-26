@@ -1,3 +1,7 @@
+## 0.1.9
+
+- fixed: milti-resolution m3u8 parse error
+
 ## 0.1.8
 
 - fixed: toLocalUrl may parse error in some cases

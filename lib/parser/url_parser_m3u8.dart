@@ -106,17 +106,18 @@ class UrlParserM3U8 implements UrlParser {
         StringBuffer buffer = StringBuffer();
         for (String line in lines) {
           String hlsLine = line.trim();
-          String? encryptKeyUri;
-          if (hlsLine.startsWith("#EXT-X-KEY")) {
+          String? parseUri;
+          if (hlsLine.startsWith("#EXT-X-KEY") ||
+              hlsLine.startsWith("#EXT-X-MEDIA")) {
             Match? match = RegExp(r'URI="([^"]+)"').firstMatch(hlsLine);
             if (match != null && match.groupCount >= 1) {
-              encryptKeyUri = match.group(1);
-              if (encryptKeyUri != null) {
-                String newUri = encryptKeyUri.startsWith('http')
-                    ? encryptKeyUri.toLocalUrl()
-                    : '$encryptKeyUri${encryptKeyUri.contains('?') ? '&' : '?'}'
+              parseUri = match.group(1);
+              if (parseUri != null) {
+                String newUri = parseUri.startsWith('http')
+                    ? parseUri.toLocalUrl()
+                    : '$parseUri${parseUri.contains('?') ? '&' : '?'}'
                         'origin=${base64Url.encode(utf8.encode(uri.origin))}';
-                line = hlsLine.replaceAll(encryptKeyUri, newUri);
+                line = hlsLine.replaceAll(parseUri, newUri);
               }
             }
           }
@@ -128,16 +129,23 @@ class UrlParserM3U8 implements UrlParser {
                     'origin=${base64Url.encode(utf8.encode(uri.origin))}';
           }
           // Setting HLS segment to same key, it will be downloaded in the same directory.
-          if (hlsLine.startsWith("#EXT-X-KEY") && encryptKeyUri != null) {
-            if (!encryptKeyUri.startsWith('http')) {
-              encryptKeyUri = '${uri.pathPrefix}/' + encryptKeyUri;
+          if ((hlsLine.startsWith("#EXT-X-KEY") ||
+                  hlsLine.startsWith("#EXT-X-MEDIA")) &&
+              parseUri != null) {
+            if (!parseUri.startsWith('http')) {
+              parseUri = '${uri.pathPrefix()}/' + parseUri;
             }
-            concurrentAdd(HlsSegment(url: encryptKeyUri, key: task.hlsKey!));
+            concurrentAdd(HlsSegment(url: parseUri, key: task.hlsKey!));
           }
           if (lastLine.startsWith("#EXTINF") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
             if (!hlsLine.startsWith('http')) {
-              hlsLine = '${uri.pathPrefix}/' + hlsLine;
+              int relativePath = 0;
+              while (hlsLine.startsWith("../")) {
+                hlsLine = hlsLine.substring(3);
+                relativePath++;
+              }
+              hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
             }
             concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!));
           }
@@ -148,7 +156,6 @@ class UrlParserM3U8 implements UrlParser {
         contentType = 'application/vnd.apple.mpegurl';
       } else if (task.uri.path.endsWith('.key')) {
         contentType = 'application/octet-stream';
-        logW(data.length);
       } else if (task.uri.path.endsWith('.ts')) {
         contentType = 'video/MP2T';
       }
@@ -173,20 +180,60 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// Read the lines from Uint8List and decode them to String.
-  List<String> readLineFromUint8List(Uint8List uint8List) {
-    List<String> lines = [];
-    Utf8Codec codec = Utf8Codec();
-    int startIndex = 0;
-    int lastIndex = 0;
-    for (var byte in uint8List) {
-      if (byte == 0x0A) {
-        Uint8List line = uint8List.sublist(startIndex, lastIndex);
-        lines.add(codec.decode(line));
-        startIndex = lastIndex + 1;
+  List<String> readLineFromUint8List(
+    Uint8List uint8List, {
+    Encoding encoding = utf8,
+  }) {
+    final lines = <String>[];
+    final buffer = StringBuffer();
+    bool isCarriageReturn = false;
+
+    for (var i = 0; i < uint8List.length; i++) {
+      final codeUnit = uint8List[i];
+
+      // Process line break
+      if (codeUnit == 10) {
+        // LF (0x0A)
+        // If the previous character is CR, combine to CRLF
+        if (isCarriageReturn) {
+          buffer.writeCharCode(13); // Add CR to the current line
+          isCarriageReturn = false;
+        }
+        lines.add(buffer.toString());
+        buffer.clear();
+      } else if (codeUnit == 13) {
+        // CR (0x0D)
+        // Alone CR or part of CRLF
+        isCarriageReturn = true;
+        // Check if the next character is LF
+        if (i + 1 < uint8List.length && uint8List[i + 1] == 10) {
+          // Is part of CRLF, wait for LF processing
+        } else {
+          // Single CR, treated as line break
+          lines.add(buffer.toString());
+          buffer.clear();
+          isCarriageReturn = false;
+        }
+      } else {
+        // Ordinary character
+        if (isCarriageReturn) {
+          buffer.writeCharCode(13); // Add the previous CR
+          isCarriageReturn = false;
+        }
+        buffer.writeCharCode(codeUnit);
       }
-      lastIndex++;
     }
-    return lines;
+
+    // Add the last line (if there is remaining content)
+    if (buffer.isNotEmpty || isCarriageReturn) {
+      if (isCarriageReturn) {
+        buffer.writeCharCode(13);
+      }
+      lines.add(buffer.toString());
+    }
+
+    // Decode all lines
+    return lines.map((line) => encoding.decode(line.codeUnits)).toList();
   }
 
   /// Asynchronous downloading of ts files.
@@ -304,7 +351,7 @@ class UrlParserM3U8 implements UrlParser {
     for (final Segment segment in playList.segments) {
       String? segmentUrl = segment.url;
       if (segmentUrl != null && !segmentUrl.startsWith('http')) {
-        segmentUrl = '${uri.pathPrefix}/$segmentUrl';
+        segmentUrl = '${uri.pathPrefix()}/$segmentUrl';
       }
       if (segmentUrl == null) continue;
       segments.add(segmentUrl);
@@ -319,7 +366,7 @@ class UrlParserM3U8 implements UrlParser {
     if (playList is HlsMasterPlaylist) {
       for (final Uri? _uri in playList.mediaPlaylistUrls) {
         if (_uri == null) continue;
-        Uri masterUri = Uri.parse('${uri.pathPrefix}${_uri.path}');
+        Uri masterUri = Uri.parse('${uri.pathPrefix()}${_uri.path}');
         HlsMediaPlaylist? mediaPlayList =
             await parseMediaPlaylist(masterUri, hlsKey: uri.generateMd5);
         return mediaPlayList;
