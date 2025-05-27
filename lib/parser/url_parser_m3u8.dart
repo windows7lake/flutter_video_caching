@@ -171,7 +171,7 @@ class UrlParserM3U8 implements UrlParser {
       logD('Return request data: $uri');
       return true;
     } catch (e) {
-      logE('[UrlParserM3U8] ⚠ ⚠ ⚠ parse error: $e');
+      logW('[UrlParserM3U8] ⚠ ⚠ ⚠ parse error: $e');
       return false;
     } finally {
       await socket.close();

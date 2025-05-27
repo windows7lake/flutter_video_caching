@@ -111,7 +111,7 @@ class UrlParserMp4 implements UrlParser {
       await socket.flush();
       return true;
     } catch (e) {
-      logE('[UrlParserMp4] ⚠ ⚠ ⚠ parse error: $e');
+      logW('[UrlParserMp4] ⚠ ⚠ ⚠ parse error: $e');
       return false;
     } finally {
       await socket.close();
@@ -168,11 +168,13 @@ class UrlParserMp4 implements UrlParser {
         endIndex = requestRangeEnd - startRange + 1;
       }
       data = data.sublist(startIndex, endIndex);
-      try {
-        await socket.append(data);
-      } catch (e) {
+      socket.done.then((value) {
         downloading = false;
-      }
+      }).catchError((e) {
+        downloading = false;
+      });
+      bool success = await socket.append(data);
+      if (!success) downloading = false;
       startRange += Config.segmentSize;
       endRange = startRange + Config.segmentSize - 1;
       if (startRange > requestRangeEnd) {
@@ -259,11 +261,13 @@ class UrlParserMp4 implements UrlParser {
         endIndex = requestRangeEnd - startRange + 1;
       }
       data = data.sublist(startIndex, endIndex);
-      try {
-        await socket.append(data);
-      } catch (e) {
+      socket.done.then((value) {
         downloading = false;
-      }
+      }).catchError((e) {
+        downloading = false;
+      });
+      bool success = await socket.append(data);
+      if (!success) downloading = false;
       startRange += Config.segmentSize;
       endRange = startRange + Config.segmentSize - 1;
       if (startRange > requestRangeEnd) {

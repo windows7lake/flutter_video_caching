@@ -88,7 +88,7 @@ class LocalProxyServer {
         await VideoCaching.parse(socket, originUri, headers);
       }
     } catch (e) {
-      logE('⚠ ⚠ ⚠ Connections exception: $e');
+      logW('⚠ ⚠ ⚠ Connections exception: $e');
     } finally {
       await socket.close(); // 确保连接关闭
     }

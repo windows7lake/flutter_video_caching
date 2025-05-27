@@ -6,7 +6,7 @@ import 'package:flutter_video_caching/ext/log_ext.dart';
 const String httpTerminal = '\r\n\r\n';
 
 extension SocketExtension on Socket {
-  Future<void> append(Object data) async {
+  Future<bool> append(Object data) async {
     try {
       if (data is String) {
         write('$data$httpTerminal');
@@ -32,8 +32,10 @@ extension SocketExtension on Socket {
           add(data);
         }
       }
+      return true;
     } catch (e) {
       logW("Socket closed: $e, can't append data");
+      return false;
     }
   }
 }
