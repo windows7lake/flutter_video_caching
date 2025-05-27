@@ -24,9 +24,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
 
   void initController() {
     List<String> urls = [
+      'http://vjs.zencdn.net/v/oceans.mp4',
       'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
       'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
-      'http://vjs.zencdn.net/v/oceans.mp4',
       'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
     ];
     var url = urls[0];

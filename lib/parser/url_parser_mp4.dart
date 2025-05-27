@@ -82,7 +82,7 @@ class UrlParserMp4 implements UrlParser {
       RegExp exp = RegExp(r'bytes=(\d+)-(\d*)');
       RegExpMatch? rangeMatch = exp.firstMatch(headers['range'] ?? '');
       int requestRangeStart = int.tryParse(rangeMatch?.group(1) ?? '0') ?? 0;
-      int requestRangeEnd = int.tryParse(rangeMatch?.group(2) ?? '0') ?? 0;
+      int requestRangeEnd = int.tryParse(rangeMatch?.group(2) ?? '0') ?? -1;
       bool partial = requestRangeStart > 0 || requestRangeEnd > 0;
       List<String> responseHeaders = <String>[
         partial ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
@@ -126,71 +126,59 @@ class UrlParserMp4 implements UrlParser {
     int requestRangeStart,
     int requestRangeEnd,
   ) async {
+    int contentLength = await head(uri);
+    requestRangeEnd = contentLength - 1;
+    responseHeaders.add('content-length: ${contentLength - requestRangeStart}');
     await socket.append(responseHeaders.join('\r\n'));
+
+    bool downloading = true;
     int startRange =
         requestRangeStart - (requestRangeStart % Config.segmentSize);
     int endRange = startRange + Config.segmentSize - 1;
-    DownloadTask task = DownloadTask(
-      uri: uri,
-      startRange: startRange,
-      endRange: endRange,
-    );
-    logD('Total memory： ${await LruCacheSingleton().memoryFormatSize()}');
-    logD('Request range： ${task.startRange}-${task.endRange}');
-
     int retry = 3;
-    while (retry > 0) {
+    while (downloading) {
+      DownloadTask task = DownloadTask(
+        uri: uri,
+        startRange: startRange,
+        endRange: endRange,
+      );
+      logD('Request range：${task.startRange}-${task.endRange}');
+
       Uint8List? data = await cache(task);
-      if (data != null) {
-        if (requestRangeStart % Config.segmentSize != 0) {
-          data = data.sublist(requestRangeStart % Config.segmentSize);
-        }
-        if (data.lengthInBytes > Config.segmentSize) {
-          await deleteExceedSizeFile(task);
-          retry--;
-          continue;
-        } else {
-          await socket.append(data);
-        }
-        int count = 2;
-        while (count > 0) {
-          count--;
-          task.startRange += Config.segmentSize;
-          task.endRange = task.startRange + Config.segmentSize - 1;
-          logD('Request range： ${task.startRange}-${task.endRange}');
-          data = await cache(task);
-          if (data != null) {
-            if (data.lengthInBytes > Config.segmentSize) {
-              await deleteExceedSizeFile(task);
-              retry--;
-              break;
-            } else {
-              await socket.append(data);
-            }
-          }
-        }
-        break;
-      } else {
+      if (data == null) {
         concurrent(task);
         task.priority += 10;
         data = await download(task);
-        if (requestRangeStart % Config.segmentSize != 0) {
-          data = data?.sublist(requestRangeStart % Config.segmentSize);
+      }
+      if (data == null) {
+        retry--;
+        if (retry == 0) {
+          downloading = false;
+          break;
         }
-        if (data != null) {
-          if (data.lengthInBytes > Config.segmentSize) {
-            await deleteExceedSizeFile(task);
-            retry--;
-            continue;
-          } else {
-            await socket.append(data);
-          }
-        }
-        break;
+        continue;
+      }
+
+      int startIndex = 0;
+      int? endIndex;
+      if (startRange < requestRangeStart) {
+        startIndex = requestRangeStart - startRange;
+      }
+      if (endRange > requestRangeEnd) {
+        endIndex = requestRangeEnd - startRange + 1;
+      }
+      data = data.sublist(startIndex, endIndex);
+      try {
+        await socket.append(data);
+      } catch (e) {
+        downloading = false;
+      }
+      startRange += Config.segmentSize;
+      endRange = startRange + Config.segmentSize - 1;
+      if (startRange > requestRangeEnd) {
+        downloading = false;
       }
     }
-    await socket.flush();
-    logD('Return request data: $uri range: $startRange-$endRange');
   }
 
   Future<void> parseIOS(
@@ -200,7 +188,8 @@ class UrlParserMp4 implements UrlParser {
     int requestRangeStart,
     int requestRangeEnd,
   ) async {
-    if (requestRangeStart == 0 && requestRangeEnd == 1) {
+    if ((requestRangeStart == 0 && requestRangeEnd == 1) ||
+        requestRangeEnd == -1) {
       DownloadTask task = DownloadTask(uri: uri, startRange: 0, endRange: 1);
       Uint8List? data = await cache(task);
       int contentLength = 0;
@@ -216,11 +205,15 @@ class UrlParserMp4 implements UrlParser {
         file.writeAsString(contentLength.toString());
         LruCacheSingleton().storagePut(file.path, file);
       }
-      responseHeaders.add('content-range: bytes 0-1/$contentLength');
-      await socket.append(responseHeaders.join('\r\n'));
-      await socket.append([0]);
-      await socket.close();
-      return;
+      if (requestRangeStart == 0 && requestRangeEnd == 1) {
+        responseHeaders.add('content-range: bytes 0-1/$contentLength');
+        await socket.append(responseHeaders.join('\r\n'));
+        await socket.append([0]);
+        await socket.close();
+        return;
+      } else if (requestRangeEnd == -1) {
+        requestRangeEnd = contentLength - 1;
+      }
     }
 
     int contentLength = requestRangeEnd - requestRangeStart + 1;
@@ -266,7 +259,11 @@ class UrlParserMp4 implements UrlParser {
         endIndex = requestRangeEnd - startRange + 1;
       }
       data = data.sublist(startIndex, endIndex);
-      await socket.append(data);
+      try {
+        await socket.append(data);
+      } catch (e) {
+        downloading = false;
+      }
       startRange += Config.segmentSize;
       endRange = startRange + Config.segmentSize - 1;
       if (startRange > requestRangeEnd) {

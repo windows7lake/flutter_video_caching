@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
-import 'package:flutter_video_caching/ext/string_ext.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:fplayer/fplayer.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
@@ -21,9 +21,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
     VideoItem(
       title: '第一集',
       subTitle: '视频1副标题',
-      url:
-          'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8'
-              .toLocalUrl(),
+      url: 'http://player.alicdn.com/video/aliyunmedia.mp4',
     ),
     VideoItem(
       title: '第二集',
@@ -33,7 +31,8 @@ class _FPlayerPageState extends State<FPlayerPage> {
     VideoItem(
       title: '第三集',
       subTitle: '视频3副标题',
-      url: 'http://player.alicdn.com/video/aliyunmedia.mp4',
+      url:
+          'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     ),
   ];
 
@@ -80,9 +79,11 @@ class _FPlayerPageState extends State<FPlayerPage> {
     await player.setOption(FOption.playerCategory, "mediacodec", 1);
     await player.setOption(FOption.playerCategory, "packet-buffering", 0);
     await player.setOption(FOption.playerCategory, "soundtouch", 1);
+    // await player.setOption(FOption.formatCategory, "allowed_extensions", "ALL");
+    // await player.setOption(FOption.formatCategory, "protocol_whitelist", "http,https,tls,rtp,tcp,udp,crypto,httpproxy,file");
 
     // 播放视频列表的第一个视频
-    setVideoUrl(videoList[videoIndex].url);
+    setVideoUrl(videoList[videoIndex].url.toLocalUrl());
   }
 
   Future<void> setVideoUrl(String url) async {
@@ -183,7 +184,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
               // 视频播放错误点击刷新回调
               onError: () async {
                 await player.reset();
-                setVideoUrl(videoList[videoIndex].url);
+                setVideoUrl(videoList[videoIndex].url.toLocalUrl());
               },
               // 视频播放完成回调
               onVideoEnd: () async {
@@ -193,7 +194,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
                   setState(() {
                     videoIndex = index;
                   });
-                  setVideoUrl(videoList[index].url);
+                  setVideoUrl(videoList[index].url.toLocalUrl());
                 }
               },
               onVideoTimeChange: () {
@@ -240,7 +241,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
                     setState(() {
                       videoIndex = index;
                     });
-                    setVideoUrl(videoList[index].url);
+                    setVideoUrl(videoList[index].url.toLocalUrl());
                   },
                   child: Container(
                     margin: EdgeInsets.only(left: index == 0 ? 0 : 10),
@@ -273,6 +274,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
 
   @override
   void dispose() async {
+    VideoProxy.downloadManager.removeAllTask();
     super.dispose();
     try {
       await ScreenBrightness().resetApplicationScreenBrightness();
