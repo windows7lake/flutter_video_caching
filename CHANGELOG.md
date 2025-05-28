@@ -1,3 +1,8 @@
+## 0.1.10
+
+- fixed: compatible with multiple types of players (media_kit, flick_player, pod_player)
+- fixed: handle socket exception
+
 ## 0.1.9
 
 - fixed: milti-resolution m3u8 parse error

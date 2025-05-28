@@ -79,11 +79,10 @@ class _FPlayerPageState extends State<FPlayerPage> {
     await player.setOption(FOption.playerCategory, "mediacodec", 1);
     await player.setOption(FOption.playerCategory, "packet-buffering", 0);
     await player.setOption(FOption.playerCategory, "soundtouch", 1);
-    // await player.setOption(FOption.formatCategory, "allowed_extensions", "ALL");
-    // await player.setOption(FOption.formatCategory, "protocol_whitelist", "http,https,tls,rtp,tcp,udp,crypto,httpproxy,file");
 
     // 播放视频列表的第一个视频
-    setVideoUrl(videoList[videoIndex].url.toLocalUrl());
+    // setVideoUrl(videoList[videoIndex].url.toLocalUrl());
+    setVideoUrl(videoList[videoIndex].url);
   }
 
   Future<void> setVideoUrl(String url) async {

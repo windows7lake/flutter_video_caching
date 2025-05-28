@@ -88,7 +88,6 @@ class UrlParserMp4 implements UrlParser {
         partial ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
         'Accept-Ranges: bytes',
         'Content-Type: video/mp4',
-        'Connection: keep-alive',
       ];
 
       if (Platform.isAndroid) {
@@ -129,6 +128,8 @@ class UrlParserMp4 implements UrlParser {
     int contentLength = await head(uri);
     requestRangeEnd = contentLength - 1;
     responseHeaders.add('content-length: ${contentLength - requestRangeStart}');
+    responseHeaders.add('content-range: bytes '
+        '$requestRangeStart-$requestRangeEnd/$contentLength');
     await socket.append(responseHeaders.join('\r\n'));
 
     bool downloading = true;

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 import 'page/download_page.dart';
-import 'page/fplayer_page.dart';
 import 'page/m3u8_parser_page.dart';
+import 'page/player/flick_player_page.dart';
+import 'page/player/fplayer_page.dart';
+import 'page/player/media_kit_page.dart';
+import 'page/player/pod_player_page.dart';
+import 'page/player/video_play_page.dart';
 import 'page/storage_cache_page.dart';
 import 'page/video_page_view_page.dart';
-import 'page/video_play_page.dart';
 
 class MainRoute extends StatefulWidget {
   const MainRoute({super.key});
@@ -23,6 +25,9 @@ class _MainRouteState extends State<MainRoute> {
     'VideoPageView': const VideoPageViewPage(),
     'StorageCache': const StorageCachePage(),
     'FPlayer': const FPlayerPage(),
+    'FlickPlayerPage': const FlickPlayerPage(),
+    'PodPlayerPage': const PodPlayerPage(),
+    'MediaKitPage': const MediaKitPage(),
   };
   final List<String> urls = [
     'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',

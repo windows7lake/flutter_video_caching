@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'main_route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await VideoProxy.init(logPrint: true);
   runApp(const HomeApp());
 }
