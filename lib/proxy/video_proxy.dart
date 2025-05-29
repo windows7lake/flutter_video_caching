@@ -29,7 +29,7 @@ class VideoProxy {
   }) async {
     Config.memoryCacheSize = maxMemoryCacheSize * Config.mbSize;
     Config.storageCacheSize = maxStorageCacheSize * Config.mbSize;
-    Config.segmentSize = 2 * Config.mbSize;
+    Config.segmentSize = segmentSize * Config.mbSize;
 
     Config.logPrint = logPrint;
     _localProxyServer = LocalProxyServer(ip: ip, port: port);

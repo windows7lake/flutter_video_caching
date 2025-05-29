@@ -65,6 +65,7 @@ class LruCacheSingleton {
   }
 
   Future<void> storageClear() async {
+    await _storageInit();
     await _storageCache.clear();
   }
 
