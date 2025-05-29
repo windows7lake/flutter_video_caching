@@ -18,7 +18,7 @@ precache the video before playing.
 
 ``` dart
 dependencies:
-  flutter_video_caching: 0.1.3
+  flutter_video_caching: 0.1.10
 ```
 
 ## Usage

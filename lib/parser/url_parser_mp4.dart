@@ -125,7 +125,21 @@ class UrlParserMp4 implements UrlParser {
     int requestRangeStart,
     int requestRangeEnd,
   ) async {
-    int contentLength = await head(uri);
+    DownloadTask task = DownloadTask(uri: uri, startRange: 0, endRange: 1);
+    Uint8List? data = await cache(task);
+    int contentLength = 0;
+    if (data != null) {
+      contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
+    }
+    if (contentLength == 0) {
+      contentLength = await head(uri);
+      String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
+          '/${task.saveFileName}';
+      File file = File(filePath);
+      file.writeAsString(contentLength.toString());
+      LruCacheSingleton().storagePut(file.path, file);
+    }
+
     requestRangeEnd = contentLength - 1;
     responseHeaders.add('content-length: ${contentLength - requestRangeStart}');
     responseHeaders.add('content-range: bytes '
