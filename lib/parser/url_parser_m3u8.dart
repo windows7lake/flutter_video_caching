@@ -340,26 +340,37 @@ class UrlParserM3U8 implements UrlParser {
     if (mediaList.isEmpty) return _streamController;
     final List<String> segments = mediaList.take(cacheSegments).toList();
     for (final String segment in segments) {
+      String hlsKey = url.generateMd5;
       DownloadTask task = DownloadTask(
         uri: Uri.parse(segment),
-        hlsKey: url.generateMd5,
+        hlsKey: hlsKey,
       );
       if (downloadNow) {
         Uint8List? data = await cache(task);
         if (data != null) {
-          downloadedSize += 1;
           _streamController?.sink.add({
             'progress': downloadedSize / totalSize,
-            'url': segment,
+            'segment_url': segment,
+            'parent_url': url,
+            'file_name': task.saveFile,
+            'hls_key': hlsKey,
+            'total_segments': segments.length,
+            'current_segment_index': downloadedSize,
           });
+          downloadedSize += 1;
           continue;
         }
         download(task).whenComplete(() {
-          downloadedSize += 1;
           _streamController?.sink.add({
             'progress': downloadedSize / totalSize,
-            'url': segment,
+            'segment_url': segment,
+            'parent_url': url,
+            'file_name': task.saveFile,
+            'hls_key': hlsKey,
+            'total_segments': segments.length,
+            'current_segment_index': downloadedSize,
           });
+          downloadedSize += 1;
         });
       } else {
         push(task);
