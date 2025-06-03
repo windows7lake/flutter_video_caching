@@ -41,6 +41,31 @@ class DownloadManager {
     _isolatePool.notifyIsolate(taskId, DownloadStatus.CANCELLED);
   }
 
+  void pauseTaskByUrl(String url) {
+    String? taskId =
+        activeTasks.where((task) => task.url == url).firstOrNull?.id;
+    if (taskId != null) {
+      _isolatePool.notifyIsolate(taskId, DownloadStatus.PAUSED);
+    }
+  }
+
+  void resumeTaskByUrl(String url) {
+    String? taskId =
+        activeTasks.where((task) => task.url == url).firstOrNull?.id;
+    if (taskId != null) {
+      _isolatePool.notifyIsolate(taskId, DownloadStatus.DOWNLOADING);
+    }
+  }
+
+  void cancelTaskByUrl(String url) {
+    String? taskId =
+        activeTasks.where((task) => task.url == url).firstOrNull?.id;
+    if (taskId != null) {
+      _isolatePool.notifyIsolate(taskId, DownloadStatus.CANCELLED);
+    }
+    allTasks.removeWhere((task) => task.url == url);
+  }
+
   void pauseAllTasks() {
     for (var isolate in _isolatePool.isolateList) {
       String? taskId = isolate.task?.id;

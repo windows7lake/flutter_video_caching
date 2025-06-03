@@ -1,3 +1,8 @@
+## 0.2.0
+
+- feat: persistent video content-length
+- feat: add progress track for precache video
+
 ## 0.1.10
 
 - fixed: compatible with multiple types of players (media_kit, flick_player, pod_player)

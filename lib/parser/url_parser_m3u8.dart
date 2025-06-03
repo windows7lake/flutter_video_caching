@@ -323,10 +323,21 @@ class UrlParserM3U8 implements UrlParser {
   ///
   /// [cacheSegments] is the number of segments to cache.
   /// [downloadNow] is whether to download the data now or just push the task to the queue.
+  /// [progressListen] is whether to listen to the progress of the download.
   @override
-  void precache(String url, int cacheSegments, bool downloadNow) async {
+  Future<StreamController<Map>?> precache(
+    String url,
+    int cacheSegments,
+    bool downloadNow,
+    bool progressListen,
+  ) async {
+    StreamController<Map>? _streamController;
+    if (progressListen) _streamController = StreamController();
     List<String> mediaList = await parseSegment(Uri.parse(url));
-    if (mediaList.isEmpty) return;
+    int totalSize = mediaList.length;
+    int downloadedSize = 0;
+    if (cacheSegments > totalSize) cacheSegments = totalSize;
+    if (mediaList.isEmpty) return _streamController;
     final List<String> segments = mediaList.take(cacheSegments).toList();
     for (final String segment in segments) {
       DownloadTask task = DownloadTask(
@@ -335,12 +346,26 @@ class UrlParserM3U8 implements UrlParser {
       );
       if (downloadNow) {
         Uint8List? data = await cache(task);
-        if (data != null) continue;
-        download(task);
+        if (data != null) {
+          downloadedSize += 1;
+          _streamController?.sink.add({
+            'progress': downloadedSize / totalSize,
+            'url': segment,
+          });
+          continue;
+        }
+        download(task).whenComplete(() {
+          downloadedSize += 1;
+          _streamController?.sink.add({
+            'progress': downloadedSize / totalSize,
+            'url': segment,
+          });
+        });
       } else {
         push(task);
       }
     }
+    return _streamController;
   }
 
   /// Parsing M3U8 ts files
@@ -351,7 +376,12 @@ class UrlParserM3U8 implements UrlParser {
     for (final Segment segment in playList.segments) {
       String? segmentUrl = segment.url;
       if (segmentUrl != null && !segmentUrl.startsWith('http')) {
-        segmentUrl = '${uri.pathPrefix()}/$segmentUrl';
+        int relativePath = 0;
+        while (segmentUrl!.startsWith("../")) {
+          segmentUrl = segmentUrl.substring(3);
+          relativePath++;
+        }
+        segmentUrl = '${uri.pathPrefix(relativePath)}/' + segmentUrl;
       }
       if (segmentUrl == null) continue;
       segments.add(segmentUrl);

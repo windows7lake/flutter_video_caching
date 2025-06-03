@@ -10,6 +10,7 @@ class M3u8ParserPage extends StatefulWidget {
 
 class _M3u8ParserPageState extends State<M3u8ParserPage> {
   final List<String> urls = [
+    'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
     'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     'https://test-streams.mux.dev/test_001/stream.m3u8',

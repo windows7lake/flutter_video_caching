@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'url_parser_factory.dart';
@@ -17,12 +18,13 @@ class VideoCaching {
   /// [url]: The URL to be precached.<br>
   /// [cacheSegments]: The number of segments to be cached, default is 2.<br>
   /// [downloadNow]: Whether to download the segments now, default is true, false will be pushed to the queue.
-  static void precache(
+  static Future<StreamController<Map>?> precache(
     String url, {
     int cacheSegments = 2,
     bool downloadNow = true,
+    bool progressListen = false,
   }) {
-    UrlParserFactory.createParser(Uri.parse(url))
-        .precache(url, cacheSegments, downloadNow);
+    return UrlParserFactory.createParser(Uri.parse(url))
+        .precache(url, cacheSegments, downloadNow, progressListen);
   }
 }

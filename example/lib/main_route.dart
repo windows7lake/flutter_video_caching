@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_video_caching/ext/log_ext.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 import 'page/download_page.dart';
 import 'page/m3u8_parser_page.dart';
@@ -30,16 +34,30 @@ class _MainRouteState extends State<MainRoute> {
     'MediaKitPage': const MediaKitPage(),
   };
   final List<String> urls = [
-    'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
     'http://vjs.zencdn.net/v/oceans.mp4',
+    'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
+    'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
   ];
 
   @override
   void initState() {
     super.initState();
-    for (int i = 0; i < 3; i++) {
-      // VideoCaching.precache(urls[i]);
+    for (int i = 0; i < 1; i++) {
+      VideoCaching.precache(urls[i], cacheSegments: 999, progressListen: true)
+          .then((streamController) {
+        if (streamController == null) return;
+        StreamSubscription? subscription;
+        subscription = streamController.stream.listen((value) {
+          logD('progress: $value');
+          if (value['progress'] == 1) {
+            subscription?.cancel();
+            streamController.close();
+            logD('close listener');
+            return;
+          }
+        });
+      });
     }
   }
 

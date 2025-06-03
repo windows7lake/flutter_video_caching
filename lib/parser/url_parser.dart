@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -17,5 +18,6 @@ abstract class UrlParser {
   Future<bool> parse(Socket socket, Uri uri, Map<String, String> headers);
 
   /// Precache the video URL
-  void precache(String url, int cacheSegments, bool downloadNow);
+  Future<StreamController<Map>?> precache(
+      String url, int cacheSegments, bool downloadNow, bool progressListen);
 }

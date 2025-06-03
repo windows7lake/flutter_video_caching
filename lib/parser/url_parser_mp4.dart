@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -349,19 +350,55 @@ class UrlParserMp4 implements UrlParser {
   /// [cacheSegments] is the number of segments to cache.
   /// [downloadNow] is whether to download the data now or just push the task to the queue.
   @override
-  void precache(String url, int cacheSegments, bool downloadNow) async {
+  Future<StreamController<Map>?> precache(
+    String url,
+    int cacheSegments,
+    bool downloadNow,
+    bool progressListen,
+  ) async {
+    StreamController<Map>? _streamController;
+    if (progressListen) _streamController = StreamController();
+    int contentLength = await head(Uri.parse(url));
+    if (contentLength > 0) {
+      int segmentSize = contentLength ~/ Config.segmentSize +
+          (contentLength % Config.segmentSize > 0 ? 1 : 0);
+      if (cacheSegments > segmentSize) {
+        cacheSegments = segmentSize;
+      }
+    }
+    int downloadedSize = 0;
+    int totalSize = cacheSegments;
     int count = 0;
     while (count < cacheSegments) {
       DownloadTask task = DownloadTask(uri: Uri.parse(url));
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
+      count++;
       if (downloadNow) {
         Uint8List? data = await cache(task);
-        if (data == null) download(task);
+        if (data != null) {
+          downloadedSize += 1;
+          _streamController?.sink.add({
+            'progress': downloadedSize / totalSize,
+            'url': task.url,
+            'startRange': task.startRange,
+            'endRange': task.endRange,
+          });
+          continue;
+        }
+        download(task).whenComplete(() {
+          downloadedSize += 1;
+          _streamController?.sink.add({
+            'progress': downloadedSize / totalSize,
+            'url': task.url,
+            'startRange': task.startRange,
+            'endRange': task.endRange,
+          });
+        });
       } else {
         push(task);
       }
-      count++;
     }
+    return _streamController;
   }
 }
