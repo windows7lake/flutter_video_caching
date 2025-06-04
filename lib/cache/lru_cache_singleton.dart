@@ -70,7 +70,7 @@ class LruCacheSingleton {
     await _storageCache.clear();
   }
 
-  Future<void> storageMemoryClearByDirPath(String dirPath) async {
+  Future<void> storageClearByDirPath(String dirPath) async {
     await _storageInit();
     final dir = Directory(dirPath);
     if (!await dir.exists()) return;
@@ -82,7 +82,6 @@ class LruCacheSingleton {
         String filePath = entity.path;
         await entity.delete(recursive: true);
         await storageRemove(filePath);
-        await memoryRemove(filePath);
       }
     }
     await dir.delete(recursive: true);

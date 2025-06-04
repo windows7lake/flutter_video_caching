@@ -32,7 +32,7 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
                         onPressed: () async {
                           String dirPath =
                               '${FileExt.cacheRootPath}/videos/$hlsKey';
-                          await LruCacheSingleton().storageMemoryClearByDirPath(dirPath);
+                          await LruCacheSingleton().storageClearByDirPath(dirPath);
                           _segmentProgress.value = [];
                         },
                         icon: Icon(
