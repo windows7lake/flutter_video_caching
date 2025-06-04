@@ -356,7 +356,7 @@ class UrlParserM3U8 implements UrlParser {
             'file_name': task.saveFile,
             'hls_key': hlsKey,
             'total_segments': segments.length,
-            'current_segment_index': downloadedSize,
+            'current_segment_index': downloadedSize - 1,
           });
           continue;
         }
@@ -369,7 +369,7 @@ class UrlParserM3U8 implements UrlParser {
             'file_name': task.saveFile,
             'hls_key': hlsKey,
             'total_segments': segments.length,
-            'current_segment_index': downloadedSize,
+            'current_segment_index': downloadedSize - 1,
           });
         });
       } else {
