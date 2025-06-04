@@ -348,6 +348,7 @@ class UrlParserM3U8 implements UrlParser {
       if (downloadNow) {
         Uint8List? data = await cache(task);
         if (data != null) {
+          downloadedSize += 1;
           _streamController?.sink.add({
             'progress': downloadedSize / totalSize,
             'segment_url': segment,
@@ -357,10 +358,10 @@ class UrlParserM3U8 implements UrlParser {
             'total_segments': segments.length,
             'current_segment_index': downloadedSize,
           });
-          downloadedSize += 1;
           continue;
         }
         download(task).whenComplete(() {
+          downloadedSize += 1;
           _streamController?.sink.add({
             'progress': downloadedSize / totalSize,
             'segment_url': segment,
@@ -370,7 +371,6 @@ class UrlParserM3U8 implements UrlParser {
             'total_segments': segments.length,
             'current_segment_index': downloadedSize,
           });
-          downloadedSize += 1;
         });
       } else {
         push(task);
