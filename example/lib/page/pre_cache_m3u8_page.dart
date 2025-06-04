@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_video_caching/ext/file_ext.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 
@@ -29,9 +30,10 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
                     ? SizedBox()
                     : IconButton(
                         onPressed: () async {
-                          await LruCacheSingleton().memoryRemove(hlsKey);
-                          await LruCacheSingleton().storageRemove(hlsKey);
-                          logD("removed from memory & storage:$hlsKey");
+                          String dirPath =
+                              '${FileExt.cacheRootPath}/videos/$hlsKey';
+                          await LruCacheSingleton().storageMemoryClearByDirPath(dirPath);
+                          _segmentProgress.value = [];
                         },
                         icon: Icon(
                           Icons.delete_forever,

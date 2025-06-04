@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_video_caching/cache/lru_cache_storage.dart';
 import 'package:flutter_video_caching/ext/int_ext.dart';
+
 import 'package:synchronized/synchronized.dart';
 
 import '../ext/file_ext.dart';
@@ -67,6 +68,24 @@ class LruCacheSingleton {
   Future<void> storageClear() async {
     await _storageInit();
     await _storageCache.clear();
+  }
+
+  Future<void> storageMemoryClearByDirPath(String dirPath) async {
+    await _storageInit();
+    final dir = Directory(dirPath);
+    if (!await dir.exists()) return;
+
+    final files = dir.listSync(recursive: true);
+    for (FileSystemEntity entity in files) {
+      final stat = await entity.stat();
+      if (stat.type == FileSystemEntityType.file) {
+        String filePath = entity.path;
+        await entity.delete(recursive: true);
+        await storageRemove(filePath);
+        await memoryRemove(filePath);
+      }
+    }
+    await dir.delete(recursive: true);
   }
 
   Future<String> storageFormatSize() async {
