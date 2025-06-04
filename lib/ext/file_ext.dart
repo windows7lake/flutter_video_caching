@@ -8,10 +8,7 @@ class FileExt {
   static Future<String> createCachePath([String? cacheDir]) async {
     String rootPath = _cacheRootPath;
     if (rootPath.isEmpty) {
-      rootPath = (await (Platform.isAndroid
-              ? getApplicationCacheDirectory()
-              : getLibraryDirectory()))
-          .path;
+      rootPath = (await getApplicationCacheDirectory()).path;
       _cacheRootPath = rootPath;
     }
     rootPath = '$rootPath/videos';
