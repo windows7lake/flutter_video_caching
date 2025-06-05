@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:example/page/pre_cache_m3u8_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
@@ -25,6 +26,7 @@ class _MainRouteState extends State<MainRoute> {
   final Map<String, Widget> _routes = {
     'Download': const DownloadPage(),
     'M3u8Parser': const M3u8ParserPage(),
+    'Pre-CacheM3u8': const PreCacheM3u8Page(),
     'VideoPlay': const VideoPlayPage(),
     'VideoPageView': const VideoPageViewPage(),
     'StorageCache': const StorageCachePage(),

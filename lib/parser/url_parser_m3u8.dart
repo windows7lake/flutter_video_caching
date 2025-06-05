@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -319,11 +320,33 @@ class UrlParserM3U8 implements UrlParser {
     concurrentLoop(idleSegment);
   }
 
-  /// Pre-cache the data from network.
+  /// Pre-caches HLS video segments from the network.
   ///
-  /// [cacheSegments] is the number of segments to cache.
-  /// [downloadNow] is whether to download the data now or just push the task to the queue.
-  /// [progressListen] is whether to listen to the progress of the download.
+  /// This method parses the given HLS playlist URL, selects a specified number
+  /// of segments to cache, and either immediately downloads them or queues
+  /// them for later processing based on [downloadNow].
+  ///
+  /// If [progressListen] is true, a [StreamController] is returned that emits
+  /// progress updates in the form of a `Map`, including:
+  ///   - 'progress' (0.0 to 1.0)
+  ///   - 'segment_url'
+  ///   - 'parent_url'
+  ///   - 'file_name'
+  ///   - 'hls_key'
+  ///   - 'total_segments'
+  ///   - 'current_segment_index'
+  ///
+  /// Download concurrency is throttled to avoid overwhelming the device/network.
+  ///
+  /// Parameters:
+  /// - [url]: The master or variant HLS URL to parse and cache segments from.
+  /// - [cacheSegments]: The number of segments to pre-cache (max capped at total available).
+  /// - [downloadNow]: If true, downloads are performed immediately with throttling; otherwise, tasks are pushed to a background queue.
+  /// - [progressListen]: If true, returns a [StreamController] with progress updates.
+  ///
+  /// Returns:
+  /// - A [StreamController] that emits progress maps if [progressListen] is true,
+  ///   otherwise returns `null`.
   @override
   Future<StreamController<Map>?> precache(
     String url,
@@ -333,38 +356,76 @@ class UrlParserM3U8 implements UrlParser {
   ) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
+
     List<String> mediaList = await parseSegment(Uri.parse(url));
     int totalSize = mediaList.length;
-    int downloadedSize = 0;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
     if (mediaList.isEmpty) return _streamController;
+
     final List<String> segments = mediaList.take(cacheSegments).toList();
-    for (final String segment in segments) {
-      DownloadTask task = DownloadTask(
-        uri: Uri.parse(segment),
-        hlsKey: url.generateMd5,
-      );
-      if (downloadNow) {
-        Uint8List? data = await cache(task);
-        if (data != null) {
-          downloadedSize += 1;
-          _streamController?.sink.add({
-            'progress': downloadedSize / totalSize,
-            'url': segment,
-          });
-          continue;
+    final String hlsKey = url.generateMd5;
+    final Queue<String> segmentQueue = Queue.of(segments);
+    final int maxConcurrent = 5;
+    int downloadedSize = 0;
+    final List<Future<void>> activeTasks = [];
+
+    /// Downloads or loads a segment from cache and emits progress to the stream.
+    ///
+    /// If the segment is already cached, it skips downloading.
+    /// After success (cached or downloaded), it pushes the progress info to the stream.
+    Future<void> processSegment(String segment) async {
+      final task = DownloadTask(uri: Uri.parse(segment), hlsKey: hlsKey);
+      Uint8List? data = await cache(task);
+      if (data == null) {
+        await download(task);
+      }
+
+      downloadedSize += 1;
+      _streamController?.sink.add({
+        'progress': downloadedSize / cacheSegments,
+        'segment_url': segment,
+        'parent_url': url,
+        'file_name': task.saveFile,
+        'hls_key': hlsKey,
+        'total_segments': segments.length,
+        'current_segment_index': downloadedSize - 1,
+      });
+    }
+
+    /// Starts the download process for a segment and tracks it in [activeTasks].
+    ///
+    /// Once the segment processing is complete, it removes the task from the active list.
+    void startSegmentTask(String segment) {
+      final future = processSegment(segment);
+      activeTasks.add(future);
+      future.whenComplete(() {
+        activeTasks.remove(future);
+      });
+    }
+
+    /// Handles throttled downloading of segments.
+    ///
+    /// Ensures that no more than [maxConcurrent] tasks run in parallel.
+    /// Continuously starts new tasks from the queue as others complete.
+    Future<void> throttledDownloader() async {
+      while (segmentQueue.isNotEmpty || activeTasks.isNotEmpty) {
+        while (activeTasks.length < maxConcurrent && segmentQueue.isNotEmpty) {
+          final segment = segmentQueue.removeFirst();
+          startSegmentTask(segment);
         }
-        download(task).whenComplete(() {
-          downloadedSize += 1;
-          _streamController?.sink.add({
-            'progress': downloadedSize / totalSize,
-            'url': segment,
-          });
-        });
-      } else {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+    }
+
+    if (downloadNow) {
+      await throttledDownloader();
+    } else {
+      for (final segment in segments) {
+        final task = DownloadTask(uri: Uri.parse(segment), hlsKey: hlsKey);
         push(task);
       }
     }
+
     return _streamController;
   }
 
