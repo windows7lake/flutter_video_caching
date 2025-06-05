@@ -25,12 +25,13 @@ class VideoCaching {
   /// [downloadNow]: Whether to download the segments now, default is true, false will be pushed to the queue.
   static Future<StreamController<Map>?> precache(
     String url, {
+    Map<String, Object>? headers,
     int cacheSegments = 2,
     bool downloadNow = true,
     bool progressListen = false,
   }) {
     return UrlParserFactory.createParser(Uri.parse(url))
-        .precache(url, cacheSegments, downloadNow, progressListen);
+        .precache(url, headers, cacheSegments, downloadNow, progressListen);
   }
 
   /// Parse the HLS master playlist from the given URL.

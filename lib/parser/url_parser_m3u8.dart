@@ -90,7 +90,11 @@ class UrlParserM3U8 implements UrlParser {
     Map<String, String> headers,
   ) async {
     try {
-      DownloadTask task = DownloadTask(uri: uri, hlsKey: uri.generateMd5);
+      DownloadTask task = DownloadTask(
+        uri: uri,
+        hlsKey: uri.generateMd5,
+        headers: headers,
+      );
       HlsSegment? hlsSegment = findSegmentByUri(uri);
       if (hlsSegment != null) task.hlsKey = hlsSegment.key;
       Uint8List? data = await cache(task);
@@ -350,6 +354,7 @@ class UrlParserM3U8 implements UrlParser {
   @override
   Future<StreamController<Map>?> precache(
     String url,
+    Map<String, Object>? headers,
     int cacheSegments,
     bool downloadNow,
     bool progressListen,
@@ -374,13 +379,15 @@ class UrlParserM3U8 implements UrlParser {
     /// If the segment is already cached, it skips downloading.
     /// After success (cached or downloaded), it pushes the progress info to the stream.
     Future<void> processSegment(String segment) async {
-      final task = DownloadTask(uri: Uri.parse(segment), hlsKey: hlsKey);
+      final task = DownloadTask(
+          uri: Uri.parse(segment), hlsKey: hlsKey, headers: headers);
       Uint8List? data = await cache(task);
       if (data == null) {
         await download(task);
       }
 
       downloadedSize += 1;
+      if (_streamController?.isClosed ?? false) return;
       _streamController?.sink.add({
         'progress': downloadedSize / cacheSegments,
         'segment_url': segment,

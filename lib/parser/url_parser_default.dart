@@ -353,6 +353,7 @@ class UrlParserDefault implements UrlParser {
   @override
   Future<StreamController<Map>?> precache(
     String url,
+    Map<String, Object>? headers,
     int cacheSegments,
     bool downloadNow,
     bool progressListen,

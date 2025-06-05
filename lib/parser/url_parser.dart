@@ -19,5 +19,10 @@ abstract class UrlParser {
 
   /// Precache the video URL
   Future<StreamController<Map>?> precache(
-      String url, int cacheSegments, bool downloadNow, bool progressListen);
+    String url,
+    Map<String, Object>? headers,
+    int cacheSegments,
+    bool downloadNow,
+    bool progressListen,
+  );
 }

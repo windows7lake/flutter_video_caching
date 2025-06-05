@@ -98,6 +98,7 @@ class UrlParserMp4 implements UrlParser {
           responseHeaders,
           requestRangeStart,
           requestRangeEnd,
+          headers,
         );
       } else {
         await parseIOS(
@@ -106,6 +107,7 @@ class UrlParserMp4 implements UrlParser {
           responseHeaders,
           requestRangeStart,
           requestRangeEnd,
+          headers,
         );
       }
       await socket.flush();
@@ -125,8 +127,10 @@ class UrlParserMp4 implements UrlParser {
     List<String> responseHeaders,
     int requestRangeStart,
     int requestRangeEnd,
+    Map<String, String> headers,
   ) async {
-    DownloadTask task = DownloadTask(uri: uri, startRange: 0, endRange: 1);
+    DownloadTask task =
+        DownloadTask(uri: uri, startRange: 0, endRange: 1, headers: headers);
     Uint8List? data = await cache(task);
     int contentLength = 0;
     if (data != null) {
@@ -157,6 +161,7 @@ class UrlParserMp4 implements UrlParser {
         uri: uri,
         startRange: startRange,
         endRange: endRange,
+        headers: headers,
       );
       logD('Request range：${task.startRange}-${task.endRange}');
 
@@ -205,10 +210,12 @@ class UrlParserMp4 implements UrlParser {
     List<String> responseHeaders,
     int requestRangeStart,
     int requestRangeEnd,
+    Map<String, String> headers,
   ) async {
     if ((requestRangeStart == 0 && requestRangeEnd == 1) ||
         requestRangeEnd == -1) {
-      DownloadTask task = DownloadTask(uri: uri, startRange: 0, endRange: 1);
+      DownloadTask task =
+          DownloadTask(uri: uri, startRange: 0, endRange: 1, headers: headers);
       Uint8List? data = await cache(task);
       int contentLength = 0;
       if (data != null) {
@@ -250,6 +257,7 @@ class UrlParserMp4 implements UrlParser {
         uri: uri,
         startRange: startRange,
         endRange: endRange,
+        headers: headers,
       );
       logD('Request range：${task.startRange}-${task.endRange}');
 
@@ -292,9 +300,14 @@ class UrlParserMp4 implements UrlParser {
     }
   }
 
-  Future<int> head(Uri uri) async {
+  Future<int> head(Uri uri, {Map<String, Object>? headers}) async {
     HttpClient client = HttpClient();
     HttpClientRequest request = await client.headUrl(uri);
+    if (headers != null) {
+      headers.forEach((key, value) {
+        request.headers.set(key, value);
+      });
+    }
     HttpClientResponse response = await request.close();
     client.close();
     return response.contentLength;
@@ -352,13 +365,14 @@ class UrlParserMp4 implements UrlParser {
   @override
   Future<StreamController<Map>?> precache(
     String url,
+    Map<String, Object>? headers,
     int cacheSegments,
     bool downloadNow,
     bool progressListen,
   ) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
-    int contentLength = await head(Uri.parse(url));
+    int contentLength = await head(Uri.parse(url), headers: headers);
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
@@ -370,7 +384,7 @@ class UrlParserMp4 implements UrlParser {
     int totalSize = cacheSegments;
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: Uri.parse(url));
+      DownloadTask task = DownloadTask(uri: Uri.parse(url), headers: headers);
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
       count++;

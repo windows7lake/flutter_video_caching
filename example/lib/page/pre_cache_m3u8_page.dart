@@ -82,6 +82,7 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
               setState(() {});
               VideoCaching.precache(
                 '${map['url']}',
+                headers: {"sss": "111"},
                 cacheSegments: 999,
                 progressListen: true,
               ).then((streamController) {
@@ -91,6 +92,11 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
                   logD('segment download progress: $value');
                   _hlsKey.value = value['hls_key'];
                   _segmentProgress.add(value);
+                  if (!mounted) {
+                    subscription?.cancel();
+                    streamController.close();
+                    return;
+                  }
                   setState(() {});
 
                   if (value['progress'] == 1) {

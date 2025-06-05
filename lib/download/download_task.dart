@@ -32,11 +32,14 @@ class DownloadTask {
   /// The status of the download (IDLE, DOWNLOADING, PAUSED, COMPLETED, CANCELLED)
   DownloadStatus status;
 
-  /// The start range for the download (for partial downloads)
+  /// The start range for the download request (for partial downloads)
   int startRange;
 
-  /// The end range for the download (for partial downloads)
+  /// The end range for the download request (for partial downloads)
   int? endRange;
+
+  /// The headers for the download request
+  Map<String, Object>? headers;
 
   /// The HLS key for the download (if applicable)
   String? hlsKey;
@@ -61,6 +64,7 @@ class DownloadTask {
     this.status = DownloadStatus.IDLE,
     this.startRange = 0,
     this.endRange,
+    this.headers,
     this.hlsKey,
   })  : id = _autoId.toString(),
         saveFile = fileName ?? uri.pathSegments.takeLast(3).join('_') {

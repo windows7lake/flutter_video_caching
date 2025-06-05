@@ -68,8 +68,14 @@ class DownloadIsolate {
         if (range.isEmpty) range = 'bytes=0-';
         range += '${task.endRange}';
       }
+      if (task.headers != null) {
+        task.headers!.forEach((key, value) {
+          request.headers.set(key, value);
+        });
+      }
       request.headers.add('Range', range);
-      logIsolate('[DownloadIsolate] START ${task.uri} range: $range');
+      logIsolate('[DownloadIsolate] START ${task.uri} \n'
+          'headers: {\n ${request.headers} } \n');
 
       final response = await request.close();
       logIsolate('[DownloadIsolate] status code: ${response.statusCode} '
