@@ -418,7 +418,7 @@ class UrlParserM3U8 implements UrlParser {
     }
 
     if (downloadNow) {
-      await throttledDownloader();
+      throttledDownloader();
     } else {
       for (final segment in segments) {
         final task = DownloadTask(uri: Uri.parse(segment), hlsKey: hlsKey);

@@ -67,6 +67,11 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
   }
 
   Widget hlsMasterPlaylist() {
+    if (_segmentProgress.isEmpty) {
+      return Center(
+        child: Text('Loading master playlist...'),
+      );
+    }
     return SingleChildScrollView(
       child: Column(
         children: _segmentProgress.map((Map map) {
@@ -74,12 +79,12 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
             onTap: () async {
               _step.value = 2;
               _segmentProgress.clear();
+              setState(() {});
               VideoCaching.precache(
                 '${map['url']}',
                 cacheSegments: 999,
                 progressListen: true,
               ).then((streamController) {
-                _segmentProgress.clear();
                 if (streamController == null) return;
                 StreamSubscription? subscription;
                 subscription = streamController.stream.listen((value) {
@@ -133,6 +138,11 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
   }
 
   Widget segmentList() {
+    if (_segmentProgress.isEmpty) {
+      return Center(
+        child: Text('Loading segments...'),
+      );
+    }
     return SingleChildScrollView(
       child: Column(
         children: _segmentProgress.map((Map map) {
