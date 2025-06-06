@@ -70,6 +70,7 @@ class DownloadIsolate {
       }
       if (task.headers != null) {
         task.headers!.forEach((key, value) {
+          if (key.toLowerCase() == 'host') return;
           request.headers.set(key, value);
         });
       }
