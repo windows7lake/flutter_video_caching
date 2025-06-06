@@ -17,10 +17,21 @@ class _StorageCachePageState extends State<StorageCachePage> {
 
   @override
   Widget build(BuildContext context) {
-    final cache = LruCacheSingleton().storageMap();
+    var cache = LruCacheSingleton().storageMap();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Storage Cache'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () {
+              LruCacheSingleton().storageClear().whenComplete(() {
+                cache = LruCacheSingleton().storageMap();
+                setState(() {});
+              });
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: cache.length,
