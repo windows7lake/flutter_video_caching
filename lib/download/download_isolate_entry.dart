@@ -59,6 +59,7 @@ class DownloadIsolate {
     try {
       HttpClientRequest request = await client.getUrl(task.uri);
 
+      bool fileAppend = true;
       String range = '';
       if (task.downloadedBytes > 0 || task.startRange > 0) {
         int startRange = task.downloadedBytes + task.startRange;
@@ -67,10 +68,13 @@ class DownloadIsolate {
       if (task.endRange != null) {
         if (range.isEmpty) range = 'bytes=0-';
         range += '${task.endRange}';
+        fileAppend = false;
       }
       if (task.headers != null) {
         task.headers!.forEach((key, value) {
-          if (key.toLowerCase() == 'host') return;
+          logIsolate('task.headers: ${task.headers}');
+          String keyLower = key.toLowerCase();
+          if (keyLower == 'host' || keyLower == 'range') return;
           request.headers.set(key, value);
         });
       }
@@ -117,7 +121,7 @@ class DownloadIsolate {
       await for (var data in response) {
         // Check if it has been cancelled or suspended
         if (_isPaused) {
-          await _writeToFile(saveFile, buffer);
+          await _writeToFile(saveFile, buffer, fileAppend);
           task.status = DownloadStatus.PAUSED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
           logIsolate("[DownloadIsolate] PAUSED ${task.toString()} ");
@@ -156,7 +160,7 @@ class DownloadIsolate {
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
       logIsolate("[DownloadIsolate] COMPLETED ${task.toString()}");
 
-      await _writeToFile(saveFile, buffer);
+      await _writeToFile(saveFile, buffer, fileAppend);
       task.file = saveFile;
       task.status = DownloadStatus.FINISHED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
@@ -183,10 +187,11 @@ class DownloadIsolate {
     _isCancelled = false;
   }
 
-  Future<void> _writeToFile(File file, List<int> data) async {
+  Future<void> _writeToFile(File file, List<int> data, bool append) async {
     await _lock.synchronized(() async {
       try {
-        await file.writeAsBytes(data);
+        await file.writeAsBytes(data,
+            mode: append ? FileMode.append : FileMode.write);
       } catch (e) {
         logIsolate('[DownloadIsolate] write error: $e');
       }
