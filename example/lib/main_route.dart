@@ -1,4 +1,5 @@
 import 'package:example/page/pre_cache_m3u8_page.dart';
+import 'package:example/page/pre_cache_m3u8_play.dart';
 import 'package:flutter/material.dart';
 
 import 'page/download_page.dart';
@@ -23,6 +24,7 @@ class _MainRouteState extends State<MainRoute> {
     'Download': const DownloadPage(),
     'M3u8Parser': const M3u8ParserPage(),
     'Pre-CacheM3u8': const PreCacheM3u8Page(),
+    'Pre-CacheM3u8 Play': const PreCacheM3u8Play(),
     'VideoPlay': const VideoPlayPage(),
     'VideoPageView': const VideoPageViewPage(),
     'StorageCache': const StorageCachePage(),
