@@ -38,11 +38,9 @@ class UrlParserM3U8 implements UrlParser {
           'total memory size: ${await LruCacheSingleton().memoryFormatSize()}');
       return dataMemory;
     }
-    String filePath =
-        '${await FileExt.createCachePath(task.hlsKey)}/${task.saveFileName}';
-    Uint8List? dataFile = await LruCacheSingleton().storageGet(filePath);
+    Uint8List? dataFile = await LruCacheSingleton().storageGet(task.matchUrl);
     if (dataFile != null) {
-      logD('From file: ${filePath}');
+      logD('From file: ${task.matchUrl}');
       await LruCacheSingleton().memoryPut(task.matchUrl, dataFile);
       return dataFile;
     }

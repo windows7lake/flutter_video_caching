@@ -15,6 +15,15 @@ class VideoPlayPage extends StatefulWidget {
 class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
+  List<String> urls = [
+    'http://vjs.zencdn.net/v/oceans.mp4',
+    'https://user-images.githubusercontent.com/28951144/229373695-22f88f13-d18f-4288-9bf1-c3e078d83722.mp4',
+    'https://www.sample-videos.com/video321/3gp/240/big_buck_bunny_240p_30mb.3gp',
+    'https://test-videos.co.uk/vids/jellyfish/mkv/1080/Jellyfish_1080_10s_30MB.mkv',
+    'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
+    'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
+    'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
+  ];
 
   @override
   void initState() {
@@ -23,15 +32,6 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   }
 
   void initController() {
-    List<String> urls = [
-      'https://vv.jisuzyv.com/play/DbDGZ8ka/index.m3u8',
-      'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
-      'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
-      'http://vjs.zencdn.net/v/oceans.mp4',
-      'https://user-images.githubusercontent.com/28951144/229373695-22f88f13-d18f-4288-9bf1-c3e078d83722.mp4',
-      'https://www.sample-videos.com/video321/3gp/240/big_buck_bunny_240p_30mb.3gp',
-      'https://test-videos.co.uk/vids/jellyfish/mkv/1080/Jellyfish_1080_10s_30MB.mkv',
-    ];
     var url = urls[0];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
@@ -114,8 +114,8 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          List<DownloadTask> tasks = VideoProxy.downloadManager.allTasks;
-          logW("task: ${tasks.map((e) => e.toString()).toString()}");
+          LruCacheSingleton().removeCacheByUrl(urls[0]);
+          Navigator.pop(context);
         },
         child: Icon(Icons.code),
       ),

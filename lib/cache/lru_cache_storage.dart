@@ -44,6 +44,7 @@ class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
       final FileSystemEntity? previous = map.remove(key);
       if (previous != null) {
         size -= (await previous.stat()).size;
+        previous.delete();
       }
       return previous;
     });

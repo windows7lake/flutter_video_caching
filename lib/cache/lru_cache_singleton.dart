@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_video_caching/cache/lru_cache_storage.dart';
 import 'package:flutter_video_caching/ext/int_ext.dart';
+import 'package:flutter_video_caching/ext/string_ext.dart';
+import 'package:path/path.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../ext/file_ext.dart';
@@ -20,9 +22,9 @@ class LruCacheSingleton {
     _storageCache = LruCacheStorage(Config.storageCacheSize);
   }
 
-  Lock _lock = Lock();
   late LruCacheMemory _memoryCache;
   late LruCacheStorage _storageCache;
+  Lock _lock = Lock();
   bool _isStorageInit = false;
 
   Future<Uint8List?> memoryGet(String key) {
@@ -109,10 +111,42 @@ class LruCacheSingleton {
       for (FileSystemEntity file in cacheDir.listSync(recursive: true)) {
         FileStat stat = await file.stat();
         if (stat.type == FileSystemEntityType.file) {
-          _storageCache.map[file.path] = file;
+          String key = basenameWithoutExtension(file.path);
+          _storageCache.map[key] = file;
           _storageCache.size += stat.size;
         }
       }
     });
+  }
+
+  Future<void> removeCacheByUrl(String url, {bool singleFile = false}) async {
+    String key = url.generateMd5;
+    await _storageInit();
+    if (singleFile) {
+      // delete single file from storage and memory
+      await _storageCache.remove(key);
+      await _memoryCache.remove(key);
+    } else {
+      // delete all files in directory related to the URL from storage and memory
+      Directory cacheDir = Directory(await FileExt.createCachePath());
+      if (!(await cacheDir.exists())) return;
+      for (FileSystemEntity file in cacheDir.listSync()) {
+        FileStat stat = await file.stat();
+        if (stat.type == FileSystemEntityType.directory) {
+          String directoryName = basename(file.path);
+          if (directoryName == key) {
+            Directory directory = file as Directory;
+            await directory.list(recursive: true).forEach((subFile) async {
+              if (subFile is File) {
+                String subKey = basenameWithoutExtension(subFile.path);
+                await _memoryCache.remove(subKey);
+              }
+            });
+            await file.delete(recursive: true);
+            await directory.delete(recursive: true);
+          }
+        }
+      }
+    }
   }
 }

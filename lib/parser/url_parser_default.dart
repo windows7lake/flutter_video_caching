@@ -26,11 +26,9 @@ class UrlParserDefault implements UrlParser {
       logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}');
       return dataMemory;
     }
-    String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
-        '/${task.saveFileName}';
-    Uint8List? dataFile = await LruCacheSingleton().storageGet(filePath);
+    Uint8List? dataFile = await LruCacheSingleton().storageGet(task.matchUrl);
     if (dataFile != null) {
-      logD('From file: ${filePath}');
+      logD('From file: ${task.matchUrl}');
       await LruCacheSingleton().memoryPut(task.matchUrl, dataFile);
       return dataFile;
     }
@@ -139,7 +137,7 @@ class UrlParserDefault implements UrlParser {
           '/${task.saveFileName}';
       File file = File(filePath);
       file.writeAsString(contentLength.toString());
-      LruCacheSingleton().storagePut(file.path, file);
+      LruCacheSingleton().storagePut(task.matchUrl, file);
     }
 
     requestRangeEnd = contentLength - 1;
@@ -222,7 +220,7 @@ class UrlParserDefault implements UrlParser {
             '/${task.saveFileName}';
         File file = File(filePath);
         file.writeAsString(contentLength.toString());
-        LruCacheSingleton().storagePut(file.path, file);
+        LruCacheSingleton().storagePut(task.matchUrl, file);
       }
       if (requestRangeStart == 0 && requestRangeEnd == 1) {
         responseHeaders.add('content-range: bytes 0-1/$contentLength');

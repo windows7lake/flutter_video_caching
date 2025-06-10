@@ -267,7 +267,7 @@ class DownloadIsolatePool {
               if (isolateIndex != -1) _isolateList[isolateIndex].reset();
             }
             if (task.status == DownloadStatus.FINISHED && task.file != null) {
-              LruCacheSingleton().storagePut(task.file!.path, task.file!);
+              LruCacheSingleton().storagePut(task.matchUrl, task.file!);
             }
             if (task.status == DownloadStatus.FAILED) {
               if (taskIndex != -1) _taskList.removeAt(taskIndex);

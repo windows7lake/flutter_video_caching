@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import '../ext/list_ext.dart';
 import '../ext/string_ext.dart';
 import 'download_status.dart';
 
@@ -67,7 +66,7 @@ class DownloadTask {
     this.headers,
     this.hlsKey,
   })  : id = _autoId.toString(),
-        saveFile = fileName ?? uri.pathSegments.takeLast(3).join('_') {
+        saveFile = fileName ?? uri.toString() {
     _autoId++;
   }
 
@@ -87,12 +86,21 @@ class DownloadTask {
 
   String get saveFileName {
     StringBuffer sb = StringBuffer();
+    sb.write(saveFile);
+    if (startRange > 0) {
+      sb.write("?startRange=$startRange");
+    }
     if (endRange != null) {
-      sb.write("$endRange-");
+      sb.write("&endRange=$endRange");
     }
     String? extensionName = saveFile.split(".").lastOrNull;
-    sb.write('${saveFile.generateMd5}.$extensionName');
-    return sb.toString();
+    try {
+      Uri uri = Uri.parse(saveFile);
+      if (uri.pathSegments.isNotEmpty) {
+        extensionName = uri.pathSegments.last.split(".").lastOrNull;
+      }
+    } catch (e) {}
+    return '${sb.toString().generateMd5}.$extensionName';
   }
 
   static int _autoId = 1;
