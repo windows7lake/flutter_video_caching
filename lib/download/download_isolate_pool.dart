@@ -3,9 +3,11 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:flutter_video_caching/global/config.dart';
+import 'package:synchronized/synchronized.dart';
 
 import '../cache/lru_cache_singleton.dart';
 import '../ext/file_ext.dart';
+import '../ext/gesture_ext.dart';
 import '../ext/log_ext.dart';
 import 'download_isolate_entry.dart';
 import 'download_isolate_instance.dart';
@@ -18,6 +20,9 @@ const int MAX_TASK_PRIORITY = 9999;
 
 /// DownloadIsolatePool manages a pool of isolates for downloading tasks.
 class DownloadIsolatePool {
+  /// Lock for synchronizing access to the pool.
+  final Lock _lock = Lock();
+
   /// List of isolates in the pool.
   final List<DownloadIsolateInstance> _isolateList = [];
 
@@ -27,12 +32,16 @@ class DownloadIsolatePool {
   /// The maximum number of isolates in the pool.
   final int _poolSize;
 
-  DownloadIsolatePool({int poolSize = MAX_ISOLATE_POOL_SIZE})
-      : _poolSize = poolSize;
-
   /// Stream controller for broadcasting download task updates.
-  final StreamController<DownloadTask> _streamController =
-      StreamController.broadcast();
+  late final StreamController<DownloadTask> _streamController;
+
+  DownloadIsolatePool({int poolSize = MAX_ISOLATE_POOL_SIZE})
+      : _poolSize = poolSize {
+    if (_poolSize <= 0) {
+      throw ArgumentError('Pool size must be greater than 0');
+    }
+    _streamController = StreamController.broadcast();
+  }
 
   StreamController<DownloadTask> get streamController => _streamController;
 
@@ -43,6 +52,8 @@ class DownloadIsolatePool {
       .toList();
 
   List<DownloadIsolateInstance> get isolateList => _isolateList;
+
+  int get poolSize => _poolSize;
 
   Future<void> dispose() async {
     for (var isolate in _isolateList) {
@@ -101,7 +112,7 @@ class DownloadIsolatePool {
     } else if (existTask == null) {
       await addTask(task);
     }
-    await roundIsolate();
+    FunctionProxy.debounce(roundIsolate);
     return task;
   }
 
@@ -111,8 +122,10 @@ class DownloadIsolatePool {
   }
 
   Future<void> roundIsolate() async {
-    if (_taskList.isEmpty) return;
-    await _runIsolateWithTask();
+    await _lock.synchronized(() async {
+      if (_taskList.isEmpty) return;
+      await _runIsolateWithTask();
+    });
   }
 
   Future<void> _runIsolateWithTask() async {
@@ -198,9 +211,6 @@ class DownloadIsolatePool {
       minPriorityIsolate.task,
     ));
     minPriorityIsolate?.reset();
-    if (minPriorityIsolate != null) {
-      await _bindingIsolate(minPriorityIsolate, task);
-    }
   }
 
   Future<DownloadIsolateInstance> _createIsolate() async {

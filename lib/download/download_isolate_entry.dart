@@ -17,7 +17,6 @@ void downloadIsolateEntry(SendPort mainSendPort) {
   ));
   DownloadIsolate? downloadIsolate;
   receivePort.listen((message) {
-    // logV('[DownloadIsolateEntry] receive message: $message');
     if (message is DownloadIsolateMsg) {
       switch (message.type) {
         case IsolateMsgType.logPrint:
@@ -30,11 +29,11 @@ void downloadIsolateEntry(SendPort mainSendPort) {
           final task = message.data as DownloadTask;
           downloadIsolate ??= DownloadIsolate();
           if (task.status == DownloadStatus.PAUSED) {
-            downloadIsolate?.pause();
+            downloadIsolate?.pause(task);
           } else if (task.status == DownloadStatus.CANCELLED) {
-            downloadIsolate?.cancel();
+            downloadIsolate?.cancel(task);
           } else {
-            downloadIsolate?.reset();
+            downloadIsolate?.reset(task);
             downloadIsolate?.start(task, mainSendPort);
           }
           break;
@@ -51,9 +50,8 @@ const int MIN_PROGRESS_UPDATE_INTERVAL = 500;
 class DownloadIsolate {
   final Lock _lock = Lock();
   final HttpClient client = HttpClient();
-  bool _isPaused = false;
-  bool _isCancelled = false;
-  int retryTimes = 3;
+  final Map<String, DownloadStatus> taskStatus = {};
+  int retryTimes = 0;
 
   Future<void> start(DownloadTask task, SendPort sendPort) async {
     try {
@@ -120,14 +118,14 @@ class DownloadIsolate {
 
       await for (var data in response) {
         // Check if it has been cancelled or suspended
-        if (_isPaused) {
+        if (taskStatus[task.id] == DownloadStatus.PAUSED) {
           await _writeToFile(saveFile, buffer, fileAppend);
           task.status = DownloadStatus.PAUSED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
           logIsolate("[DownloadIsolate] PAUSED ${task.toString()} ");
           return;
         }
-        if (_isCancelled) {
+        if (taskStatus[task.id] == DownloadStatus.CANCELLED) {
           await saveFile.delete();
           task.status = DownloadStatus.CANCELLED;
           sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
@@ -173,18 +171,17 @@ class DownloadIsolate {
     }
   }
 
-  Future<void> pause() async {
-    _isPaused = true;
+  Future<void> pause(DownloadTask task) async {
+    taskStatus[task.id] = DownloadStatus.PAUSED;
   }
 
-  Future<void> cancel() async {
-    _isCancelled = true;
+  Future<void> cancel(DownloadTask task) async {
+    taskStatus[task.id] = DownloadStatus.CANCELLED;
   }
 
-  void reset() {
+  void reset(DownloadTask task) {
+    taskStatus.remove(task.id);
     retryTimes = 3;
-    _isPaused = false;
-    _isCancelled = false;
   }
 
   Future<void> _writeToFile(File file, List<int> data, bool append) async {

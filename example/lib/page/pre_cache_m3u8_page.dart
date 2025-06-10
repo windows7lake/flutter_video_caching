@@ -206,4 +206,10 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    super.dispose();
+    VideoProxy.downloadManager.removeAllTask();
+  }
 }

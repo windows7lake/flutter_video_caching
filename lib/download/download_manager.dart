@@ -17,6 +17,10 @@ class DownloadManager {
       .where((task) => task.status == DownloadStatus.DOWNLOADING)
       .toList();
 
+  int get poolSize => _isolatePool.poolSize;
+
+  int get isolateSize => _isolatePool.isolateList.length;
+
   Future<DownloadTask> addTask(DownloadTask task) {
     return _isolatePool.addTask(task);
   }
