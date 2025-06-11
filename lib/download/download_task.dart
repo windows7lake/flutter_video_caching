@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/global/config.dart';
 
 import '../ext/string_ext.dart';
@@ -77,7 +76,6 @@ class DownloadTask {
 
   String get matchUrl {
     StringBuffer sb = StringBuffer();
-    logW("Match headers: ${headers}");
     String cacheKey = Config.customCacheId.toLowerCase();
     if (headers != null && headers!.containsKey(cacheKey)) {
       sb.write(headers![cacheKey]);
@@ -96,7 +94,6 @@ class DownloadTask {
     if (endRange != null) {
       sb.write("&endRange=$endRange");
     }
-    logW("Match URL: ${sb.toString()}");
     return sb.toString().generateMd5;
   }
 

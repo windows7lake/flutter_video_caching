@@ -1,3 +1,13 @@
+## 0.3.0
+
+- feat: add function to remove cache by url or directory path
+- chore (m3u8/preCache): add additional params to return in stream controller (pr #9 by
+  JagaranMaharjan)
+- feat: add func for parse HlsMasterPlaylist
+- chore: add request header support for precache and download
+- feat: add request headers support for custom cache id
+- fix: max Concurrent Downloads limit does not take effect
+
 ## 0.2.0
 
 - feat: persistent video content-length

@@ -18,7 +18,7 @@ precache the video before playing.
 
 ``` dart
 dependencies:
-  flutter_video_caching: 0.1.10
+  flutter_video_caching: 0.3.0
 ```
 
 ## Usage
@@ -116,11 +116,46 @@ void playListener() {
 }
 ```
 
+### 6. Delete cache
+
+``` dart
+// params: [singleFile] 
+// true: just delete the cache of the file associated with the link
+// false: delete all caches under the directory associated with the link, including the directory
+LruCacheSingleton().removeCacheByUrl(String url, {bool singleFile = false});
+```
+
+### 7. Custom request header
+
+Setup for playing:
+
+``` dart
+_controller = VideoPlayerController.networkUrl(uri,
+        httpHeaders: {'Token': 'xxxxxxx'});
+```
+
+Setup for precache:
+
+``` dart
+VideoCaching.precache(url, headers: {'Token': 'xxxxxxx'});
+```
+
+Custom cache file name, the default file name generate by full url, if you want to custom the file name, pass `CUSTOM-CACHE-ID` to headers.
+
+``` dart
+_controller = VideoPlayerController.networkUrl(uri,
+        httpHeaders: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
+
+VideoCaching.precache(url, headers: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
+```
+
+
+
 ## QA
 
-1. How to set the maximum cache limit?
+### 1. How to set the maximum cache limit?
 
-Answer: 
+### Answer: 
 
 Memory and file cache: implements LRU (least recently used) memory cache strategy, combined with local file cache to reduce network requests.
 
@@ -145,9 +180,9 @@ Memory and file cache: implements LRU (least recently used) memory cache strateg
   })
 ```
 
-2. How to track download progress in video?
+### 2. How to track download progress in video?
 
-Answer: <br>
+### Answer: <br>
 ```dart
 VideoProxy.downloadManager.stream.listen((task) {
       print('${task.uri}, ${task.progress}, ${task.downloadedBytes}, ${task.totalBytes}');
@@ -157,9 +192,9 @@ The code show above, can track download progress for each segments of hls format
 For m3u8, it track progress on each ts file. For mp4, it track progress on splite segment.<br>
 Currently, the function of tracking the download progress of the entire video has not been developed.<br>
 
-3. Does this library handle download resume case?
+### 3. Does this library handle download resume case?
 
-Answer: <br>
+### Answer: <br>
 For e.g.: user download https://example.ts file, assume it has more than 50ts file (segment).<br>
 Use Case: user download the hls video, out of 50, 10ts file was downloaded, during downloading other ts files, user terminate the app.<br>
 When user replay the video, the downloaad task will be continue, and 10ts file will be loaded from file system, then continue to download rest 40ts file.<br>
