@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/global/config.dart';
 
 import '../ext/string_ext.dart';
@@ -83,7 +84,9 @@ class DownloadTask {
       try {
         Uri uri = Uri.parse(saveFile);
         path = uri.path;
-      } catch (e) {}
+      } catch (e) {
+        path = saveFile;
+      }
       sb.write(path);
     } else {
       sb.write(saveFile);
@@ -104,7 +107,9 @@ class DownloadTask {
       if (uri.pathSegments.isNotEmpty) {
         extensionName = uri.pathSegments.last.split(".").lastOrNull;
       }
-    } catch (e) {}
+    } catch (e) {
+      logD("Uri parse error: $saveFile");
+    }
     return '${matchUrl}.$extensionName';
   }
 
