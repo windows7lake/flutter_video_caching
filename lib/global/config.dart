@@ -14,5 +14,5 @@ class Config {
 
   static int segmentSize = 2000000;
 
-  static String customCacheId = 'CUSTOM_CACHE_ID';
+  static String customCacheId = 'Custom-Cache-ID';
 }

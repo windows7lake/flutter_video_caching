@@ -1,3 +1,7 @@
+## 0.3.1
+
+- fix: change `CUSTOM_CACHE_ID` to `Custom-Cache-ID`
+
 ## 0.3.0
 
 - feat: add function to remove cache by url or directory path
