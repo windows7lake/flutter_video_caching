@@ -97,6 +97,7 @@ class UrlParserDefault implements UrlParser {
           responseHeaders,
           requestRangeStart,
           requestRangeEnd,
+          headers,
         );
       } else {
         await parseIOS(
@@ -105,6 +106,7 @@ class UrlParserDefault implements UrlParser {
           responseHeaders,
           requestRangeStart,
           requestRangeEnd,
+          headers,
         );
       }
       await socket.flush();
@@ -124,8 +126,10 @@ class UrlParserDefault implements UrlParser {
     List<String> responseHeaders,
     int requestRangeStart,
     int requestRangeEnd,
+    Map<String, String> headers,
   ) async {
-    DownloadTask task = DownloadTask(uri: uri, startRange: 0, endRange: 1);
+    DownloadTask task =
+        DownloadTask(uri: uri, startRange: 0, endRange: 1, headers: headers);
     Uint8List? data = await cache(task);
     int contentLength = 0;
     if (data != null) {
@@ -156,12 +160,13 @@ class UrlParserDefault implements UrlParser {
         uri: uri,
         startRange: startRange,
         endRange: endRange,
+        headers: headers,
       );
       logD('Request range：${task.startRange}-${task.endRange}');
 
       Uint8List? data = await cache(task);
       if (data == null) {
-        concurrent(task);
+        concurrent(task, headers);
         task.priority += 10;
         data = await download(task);
       }
@@ -204,10 +209,12 @@ class UrlParserDefault implements UrlParser {
     List<String> responseHeaders,
     int requestRangeStart,
     int requestRangeEnd,
+    Map<String, String> headers,
   ) async {
     if ((requestRangeStart == 0 && requestRangeEnd == 1) ||
         requestRangeEnd == -1) {
-      DownloadTask task = DownloadTask(uri: uri, startRange: 0, endRange: 1);
+      DownloadTask task =
+          DownloadTask(uri: uri, startRange: 0, endRange: 1, headers: headers);
       Uint8List? data = await cache(task);
       int contentLength = 0;
       if (data != null) {
@@ -249,12 +256,13 @@ class UrlParserDefault implements UrlParser {
         uri: uri,
         startRange: startRange,
         endRange: endRange,
+        headers: headers,
       );
       logD('Request range：${task.startRange}-${task.endRange}');
 
       Uint8List? data = await cache(task);
       if (data == null) {
-        concurrent(task);
+        concurrent(task, headers);
         task.priority += 10;
         data = await download(task);
       }
@@ -314,7 +322,10 @@ class UrlParserDefault implements UrlParser {
   /// connections will result in long waiting times.<br>
   /// If the number of concurrent downloads is less than 3, create a new task and
   /// add it to the download queue.<br>
-  Future<void> concurrent(DownloadTask task) async {
+  Future<void> concurrent(
+    DownloadTask task,
+    Map<String, String> headers,
+  ) async {
     int activeSize = VideoProxy.downloadManager.allTasks
         .where((e) => e.url == task.url)
         .length;
@@ -324,6 +335,7 @@ class UrlParserDefault implements UrlParser {
         uri: newTask.uri,
         startRange: newTask.startRange + Config.segmentSize,
         endRange: newTask.startRange + Config.segmentSize * 2 - 1,
+        headers: headers,
       );
       bool isExit = VideoProxy.downloadManager.allTasks
           .where((e) => e.matchUrl == newTask.matchUrl)
@@ -370,7 +382,7 @@ class UrlParserDefault implements UrlParser {
     int totalSize = cacheSegments;
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: Uri.parse(url));
+      DownloadTask task = DownloadTask(uri: Uri.parse(url), headers: headers);
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
       count++;

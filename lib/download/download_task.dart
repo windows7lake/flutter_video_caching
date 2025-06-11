@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter_video_caching/ext/log_ext.dart';
+import 'package:flutter_video_caching/global/config.dart';
+
 import '../ext/string_ext.dart';
 import 'download_status.dart';
 
@@ -74,25 +77,30 @@ class DownloadTask {
 
   String get matchUrl {
     StringBuffer sb = StringBuffer();
-    sb.write(uri.toString());
+    logW("Match headers: ${headers}");
+    String cacheKey = Config.customCacheId.toLowerCase();
+    if (headers != null && headers!.containsKey(cacheKey)) {
+      sb.write(headers![cacheKey]);
+      String path = "";
+      try {
+        Uri uri = Uri.parse(saveFile);
+        path = uri.path;
+      } catch (e) {}
+      sb.write(path);
+    } else {
+      sb.write(saveFile);
+    }
     if (startRange > 0) {
       sb.write("?startRange=$startRange");
     }
     if (endRange != null) {
       sb.write("&endRange=$endRange");
     }
+    logW("Match URL: ${sb.toString()}");
     return sb.toString().generateMd5;
   }
 
   String get saveFileName {
-    StringBuffer sb = StringBuffer();
-    sb.write(saveFile);
-    if (startRange > 0) {
-      sb.write("?startRange=$startRange");
-    }
-    if (endRange != null) {
-      sb.write("&endRange=$endRange");
-    }
     String? extensionName = saveFile.split(".").lastOrNull;
     try {
       Uri uri = Uri.parse(saveFile);
@@ -100,7 +108,7 @@ class DownloadTask {
         extensionName = uri.pathSegments.last.split(".").lastOrNull;
       }
     } catch (e) {}
-    return '${sb.toString().generateMd5}.$extensionName';
+    return '${matchUrl}.$extensionName';
   }
 
   static int _autoId = 1;

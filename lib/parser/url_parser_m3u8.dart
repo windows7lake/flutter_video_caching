@@ -97,7 +97,7 @@ class UrlParserM3U8 implements UrlParser {
       if (hlsSegment != null) task.hlsKey = hlsSegment.key;
       Uint8List? data = await cache(task);
       if (data == null) {
-        concurrentLoop(hlsSegment);
+        concurrentLoop(hlsSegment, headers);
         task.priority += 10;
         data = await download(task);
       }
@@ -138,7 +138,10 @@ class UrlParserM3U8 implements UrlParser {
             if (!parseUri.startsWith('http')) {
               parseUri = '${uri.pathPrefix()}/' + parseUri;
             }
-            concurrentAdd(HlsSegment(url: parseUri, key: task.hlsKey!));
+            concurrentAdd(
+              HlsSegment(url: parseUri, key: task.hlsKey!),
+              headers,
+            );
           }
           if (lastLine.startsWith("#EXTINF") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
@@ -150,7 +153,7 @@ class UrlParserM3U8 implements UrlParser {
               }
               hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
             }
-            concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!));
+            concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!), headers);
           }
           buffer.write('$line\r\n');
           lastLine = line;
@@ -240,7 +243,10 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// Asynchronous downloading of ts files.
-  Future<void> concurrentLoop(HlsSegment? hlsSegment) async {
+  Future<void> concurrentLoop(
+    HlsSegment? hlsSegment,
+    Map<String, String> headers,
+  ) async {
     if (hlsSegment == null) return;
     _latestUrl = hlsSegment.url;
     Set<String?> hlsKeys = _list.map((e) => e.key).toSet();
@@ -261,19 +267,22 @@ class UrlParserM3U8 implements UrlParser {
     Uint8List? cache =
         await LruCacheSingleton().memoryGet(segment.url.generateMd5);
     if (cache != null) {
-      concurrentComplete(segment);
+      concurrentComplete(segment, headers);
       return;
     }
-    DownloadTask task = DownloadTask(uri: Uri.parse(segment.url));
+    DownloadTask task = DownloadTask(
+      uri: Uri.parse(segment.url),
+      headers: headers,
+    );
     String cachePath = await FileExt.createCachePath(segment.key);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) {
-      concurrentComplete(segment);
+      concurrentComplete(segment, headers);
       return;
     }
     bool exitUri = VideoProxy.downloadManager.isUrlExit(segment.url);
     if (exitUri) {
-      concurrentComplete(segment, status: DownloadStatus.DOWNLOADING);
+      concurrentComplete(segment, headers, status: DownloadStatus.DOWNLOADING);
       return;
     }
     task.priority += 1;
@@ -285,17 +294,24 @@ class UrlParserM3U8 implements UrlParser {
           downloadTask.matchUrl == task.matchUrl) {
         logD("Asynchronous download completed： ${task.toString()}");
         subscription?.cancel();
-        concurrentComplete(segment);
+        concurrentComplete(segment, headers);
       }
     });
   }
 
-  void concurrentAdd(HlsSegment hlsSegment) {
+  void concurrentAdd(
+    HlsSegment hlsSegment,
+    Map<String, String> headers,
+  ) {
     bool match = _list.where((e) => e.url == hlsSegment.url).isNotEmpty;
     if (!match) _list.add(hlsSegment);
   }
 
-  void concurrentComplete(HlsSegment hlsSegment, {DownloadStatus? status}) {
+  void concurrentComplete(
+    HlsSegment hlsSegment,
+    Map<String, String> headers, {
+    DownloadStatus? status,
+  }) {
     int index = _list.indexWhere((e) => e.url == hlsSegment.url);
     if (index == -1) return;
     _list[index].status = status ?? DownloadStatus.COMPLETED;
@@ -304,7 +320,7 @@ class UrlParserM3U8 implements UrlParser {
       List<HlsSegment> list = _list.where((e) => e.key == latest.key).toList();
       int index = list.indexWhere((e) => e.url == latest.url);
       if (index != -1 && index + 1 < list.length) {
-        concurrentLoop(list[index + 1]);
+        concurrentLoop(list[index + 1], headers);
         return;
       }
     }
@@ -316,10 +332,10 @@ class UrlParserM3U8 implements UrlParser {
         .firstOrNull;
     if (idleSegment == null) {
       _list.removeWhere((e) => e.key == key);
-      concurrentComplete(hlsSegment);
+      concurrentComplete(hlsSegment, headers);
       return;
     }
-    concurrentLoop(idleSegment);
+    concurrentLoop(idleSegment, headers);
   }
 
   /// Pre-caches HLS video segments from the network.
@@ -360,7 +376,7 @@ class UrlParserM3U8 implements UrlParser {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
 
-    List<String> mediaList = await parseSegment(Uri.parse(url));
+    List<String> mediaList = await parseSegment(Uri.parse(url), headers);
     int totalSize = mediaList.length;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
     if (mediaList.isEmpty) return _streamController;
@@ -378,7 +394,10 @@ class UrlParserM3U8 implements UrlParser {
     /// After success (cached or downloaded), it pushes the progress info to the stream.
     Future<void> processSegment(String segment) async {
       final task = DownloadTask(
-          uri: Uri.parse(segment), hlsKey: hlsKey, headers: headers);
+        uri: Uri.parse(segment),
+        hlsKey: hlsKey,
+        headers: headers,
+      );
       Uint8List? data = await cache(task);
       if (data == null) {
         await download(task);
@@ -426,7 +445,11 @@ class UrlParserM3U8 implements UrlParser {
       throttledDownloader();
     } else {
       for (final segment in segments) {
-        final task = DownloadTask(uri: Uri.parse(segment), hlsKey: hlsKey);
+        final task = DownloadTask(
+          uri: Uri.parse(segment),
+          hlsKey: hlsKey,
+          headers: headers,
+        );
         push(task);
       }
     }
@@ -435,8 +458,12 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// Parsing M3U8 ts files
-  Future<List<String>> parseSegment(Uri uri) async {
-    final HlsMediaPlaylist? playList = await parseMediaPlaylist(uri);
+  Future<List<String>> parseSegment(
+    Uri uri,
+    Map<String, Object>? headers,
+  ) async {
+    final HlsMediaPlaylist? playList =
+        await parseMediaPlaylist(uri, headers: headers);
     if (playList == null) return <String>[];
     List<String> segments = <String>[];
     for (final Segment segment in playList.segments) {
@@ -456,15 +483,22 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// Parsing M3U8 media playlist
-  Future<HlsMediaPlaylist?> parseMediaPlaylist(Uri uri,
-      {String? hlsKey}) async {
-    final HlsPlaylist? playList = await parsePlaylist(uri, hlsKey: hlsKey);
+  Future<HlsMediaPlaylist?> parseMediaPlaylist(
+    Uri uri, {
+    Map<String, Object>? headers,
+    String? hlsKey,
+  }) async {
+    final HlsPlaylist? playList =
+        await parsePlaylist(uri, headers: headers, hlsKey: hlsKey);
     if (playList is HlsMasterPlaylist) {
       for (final Uri? _uri in playList.mediaPlaylistUrls) {
         if (_uri == null) continue;
         Uri masterUri = Uri.parse('${uri.pathPrefix()}${_uri.path}');
-        HlsMediaPlaylist? mediaPlayList =
-            await parseMediaPlaylist(masterUri, hlsKey: uri.generateMd5);
+        HlsMediaPlaylist? mediaPlayList = await parseMediaPlaylist(
+          masterUri,
+          headers: headers,
+          hlsKey: uri.generateMd5,
+        );
         return mediaPlayList;
       }
     } else if (playList is HlsMediaPlaylist) {
@@ -474,9 +508,16 @@ class UrlParserM3U8 implements UrlParser {
   }
 
   /// Parsing M3U8 resolution list
-  Future<HlsPlaylist?> parsePlaylist(Uri uri, {String? hlsKey}) async {
-    DownloadTask task =
-        DownloadTask(uri: uri, hlsKey: hlsKey ?? uri.generateMd5);
+  Future<HlsPlaylist?> parsePlaylist(
+    Uri uri, {
+    Map<String, Object>? headers,
+    String? hlsKey,
+  }) async {
+    DownloadTask task = DownloadTask(
+      uri: uri,
+      headers: headers,
+      hlsKey: hlsKey ?? uri.generateMd5,
+    );
     Uint8List? uint8List = await cache(task);
     if (uint8List == null) uint8List = await download(task);
     if (uint8List == null) return null;

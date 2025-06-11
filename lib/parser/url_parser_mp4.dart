@@ -165,7 +165,7 @@ class UrlParserMp4 implements UrlParser {
 
       Uint8List? data = await cache(task);
       if (data == null) {
-        concurrent(task);
+        concurrent(task, headers);
         task.priority += 10;
         data = await download(task);
       }
@@ -261,7 +261,7 @@ class UrlParserMp4 implements UrlParser {
 
       Uint8List? data = await cache(task);
       if (data == null) {
-        concurrent(task);
+        concurrent(task, headers);
         task.priority += 10;
         data = await download(task);
       }
@@ -326,7 +326,10 @@ class UrlParserMp4 implements UrlParser {
   /// connections will result in long waiting times.<br>
   /// If the number of concurrent downloads is less than 3, create a new task and
   /// add it to the download queue.<br>
-  Future<void> concurrent(DownloadTask task) async {
+  Future<void> concurrent(
+    DownloadTask task,
+    Map<String, String> headers,
+  ) async {
     int activeSize = VideoProxy.downloadManager.allTasks
         .where((e) => e.url == task.url)
         .length;
@@ -336,6 +339,7 @@ class UrlParserMp4 implements UrlParser {
         uri: newTask.uri,
         startRange: newTask.startRange + Config.segmentSize,
         endRange: newTask.startRange + Config.segmentSize * 2 - 1,
+        headers: headers,
       );
       bool isExit = VideoProxy.downloadManager.allTasks
           .where((e) => e.matchUrl == newTask.matchUrl)

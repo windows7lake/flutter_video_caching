@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/ext/uri_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
+import 'package:flutter_video_caching/global/config.dart';
 import 'package:video_player/video_player.dart';
 
 class PreCacheM3u8Play extends StatefulWidget {
@@ -71,6 +72,7 @@ class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> {
 
       _controller = VideoPlayerController.networkUrl(
         Uri.parse(selectedResolutionUrl!.toLocalUrl()),
+        httpHeaders: {Config.customCacheId: "custom_cache_id"},
       );
 
       _controller.initialize();
@@ -92,7 +94,10 @@ class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> {
     });
 
     final oldController = _controller;
-    _controller = VideoPlayerController.networkUrl(url.toLocalUri());
+    _controller = VideoPlayerController.networkUrl(
+      url.toLocalUri(),
+      httpHeaders: {Config.customCacheId: "custom_cache_id"},
+    );
     _controller.initialize().then((_) {
       if (oldController.value.isPlaying) {
         _controller.play();

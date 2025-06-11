@@ -39,12 +39,15 @@ class VideoCaching {
   /// [url]: The URL of the HLS master playlist.
   ///
   /// Returns an instance of [HlsMasterPlaylist] if successful, otherwise returns null.
-  static Future<HlsMasterPlaylist?> parseHlsMasterPlaylist(String url) async {
+  static Future<HlsMasterPlaylist?> parseHlsMasterPlaylist(
+    String url, {
+    Map<String, Object>? headers,
+  }) async {
     Uri uri = Uri.parse(url);
     UrlParser parser = UrlParserFactory.createParser(uri);
     if (parser is! UrlParserM3U8) return null;
-    HlsPlaylist? playlist =
-        await parser.parsePlaylist(uri, hlsKey: uri.generateMd5);
+    HlsPlaylist? playlist = await parser.parsePlaylist(uri,
+        headers: headers, hlsKey: uri.generateMd5);
     return playlist is HlsMasterPlaylist ? playlist : null;
   }
 }

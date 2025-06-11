@@ -5,6 +5,7 @@ import 'package:flutter_video_caching/ext/file_ext.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/ext/uri_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
+import 'package:flutter_video_caching/global/config.dart';
 
 class PreCacheM3u8Page extends StatefulWidget {
   const PreCacheM3u8Page({super.key});
@@ -82,7 +83,7 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
               setState(() {});
               VideoCaching.precache(
                 '${map['url']}',
-                headers: {"sss": "111"},
+                headers: {Config.customCacheId: "custom_cache_id"},
                 cacheSegments: 999,
                 progressListen: true,
               ).then((streamController) {

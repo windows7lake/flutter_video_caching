@@ -13,4 +13,6 @@ class Config {
   static int storageCacheSize = 1 * gbSize; // 1GB
 
   static int segmentSize = 2000000;
+
+  static String customCacheId = 'CUSTOM_CACHE_ID';
 }
