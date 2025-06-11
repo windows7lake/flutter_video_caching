@@ -78,6 +78,7 @@ class DownloadTask {
   String get matchUrl {
     StringBuffer sb = StringBuffer();
     String cacheKey = Config.customCacheId.toLowerCase();
+    headers = headers?.map((key, value) => MapEntry(key.toLowerCase(), value));
     if (headers != null && headers!.containsKey(cacheKey)) {
       sb.write(headers![cacheKey]);
       String path = "";
