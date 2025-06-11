@@ -1,3 +1,7 @@
+## 0.3.2
+
+- fix: request headers for precache and download doesn't match
+
 ## 0.3.1
 
 - fix: change `CUSTOM_CACHE_ID` to `Custom-Cache-ID`
