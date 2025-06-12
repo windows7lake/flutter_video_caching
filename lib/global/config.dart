@@ -7,6 +7,8 @@ class Config {
   static String ip = '127.0.0.1';
   static int port = 20250;
 
+  static get serverUrl => "$ip:$port";
+
   static int mbSize = 1000 * 1000;
   static int gbSize = 1000 * mbSize;
   static int memoryCacheSize = 100 * mbSize; // 100MB
