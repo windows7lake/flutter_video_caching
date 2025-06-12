@@ -136,7 +136,7 @@ class UrlParserDefault implements UrlParser {
       contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
     }
     if (contentLength == 0) {
-      contentLength = await head(uri);
+      contentLength = await head(uri, headers: headers);
       String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
           '/${task.saveFileName}';
       File file = File(filePath);
@@ -221,7 +221,7 @@ class UrlParserDefault implements UrlParser {
         contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
       }
       if (contentLength == 0) {
-        contentLength = await head(uri);
+        contentLength = await head(uri, headers: headers);
         String filePath =
             '${await FileExt.createCachePath(task.uri.generateMd5)}'
             '/${task.saveFileName}';
@@ -299,9 +299,15 @@ class UrlParserDefault implements UrlParser {
     }
   }
 
-  Future<int> head(Uri uri) async {
+  Future<int> head(Uri uri, {Map<String, Object>? headers}) async {
     HttpClient client = HttpClient();
     HttpClientRequest request = await client.headUrl(uri);
+    if (headers != null) {
+      headers.forEach((key, value) {
+        if (key == 'host' && value == Config.serverUrl) return;
+        request.headers.set(key, value);
+      });
+    }
     HttpClientResponse response = await request.close();
     client.close();
     return response.contentLength;
@@ -370,7 +376,7 @@ class UrlParserDefault implements UrlParser {
   ) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
-    int contentLength = await head(Uri.parse(url));
+    int contentLength = await head(Uri.parse(url), headers: headers);
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
