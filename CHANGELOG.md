@@ -1,3 +1,7 @@
+## 0.3.3
+
+- fix: head request with header 'host' and 'origin' causes an error (pr #10 from vinicius-felip)
+
 ## 0.3.2
 
 - fix: request headers for precache and download doesn't match

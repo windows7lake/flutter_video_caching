@@ -303,7 +303,9 @@ class UrlParserMp4 implements UrlParser {
     HttpClientRequest request = await client.headUrl(uri);
     if (headers != null) {
       headers.forEach((key, value) {
-        if (key == 'host' && value == Config.serverUrl) return;
+        String keyLower = key.toLowerCase();
+        if (keyLower == 'host' && value == Config.serverUrl) return;
+        if (keyLower == 'range') return;
         request.headers.set(key, value);
       });
     }
