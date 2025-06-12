@@ -135,7 +135,7 @@ class UrlParserMp4 implements UrlParser {
       contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
     }
     if (contentLength == 0) {
-      contentLength = await head(uri);
+      contentLength = await head(uri, headers: headers);
       String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
           '/${task.saveFileName}';
       File file = File(filePath);
@@ -220,7 +220,7 @@ class UrlParserMp4 implements UrlParser {
         contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
       }
       if (contentLength == 0) {
-        contentLength = await head(uri);
+        contentLength = await head(uri, headers: headers);
         String filePath =
             '${await FileExt.createCachePath(task.uri.generateMd5)}'
             '/${task.saveFileName}';
@@ -303,6 +303,7 @@ class UrlParserMp4 implements UrlParser {
     HttpClientRequest request = await client.headUrl(uri);
     if (headers != null) {
       headers.forEach((key, value) {
+        if (key == 'host' && value == Config.serverUrl) return;
         request.headers.set(key, value);
       });
     }
