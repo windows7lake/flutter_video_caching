@@ -7,6 +7,8 @@ import 'package:flutter_video_caching/ext/uri_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:flutter_video_caching/global/config.dart';
 
+import '../mixin/m3u8_mx.dart';
+
 class PreCacheM3u8Page extends StatefulWidget {
   const PreCacheM3u8Page({super.key});
 
@@ -14,9 +16,10 @@ class PreCacheM3u8Page extends StatefulWidget {
   State<PreCacheM3u8Page> createState() => _PreCacheM3u8PageState();
 }
 
-class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
+class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> with M3U8MX {
   final ValueNotifier<int> _step = ValueNotifier<int>(0);
   final ValueNotifier<String> _hlsKey = ValueNotifier('');
+  List<ResolutionOption> _resolutions = [];
   final List<Map> _segmentProgress = <Map>[];
 
   @override
@@ -68,74 +71,59 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
   }
 
   Widget hlsMasterPlaylist() {
-    if (_segmentProgress.isEmpty) {
+    if (_resolutions.isEmpty) {
       return Center(
         child: Text('Loading master playlist...'),
       );
     }
     return SingleChildScrollView(
       child: Column(
-        children: _segmentProgress.map((Map map) {
-          return GestureDetector(
-            onTap: () async {
-              _step.value = 2;
-              _segmentProgress.clear();
-              setState(() {});
-              VideoCaching.precache(
-                '${map['url']}',
-                headers: {Config.customCacheId: "custom_cache_id"},
-                cacheSegments: 999,
-                progressListen: true,
-              ).then((streamController) {
-                if (streamController == null) return;
-                StreamSubscription? subscription;
-                subscription = streamController.stream.listen((value) {
-                  logD('segment download progress: $value');
-                  _hlsKey.value = value['hls_key'];
-                  _segmentProgress.add(value);
-                  if (!mounted) {
-                    subscription?.cancel();
-                    streamController.close();
-                    return;
-                  }
+        children: _resolutions.map((ResolutionOption map) {
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            child: ListTile(
+              title: Text('Resolution: ${map.resolution}'),
+              subtitle: Column(
+                spacing: 10,
+                children: [
+                  Text('HLS URL:\n${map.url}'),
+                  Text('Original URL:\n${map.originalUrl}'),
+                ],
+              ),
+              trailing: TextButton(
+                onPressed: () async {
+                  _step.value = 2;
+                  _segmentProgress.clear();
                   setState(() {});
+                  VideoCaching.precache(
+                    map.url,
+                    headers: {Config.customCacheId: "custom_cache_id"},
+                    cacheSegments: 999,
+                    progressListen: true,
+                  ).then((streamController) {
+                    if (streamController == null) return;
+                    StreamSubscription? subscription;
+                    subscription = streamController.stream.listen((value) {
+                      logD('segment download progress: $value');
+                      _hlsKey.value = value['hls_key'];
+                      _segmentProgress.add(value);
+                      if (!mounted) {
+                        subscription?.cancel();
+                        streamController.close();
+                        return;
+                      }
+                      setState(() {});
 
-                  if (value['progress'] == 1) {
-                    subscription?.cancel();
-                    streamController.close();
-                    logD('close listener');
-                    return;
-                  }
-                });
-              });
-            },
-            child: Card(
-              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: map.entries.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              '${entry.key}',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text('${entry.value}'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
+                      if (value['progress'] == 1) {
+                        subscription?.cancel();
+                        streamController.close();
+                        logD('close listener');
+                        return;
+                      }
+                    });
+                  });
+                },
+                child: Text("Start Pre-Cache"),
               ),
             ),
           );
@@ -192,18 +180,13 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> {
       child: TextButton(
         onPressed: () async {
           _step.value = 1;
-          Uri uri = Uri.parse(
-              'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8');
-          HlsMasterPlaylist? playlist =
-              await VideoCaching.parseHlsMasterPlaylist(uri.toString());
-          List<Map>? resolutions = playlist?.mediaPlaylistUrls
-              .map((e) => {"url": '${uri.pathPrefix()}${e?.path}'})
-              .toList();
           _segmentProgress.clear();
-          _segmentProgress.addAll(resolutions ?? []);
+          String url =
+              'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
+          _resolutions = await getResolutionOptions(url);
           setState(() {});
         },
-        child: Text('Start Pre-cache'),
+        child: Text('Extract Video Resolution'),
       ),
     );
   }
