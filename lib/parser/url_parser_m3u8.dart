@@ -388,13 +388,35 @@ class UrlParserM3U8 implements UrlParser {
     int downloadedSize = 0;
     final List<Future<void>> activeTasks = [];
 
+    /// Safely parses a URL string into a Uri object by:
+    /// 1. Removing any hidden or invalid characters like '\r' and '\n'
+    /// 2. Trimming extra whitespace
+    /// 3. Truncating the string right after `.ts` to avoid garbage like `%0D`
+    ///
+    /// This ensures the resulting Uri is clean and avoids HTTP 400 errors when used.
+    Uri safeParse(String inputUrl) {
+      final cleaned = inputUrl
+          .replaceAll(
+              '\r', '') // Remove carriage returns (common source of %0D)
+          .replaceAll('\n', '') // Remove newline characters
+          .trim(); // Remove leading/trailing whitespace
+
+      // Optional: strip garbage after .ts
+      final tsIndex = cleaned.indexOf('.ts');
+      final finalString = tsIndex != -1
+          ? cleaned.substring(0, tsIndex + 3)
+          : cleaned; // Keep up to and including '.ts'
+
+      return Uri.parse(finalString);
+    }
+
     /// Downloads or loads a segment from cache and emits progress to the stream.
     ///
     /// If the segment is already cached, it skips downloading.
     /// After success (cached or downloaded), it pushes the progress info to the stream.
     Future<void> processSegment(String segment) async {
       final task = DownloadTask(
-        uri: Uri.parse(segment),
+        uri: safeParse(segment),
         hlsKey: hlsKey,
         headers: headers,
       );

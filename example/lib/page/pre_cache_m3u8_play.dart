@@ -7,6 +7,8 @@ import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:flutter_video_caching/global/config.dart';
 import 'package:video_player/video_player.dart';
 
+import '../mixin/m3u8_mx.dart';
+
 class PreCacheM3u8Play extends StatefulWidget {
   const PreCacheM3u8Play({super.key});
 
@@ -14,9 +16,10 @@ class PreCacheM3u8Play extends StatefulWidget {
   State<PreCacheM3u8Play> createState() => _PreCacheM3u8PlayState();
 }
 
-class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> {
+class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> with M3U8MX {
   String videoUrl =
       'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
+      // 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
   late VideoPlayerController _controller;
   String? selectedResolutionUrl;
   List<ResolutionOption> resolutionOptions = [];
@@ -30,34 +33,7 @@ class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> {
   }
 
   Future<void> resolveResolution() async {
-    HlsMasterPlaylist? playlist =
-        await VideoCaching.parseHlsMasterPlaylist(videoUrl);
-    Uri videoUri = Uri.parse(videoUrl);
-    resolutionOptions = playlist?.variants.map((e) {
-          String resolution = 'Unknown';
-          if (e.format.width != null && e.format.height != null) {
-            resolution = '${e.format.width}x${e.format.height}';
-          }
-          Uri uri = e.url;
-          String hlsLine = uri.toString();
-          if (hlsLine.startsWith('file:///')) {
-            hlsLine = hlsLine.substring(8);
-          }
-          if (!hlsLine.startsWith('http')) {
-            int relativePath = 0;
-            while (hlsLine.startsWith("../")) {
-              hlsLine = hlsLine.substring(3);
-              relativePath++;
-            }
-            hlsLine = '${videoUri.pathPrefix(relativePath)}/$hlsLine';
-          }
-          return ResolutionOption(
-            bitrate: e.format.bitrate ?? 0,
-            resolution: resolution,
-            url: hlsLine,
-          );
-        }).toList() ??
-        [];
+    resolutionOptions = await getResolutionOptions(videoUrl);
     logW("resolutionOptions: $resolutionOptions");
   }
 
@@ -179,22 +155,5 @@ class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> {
     _controller.dispose();
     VideoProxy.downloadManager.removeAllTask();
     super.dispose();
-  }
-}
-
-class ResolutionOption {
-  final int bitrate;
-  final String resolution;
-  final String url;
-
-  ResolutionOption({
-    required this.bitrate,
-    required this.resolution,
-    required this.url,
-  });
-
-  @override
-  String toString() {
-    return 'ResolutionOption{bitrate: $bitrate, resolution: $resolution, url: $url}';
   }
 }
