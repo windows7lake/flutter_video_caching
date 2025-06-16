@@ -126,6 +126,7 @@ class UrlParserM3U8 implements UrlParser {
           }
           if (lastLine.startsWith("#EXTINF") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
+            line = line.toSafeUrl();
             line = line.startsWith('http')
                 ? line.toLocalUrl()
                 : '$line${line.contains('?') ? '&' : '?'}'
@@ -271,7 +272,7 @@ class UrlParserM3U8 implements UrlParser {
       return;
     }
     DownloadTask task = DownloadTask(
-      uri: Uri.parse(segment.url),
+      uri: segment.url.toSafeUri(),
       headers: headers,
     );
     String cachePath = await FileExt.createCachePath(segment.key);
@@ -376,7 +377,7 @@ class UrlParserM3U8 implements UrlParser {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
 
-    List<String> mediaList = await parseSegment(Uri.parse(url), headers);
+    List<String> mediaList = await parseSegment(url.toSafeUri(), headers);
     int totalSize = mediaList.length;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
     if (mediaList.isEmpty) return _streamController;
@@ -388,35 +389,13 @@ class UrlParserM3U8 implements UrlParser {
     int downloadedSize = 0;
     final List<Future<void>> activeTasks = [];
 
-    /// Safely parses a URL string into a Uri object by:
-    /// 1. Removing any hidden or invalid characters like '\r' and '\n'
-    /// 2. Trimming extra whitespace
-    /// 3. Truncating the string right after `.ts` to avoid garbage like `%0D`
-    ///
-    /// This ensures the resulting Uri is clean and avoids HTTP 400 errors when used.
-    Uri safeParse(String inputUrl) {
-      final cleaned = inputUrl
-          .replaceAll(
-              '\r', '') // Remove carriage returns (common source of %0D)
-          .replaceAll('\n', '') // Remove newline characters
-          .trim(); // Remove leading/trailing whitespace
-
-      // Optional: strip garbage after .ts
-      final tsIndex = cleaned.indexOf('.ts');
-      final finalString = tsIndex != -1
-          ? cleaned.substring(0, tsIndex + 3)
-          : cleaned; // Keep up to and including '.ts'
-
-      return Uri.parse(finalString);
-    }
-
     /// Downloads or loads a segment from cache and emits progress to the stream.
     ///
     /// If the segment is already cached, it skips downloading.
     /// After success (cached or downloaded), it pushes the progress info to the stream.
     Future<void> processSegment(String segment) async {
       final task = DownloadTask(
-        uri: safeParse(segment),
+        uri: segment.toSafeUri(),
         hlsKey: hlsKey,
         headers: headers,
       );
@@ -468,7 +447,7 @@ class UrlParserM3U8 implements UrlParser {
     } else {
       for (final segment in segments) {
         final task = DownloadTask(
-          uri: Uri.parse(segment),
+          uri: segment.toSafeUri(),
           hlsKey: hlsKey,
           headers: headers,
         );
@@ -515,7 +494,7 @@ class UrlParserM3U8 implements UrlParser {
     if (playList is HlsMasterPlaylist) {
       for (final Uri? _uri in playList.mediaPlaylistUrls) {
         if (_uri == null) continue;
-        Uri masterUri = Uri.parse('${uri.pathPrefix()}${_uri.path}');
+        Uri masterUri = '${uri.pathPrefix()}${_uri.path}'.toSafeUri();
         HlsMediaPlaylist? mediaPlayList = await parseMediaPlaylist(
           masterUri,
           headers: headers,

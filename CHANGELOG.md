@@ -1,6 +1,6 @@
 ## 0.3.3
 
-- fix: head request with header 'host' and 'origin' causes an error (pr #10 from vinicius-felip)
+- fix: head request with header 'host' and 'range' causes an error (pr #10 from vinicius-felip)
 
 ## 0.3.2
 

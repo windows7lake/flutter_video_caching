@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
-import 'package:flutter_video_caching/ext/uri_ext.dart';
 
+import '../ext/string_ext.dart';
+import '../ext/uri_ext.dart';
 import 'url_parser.dart';
 import 'url_parser_factory.dart';
 import 'url_parser_m3u8.dart';
@@ -30,7 +31,7 @@ class VideoCaching {
     bool downloadNow = true,
     bool progressListen = false,
   }) {
-    return UrlParserFactory.createParser(Uri.parse(url))
+    return UrlParserFactory.createParser(url.toSafeUri())
         .precache(url, headers, cacheSegments, downloadNow, progressListen);
   }
 
@@ -43,7 +44,7 @@ class VideoCaching {
     String url, {
     Map<String, Object>? headers,
   }) async {
-    Uri uri = Uri.parse(url);
+    Uri uri = url.toSafeUri();
     UrlParser parser = UrlParserFactory.createParser(uri);
     if (parser is! UrlParserM3U8) return null;
     HlsPlaylist? playlist = await parser.parsePlaylist(uri,

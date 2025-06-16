@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
-import 'package:flutter_video_caching/ext/uri_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:flutter_video_caching/global/config.dart';
 import 'package:video_player/video_player.dart';
@@ -18,8 +17,8 @@ class PreCacheM3u8Play extends StatefulWidget {
 
 class _PreCacheM3u8PlayState extends State<PreCacheM3u8Play> with M3U8MX {
   String videoUrl =
-      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
-      // 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
+      // 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
+      'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
   late VideoPlayerController _controller;
   String? selectedResolutionUrl;
   List<ResolutionOption> resolutionOptions = [];

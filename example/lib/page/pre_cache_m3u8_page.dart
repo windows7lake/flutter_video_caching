@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/ext/file_ext.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
-import 'package:flutter_video_caching/ext/uri_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:flutter_video_caching/global/config.dart';
 
@@ -29,7 +28,6 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> with M3U8MX {
       body: ValueListenableBuilder(
         valueListenable: _step,
         builder: (ctx, step, _) {
-          logD("step: $step");
           if (step == 0) {
             return body();
           } else if (step == 1) {
@@ -182,8 +180,8 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> with M3U8MX {
           _step.value = 1;
           _segmentProgress.clear();
           String url =
-              'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
-              // 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
+              // 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
+              'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
           _resolutions = await getResolutionOptions(url);
           setState(() {});
         },

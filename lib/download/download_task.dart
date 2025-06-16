@@ -1,9 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter_video_caching/ext/log_ext.dart';
-import 'package:flutter_video_caching/global/config.dart';
-
+import '../ext/log_ext.dart';
 import '../ext/string_ext.dart';
+import '../global/config.dart';
 import 'download_status.dart';
 
 class DownloadTask {
@@ -83,7 +82,7 @@ class DownloadTask {
       sb.write(headers![cacheKey]);
       String path = "";
       try {
-        Uri uri = Uri.parse(saveFile);
+        Uri uri = saveFile.toSafeUri();
         path = uri.path;
       } catch (e) {
         path = saveFile;
@@ -104,7 +103,7 @@ class DownloadTask {
   String get saveFileName {
     String? extensionName = saveFile.split(".").lastOrNull;
     try {
-      Uri uri = Uri.parse(saveFile);
+      Uri uri = saveFile.toSafeUri();
       if (uri.pathSegments.isNotEmpty) {
         extensionName = uri.pathSegments.last.split(".").lastOrNull;
       }

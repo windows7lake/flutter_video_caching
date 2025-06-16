@@ -10,6 +10,7 @@ import '../ext/file_ext.dart';
 import '../ext/int_ext.dart';
 import '../ext/log_ext.dart';
 import '../ext/socket_ext.dart';
+import '../ext/string_ext.dart';
 import '../ext/uri_ext.dart';
 import '../global/config.dart';
 import '../proxy/video_proxy.dart';
@@ -377,7 +378,7 @@ class UrlParserMp4 implements UrlParser {
   ) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
-    int contentLength = await head(Uri.parse(url), headers: headers);
+    int contentLength = await head(url.toSafeUri(), headers: headers);
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
@@ -389,7 +390,7 @@ class UrlParserMp4 implements UrlParser {
     int totalSize = cacheSegments;
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: Uri.parse(url), headers: headers);
+      DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
       count++;
