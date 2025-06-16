@@ -103,7 +103,7 @@ class UrlParserM3U8 implements UrlParser {
       }
       if (data == null) return false;
       String contentType = 'application/octet-stream';
-      if (task.uri.path.endsWith('.m3u8')) {
+      if (VideoProxy.urlMatcherImpl.matchM3u8(task.uri)) {
         List<String> lines = readLineFromUint8List(data);
         String lastLine = '';
         StringBuffer buffer = StringBuffer();
@@ -133,16 +133,22 @@ class UrlParserM3U8 implements UrlParser {
                     'origin=${base64Url.encode(utf8.encode(uri.origin))}';
           }
           // Setting HLS segment to same key, it will be downloaded in the same directory.
-          if ((hlsLine.startsWith("#EXT-X-KEY") ||
-                  hlsLine.startsWith("#EXT-X-MEDIA")) &&
-              parseUri != null) {
-            if (!parseUri.startsWith('http')) {
-              parseUri = '${uri.pathPrefix()}/' + parseUri;
+          if (hlsLine.startsWith("#EXT-X-KEY") ||
+              hlsLine.startsWith("#EXT-X-MEDIA")) {
+            if (parseUri != null) {
+              if (!parseUri.startsWith('http')) {
+                int relativePath = 0;
+                while (hlsLine.startsWith("../")) {
+                  hlsLine = hlsLine.substring(3);
+                  relativePath++;
+                }
+                parseUri = '${uri.pathPrefix(relativePath)}/' + parseUri;
+              }
+              concurrentAdd(
+                HlsSegment(url: parseUri, key: task.hlsKey!),
+                headers,
+              );
             }
-            concurrentAdd(
-              HlsSegment(url: parseUri, key: task.hlsKey!),
-              headers,
-            );
           }
           if (lastLine.startsWith("#EXTINF") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
@@ -152,6 +158,7 @@ class UrlParserM3U8 implements UrlParser {
                 hlsLine = hlsLine.substring(3);
                 relativePath++;
               }
+              logW("==== : ${uri.pathPrefix(relativePath)} hlsLine: $hlsLine");
               hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
             }
             concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!), headers);
@@ -161,9 +168,9 @@ class UrlParserM3U8 implements UrlParser {
         }
         data = Uint8List.fromList(buffer.toString().codeUnits);
         contentType = 'application/vnd.apple.mpegurl';
-      } else if (task.uri.path.endsWith('.key')) {
+      } else if (VideoProxy.urlMatcherImpl.matchM3u8Key(task.uri)) {
         contentType = 'application/octet-stream';
-      } else if (task.uri.path.endsWith('.ts')) {
+      } else if (VideoProxy.urlMatcherImpl.matchM3u8Segment(task.uri)) {
         contentType = 'video/MP2T';
       }
       String responseHeaders = <String>[

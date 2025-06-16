@@ -7,8 +7,8 @@ extension UriExt on Uri {
     if (pathSegments.isEmpty) throw Exception("Path segments are empty");
     List<String> segments =
         pathSegments.sublist(0, pathSegments.length - 1 - relativePath);
-    Uri newUri = replace(pathSegments: segments);
-    return newUri.toString();
+    Uri newUri = replace(pathSegments: segments, queryParameters: {});
+    return newUri.toString().replaceAll('?', '');
   }
 
   /// Generate MD5

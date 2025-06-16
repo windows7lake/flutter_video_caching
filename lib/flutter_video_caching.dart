@@ -5,6 +5,8 @@ export 'download/download_manager.dart';
 export 'download/download_status.dart';
 export 'download/download_task.dart';
 export 'ext/string_ext.dart';
+export 'match/url_matcher.dart';
+export 'match/url_matcher_default.dart';
 export 'parser/url_parser_m3u8.dart';
 export 'parser/url_parser_mp4.dart';
 export 'parser/video_caching.dart';

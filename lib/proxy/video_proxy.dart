@@ -2,12 +2,15 @@ import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 
 import '../download/download_manager.dart';
 import '../global/config.dart';
+import '../match/url_matcher.dart';
+import '../match/url_matcher_default.dart';
 import 'local_proxy_server.dart';
 
 class VideoProxy {
   static late LocalProxyServer _localProxyServer;
   static late HlsPlaylistParser hlsPlaylistParser;
   static late DownloadManager downloadManager;
+  static late UrlMatcher urlMatcherImpl;
 
   /// Initialize the video proxy server.
   ///
@@ -18,6 +21,7 @@ class VideoProxy {
   /// [logPrint] is a boolean value to enable or disable logging.
   /// [segmentSize] is the size of each segment in MB.
   /// [maxConcurrentDownloads] is the maximum number of concurrent downloads.
+  /// [UrlMatcher] is an optional URL matcher to filter video URLs.
   static Future<void> init({
     String? ip,
     int? port,
@@ -26,6 +30,7 @@ class VideoProxy {
     bool logPrint = false,
     int segmentSize = 2,
     int maxConcurrentDownloads = 8,
+    UrlMatcher? urlMatcher,
   }) async {
     Config.memoryCacheSize = maxMemoryCacheSize * Config.mbSize;
     Config.storageCacheSize = maxStorageCacheSize * Config.mbSize;
@@ -36,5 +41,6 @@ class VideoProxy {
     await _localProxyServer.start();
     hlsPlaylistParser = HlsPlaylistParser.create();
     downloadManager = DownloadManager(maxConcurrentDownloads);
+    urlMatcherImpl = urlMatcher ?? UrlMatcherDefault();
   }
 }
