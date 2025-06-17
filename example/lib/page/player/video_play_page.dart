@@ -17,7 +17,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
-    // 'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
+    'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
     'https://t.vchaturl.com/60af0a4a4a8771f0bfb387c7371d0102/video/9e462fae647e406ab1ecef64695c8b8d-337ae773f8993fc0d8e6dce1a471c3cf-video-ld-encrypt-stream.m3u8?MtsHlsUriToken=jyL/MHXnUFyNC/Aekt7%2BZ5VKReuFC7TgGlei6lPSk8Z4l3w3C89lcJtMMlXhg/JqCNVVlcLWP0jy8f2UJI2d4A==',
     'http://vjs.zencdn.net/v/oceans.mp4',
     'https://user-images.githubusercontent.com/28951144/229373695-22f88f13-d18f-4288-9bf1-c3e078d83722.mp4',

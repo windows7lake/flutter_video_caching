@@ -113,8 +113,7 @@ class DownloadIsolate {
       // Creating a temporary storage area
       List<int> buffer = [];
 
-      String savePath = '${task.cacheDir}/${task.saveFileName}';
-      File saveFile = File(savePath);
+      File saveFile = File(task.isolateSavePath);
 
       await for (var data in response) {
         // Check if it has been cancelled or suspended

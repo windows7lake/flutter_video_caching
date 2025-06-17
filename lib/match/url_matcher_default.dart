@@ -20,4 +20,13 @@ class UrlMatcherDefault extends UrlMatcher {
   bool matchMp4(Uri uri) {
     return uri.path.toLowerCase().endsWith('.mp4');
   }
+
+  @override
+  Uri matchCacheKey(Uri uri) {
+    Map<String, String> params = {};
+    params.addAll(uri.queryParameters);
+    params.removeWhere((key, _) => key != 'startRange' && key != 'endRange');
+    uri = uri.replace(queryParameters: params.isEmpty ? null : params);
+    return uri;
+  }
 }

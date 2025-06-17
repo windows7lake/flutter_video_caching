@@ -158,7 +158,6 @@ class UrlParserM3U8 implements UrlParser {
                 hlsLine = hlsLine.substring(3);
                 relativePath++;
               }
-              logW("==== : ${uri.pathPrefix(relativePath)} hlsLine: $hlsLine");
               hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
             }
             concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!), headers);

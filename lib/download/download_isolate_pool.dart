@@ -284,6 +284,9 @@ class DownloadIsolatePool {
         }
       }
     });
+    // Get the information required by isolate in advance to prevent urlMatcher
+    // from being uninitialized when being called in isolate
+    task.isolateSavePath = '${task.cacheDir}/${task.saveFileName}';
     isolate.controlPort?.send(DownloadIsolateMsg(IsolateMsgType.task, task));
   }
 }

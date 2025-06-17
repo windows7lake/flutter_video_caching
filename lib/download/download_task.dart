@@ -3,6 +3,7 @@ import 'dart:io';
 import '../ext/log_ext.dart';
 import '../ext/string_ext.dart';
 import '../global/config.dart';
+import '../proxy/video_proxy.dart';
 import 'download_status.dart';
 
 class DownloadTask {
@@ -54,6 +55,9 @@ class DownloadTask {
   /// Task create time
   int createAt = DateTime.now().millisecondsSinceEpoch;
 
+  /// To use save file path in isolate
+  String isolateSavePath = "";
+
   DownloadTask({
     required this.uri,
     this.priority = 1,
@@ -75,29 +79,28 @@ class DownloadTask {
   String get url => uri.toString();
 
   String get matchUrl {
-    StringBuffer sb = StringBuffer();
     String cacheKey = Config.customCacheId.toLowerCase();
     headers = headers?.map((key, value) => MapEntry(key.toLowerCase(), value));
-    if (headers != null && headers!.containsKey(cacheKey)) {
-      sb.write(headers![cacheKey]);
-      String path = "";
-      try {
-        Uri uri = saveFile.toSafeUri();
-        path = uri.path;
-      } catch (e) {
-        path = saveFile;
-      }
-      sb.write(path);
-    } else {
-      sb.write(saveFile);
+    Uri safeUri;
+    try {
+      safeUri = saveFile.toSafeUri();
+    } catch (e) {
+      safeUri = Uri(host: saveFile);
     }
+    if (headers != null && headers!.containsKey(cacheKey)) {
+      safeUri = safeUri.replace(host: headers![cacheKey].toString());
+    }
+    Map<String, String> queryParameters = {};
+    queryParameters.addAll(safeUri.queryParameters);
     if (startRange > 0) {
-      sb.write("?startRange=$startRange");
+      queryParameters.putIfAbsent("startRange", () => startRange.toString());
     }
     if (endRange != null) {
-      sb.write("&endRange=$endRange");
+      queryParameters.putIfAbsent("endRange", () => endRange.toString());
     }
-    return sb.toString().generateMd5;
+    safeUri = safeUri.replace(queryParameters: queryParameters);
+    Uri cacheUri = VideoProxy.urlMatcherImpl.matchCacheKey(safeUri);
+    return cacheUri.toString().generateMd5;
   }
 
   String get saveFileName {
