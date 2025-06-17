@@ -1,3 +1,9 @@
+## 0.3.4
+
+- chore: Unified HLS resolution extraction logic for pre-cache and video playback (pr #13 from JagaranMaharjan)
+- chore: add support for custom url match - UrlMatcher
+- fix: remove carriage returns (%0D) in url
+
 ## 0.3.3
 
 - fix: head request with header 'host' and 'range' causes an error (pr #10 from vinicius-felip)
