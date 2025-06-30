@@ -387,10 +387,8 @@ class UrlParserM3U8 implements UrlParser {
 
     final List<String> segments = mediaList.take(cacheSegments).toList();
     final String hlsKey = url.generateMd5;
-    final Queue<String> segmentQueue = Queue.of(segments);
     final int maxConcurrent = 5;
     int downloadedSize = 0;
-    final List<Future<void>> activeTasks = [];
 
     /// Downloads or loads a segment from cache and emits progress to the stream.
     Future<void> processSegment(String segment) async {
@@ -417,28 +415,10 @@ class UrlParserM3U8 implements UrlParser {
       });
     }
 
-    /// Starts the download process for a segment and tracks it in [activeTasks].
-    void startSegmentTask(String segment) {
-      final future = processSegment(segment);
-      activeTasks.add(future);
-      future.whenComplete(() {
-        activeTasks.remove(future);
-      });
-    }
-
-    /// Handles throttled downloading of segments.
-    Future<void> throttledDownloader() async {
-      while (segmentQueue.isNotEmpty || activeTasks.isNotEmpty) {
-        while (activeTasks.length < maxConcurrent && segmentQueue.isNotEmpty) {
-          final segment = segmentQueue.removeFirst();
-          startSegmentTask(segment);
-        }
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
-    }
-
     if (downloadNow) {
-      throttledDownloader();
+      for (final segment in segments) {
+        await processSegment(segment);
+      }
     } else {
       for (final segment in segments) {
         final task = DownloadTask(
