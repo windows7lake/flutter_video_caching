@@ -1,5 +1,7 @@
 # flutter_video_caching
 
+[![Pub Version](https://img.shields.io/pub/v/flutter_video_caching)](https://pub.dev/packages/flutter_video_caching) [![Pub Points](https://img.shields.io/pub/points/flutter_video_caching)](https://pub.dev/packages/flutter_video_caching) [![GitHub](https://img.shields.io/badge/github-flutter_video_caching-blue?logo=github)](https://github.com/windows7lake/flutter_video_caching)
+
 `flutter_video_caching` is a powerful Flutter plugin for efficient video caching. 
 It supports integration with the `video_player` package and works with popular formats like m3u8 (HLS) and MP4. 
 The plugin enables simultaneous playback and caching, as well as pre-caching for smoother user experiences.
@@ -13,6 +15,14 @@ The plugin enables simultaneous playback and caching, as well as pre-caching for
 - **Priority scheduling:** Supports setting download task priorities for optimized resource allocation.
 - **Custom headers & cache file names:** Allows custom HTTP headers and cache file naming.
 - **Download resume:** Supports automatic resumption of interrupted downloads.
+
+## Support plugin
+
+- [video_player](https://pub.dev/packages/video_player)
+- [flick_video_player](https://pub.dev/packages/flick_video_player)
+- [pod_player](https://pub.dev/packages/pod_player)
+- [flick_video_player](https://pub.dev/packages/flick_video_player)
+- [fplayer](https://pub.dev/packages/fplayer)
 
 ## Installation
 
@@ -240,4 +250,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-For more detailed API documentation, please refer to the source code comments or future documentation updates.
+For more detailed API documentation, please refer to the source code [here](https://github.com/windows7lake/flutter_video_caching).
