@@ -4,20 +4,39 @@ import 'dart:typed_data';
 
 import '../download/download_task.dart';
 
+/// Abstract class that defines the interface for URL parsers.
+/// Implementations are responsible for handling video URL parsing,
+/// caching, downloading, and precaching logic.
 abstract class UrlParser {
-  /// Get the cache data from memory or file.
+  /// Retrieves cached data for the given [task] from memory or file.
+  ///
+  /// Returns a [Uint8List] containing the cached data if available,
+  /// or `null` if the data is not cached.
   Future<Uint8List?> cache(DownloadTask task);
 
-  /// Download the data from network.
+  /// Downloads data from the network for the given [task].
+  ///
+  /// Returns a [Uint8List] containing the downloaded data,
+  /// or `null` if the download fails.
   Future<Uint8List?> download(DownloadTask task);
 
-  /// Push the task to the download manager.
+  /// Pushes the [task] to the download manager for processing.
   Future<void> push(DownloadTask task);
 
-  /// Parse the data from the socket.
+  /// Parses data from the given [socket] using the specified [uri] and [headers].
+  ///
+  /// Returns `true` if parsing is successful, otherwise `false`.
   Future<bool> parse(Socket socket, Uri uri, Map<String, String> headers);
 
-  /// Precache the video URL
+  /// Pre-caches the video at the specified [url].
+  ///
+  /// [headers]: Optional HTTP headers to use for the request.
+  /// [cacheSegments]: Number of segments to cache.
+  /// [downloadNow]: Whether to start downloading immediately.
+  /// [progressListen]: Whether to listen for download progress.
+  ///
+  /// Returns a [StreamController] that emits progress or status updates,
+  /// or `null` if precaching is not supported.
   Future<StreamController<Map>?> precache(
     String url,
     Map<String, Object>? headers,

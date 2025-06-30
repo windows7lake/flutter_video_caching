@@ -19,17 +19,29 @@ import '../ext/uri_ext.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
-/// M3U8 URL parser
+/// M3U8 URL parser implementation.
+/// Handles caching, downloading, and parsing of HLS (M3U8) video streams.
+/// Implements the [UrlParser] interface for HLS video files.
 class UrlParserM3U8 implements UrlParser {
+  /// Stores the list of all HLS segments currently being managed or downloaded.
+  /// Each [HlsSegment] represents a TS segment in the HLS playlist.
   static final List<HlsSegment> _list = <HlsSegment>[];
+
+  /// Records the most recently requested or processed segment URL.
+  /// Used to track download progress and manage segment concurrency.
   static String _latestUrl = '';
 
+  /// Finds a segment in the segment list by its [uri].
+  ///
+  /// Returns the [HlsSegment] if found, otherwise `null`.
   HlsSegment? findSegmentByUri(Uri uri) {
     return _list.where((task) => task.url == uri.toString()).firstOrNull;
   }
 
-  /// Get the cache data from memory or file.
-  /// If there is no cache data, return null.
+  /// Retrieves cached data for the given [task] from memory or file.
+  ///
+  /// Returns a [Uint8List] containing the cached data if available,
+  /// or `null` if the data is not cached.
   @override
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -47,7 +59,10 @@ class UrlParserM3U8 implements UrlParser {
     return null;
   }
 
-  /// Download the data from network.
+  /// Downloads data from the network for the given [task].
+  ///
+  /// Returns a [Uint8List] containing the downloaded data,
+  /// or `null` if the download fails.
   @override
   Future<Uint8List?> download(DownloadTask task) async {
     logD('From network: ${task.url}');
@@ -64,8 +79,8 @@ class UrlParserM3U8 implements UrlParser {
     return dataNetwork;
   }
 
-  /// Push the task to the download manager.
-  /// If the task is already in the download manager, do nothing.
+  /// Pushes the [task] to the download manager for processing.
+  /// If the task is already in the download manager or cache, does nothing.
   @override
   Future<void> push(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -77,10 +92,10 @@ class UrlParserM3U8 implements UrlParser {
     await VideoProxy.downloadManager.addTask(task);
   }
 
-  /// Parse the data from socket.
-  /// If the request is not valid, return false.
+  /// Parses the request and returns the data to the [socket].
   ///
-  /// After parsing m3u8 file, it will replace the url with the local url.
+  /// Handles M3U8 playlist and segment requests, replacing URLs with local proxy URLs.
+  /// Returns `true` if parsing and response succeed, otherwise `false`.
   @override
   Future<bool> parse(
     Socket socket,
@@ -104,6 +119,7 @@ class UrlParserM3U8 implements UrlParser {
       if (data == null) return false;
       String contentType = 'application/octet-stream';
       if (VideoProxy.urlMatcherImpl.matchM3u8(task.uri)) {
+        // Parse and rewrite M3U8 playlist lines for local proxying
         List<String> lines = readLineFromUint8List(data);
         String lastLine = '';
         StringBuffer buffer = StringBuffer();
@@ -132,7 +148,7 @@ class UrlParserM3U8 implements UrlParser {
                 : '$line${line.contains('?') ? '&' : '?'}'
                     'origin=${base64Url.encode(utf8.encode(uri.origin))}';
           }
-          // Setting HLS segment to same key, it will be downloaded in the same directory.
+          // Add HLS segment to download list
           if (hlsLine.startsWith("#EXT-X-KEY") ||
               hlsLine.startsWith("#EXT-X-MEDIA")) {
             if (parseUri != null) {
@@ -192,7 +208,9 @@ class UrlParserM3U8 implements UrlParser {
     }
   }
 
-  /// Read the lines from Uint8List and decode them to String.
+  /// Reads lines from a [Uint8List] and decodes them to a list of [String].
+  ///
+  /// Handles both LF and CRLF line endings.
   List<String> readLineFromUint8List(
     Uint8List uint8List, {
     Encoding encoding = utf8,
@@ -203,13 +221,11 @@ class UrlParserM3U8 implements UrlParser {
 
     for (var i = 0; i < uint8List.length; i++) {
       final codeUnit = uint8List[i];
-
-      // Process line break
       if (codeUnit == 10) {
         // LF (0x0A)
         // If the previous character is CR, combine to CRLF
         if (isCarriageReturn) {
-          buffer.writeCharCode(13); // Add CR to the current line
+          buffer.writeCharCode(13);
           isCarriageReturn = false;
         }
         lines.add(buffer.toString());
@@ -230,7 +246,7 @@ class UrlParserM3U8 implements UrlParser {
       } else {
         // Ordinary character
         if (isCarriageReturn) {
-          buffer.writeCharCode(13); // Add the previous CR
+          buffer.writeCharCode(13);
           isCarriageReturn = false;
         }
         buffer.writeCharCode(codeUnit);
@@ -244,12 +260,12 @@ class UrlParserM3U8 implements UrlParser {
       }
       lines.add(buffer.toString());
     }
-
-    // Decode all lines
     return lines.map((line) => encoding.decode(line.codeUnits)).toList();
   }
 
-  /// Asynchronous downloading of ts files.
+  /// Asynchronously downloads TS files for HLS segments.
+  ///
+  /// Manages download concurrency and updates segment status.
   Future<void> concurrentLoop(
     HlsSegment? hlsSegment,
     Map<String, String> headers,
@@ -306,6 +322,7 @@ class UrlParserM3U8 implements UrlParser {
     });
   }
 
+  /// Adds a new [HlsSegment] to the segment list if not already present.
   void concurrentAdd(
     HlsSegment hlsSegment,
     Map<String, String> headers,
@@ -314,6 +331,7 @@ class UrlParserM3U8 implements UrlParser {
     if (!match) _list.add(hlsSegment);
   }
 
+  /// Marks a segment as completed and triggers the next download if available.
   void concurrentComplete(
     HlsSegment hlsSegment,
     Map<String, String> headers, {
@@ -347,31 +365,10 @@ class UrlParserM3U8 implements UrlParser {
 
   /// Pre-caches HLS video segments from the network.
   ///
-  /// This method parses the given HLS playlist URL, selects a specified number
-  /// of segments to cache, and either immediately downloads them or queues
-  /// them for later processing based on [downloadNow].
+  /// Parses the given HLS playlist URL, selects a specified number of segments to cache,
+  /// and either immediately downloads them or queues them for later processing.
   ///
-  /// If [progressListen] is true, a [StreamController] is returned that emits
-  /// progress updates in the form of a `Map`, including:
-  ///   - 'progress' (0.0 to 1.0)
-  ///   - 'segment_url'
-  ///   - 'parent_url'
-  ///   - 'file_name'
-  ///   - 'hls_key'
-  ///   - 'total_segments'
-  ///   - 'current_segment_index'
-  ///
-  /// Download concurrency is throttled to avoid overwhelming the device/network.
-  ///
-  /// Parameters:
-  /// - [url]: The master or variant HLS URL to parse and cache segments from.
-  /// - [cacheSegments]: The number of segments to pre-cache (max capped at total available).
-  /// - [downloadNow]: If true, downloads are performed immediately with throttling; otherwise, tasks are pushed to a background queue.
-  /// - [progressListen]: If true, returns a [StreamController] with progress updates.
-  ///
-  /// Returns:
-  /// - A [StreamController] that emits progress maps if [progressListen] is true,
-  ///   otherwise returns `null`.
+  /// If [progressListen] is true, returns a [StreamController] that emits progress updates.
   @override
   Future<StreamController<Map>?> precache(
     String url,
@@ -396,9 +393,6 @@ class UrlParserM3U8 implements UrlParser {
     final List<Future<void>> activeTasks = [];
 
     /// Downloads or loads a segment from cache and emits progress to the stream.
-    ///
-    /// If the segment is already cached, it skips downloading.
-    /// After success (cached or downloaded), it pushes the progress info to the stream.
     Future<void> processSegment(String segment) async {
       final task = DownloadTask(
         uri: segment.toSafeUri(),
@@ -424,8 +418,6 @@ class UrlParserM3U8 implements UrlParser {
     }
 
     /// Starts the download process for a segment and tracks it in [activeTasks].
-    ///
-    /// Once the segment processing is complete, it removes the task from the active list.
     void startSegmentTask(String segment) {
       final future = processSegment(segment);
       activeTasks.add(future);
@@ -435,9 +427,6 @@ class UrlParserM3U8 implements UrlParser {
     }
 
     /// Handles throttled downloading of segments.
-    ///
-    /// Ensures that no more than [maxConcurrent] tasks run in parallel.
-    /// Continuously starts new tasks from the queue as others complete.
     Future<void> throttledDownloader() async {
       while (segmentQueue.isNotEmpty || activeTasks.isNotEmpty) {
         while (activeTasks.length < maxConcurrent && segmentQueue.isNotEmpty) {
@@ -464,7 +453,9 @@ class UrlParserM3U8 implements UrlParser {
     return _streamController;
   }
 
-  /// Parsing M3U8 ts files
+  /// Parses M3U8 TS file segment URLs from the playlist at [uri].
+  ///
+  /// Returns a list of segment URLs.
   Future<List<String>> parseSegment(
     Uri uri,
     Map<String, Object>? headers,
@@ -489,7 +480,9 @@ class UrlParserM3U8 implements UrlParser {
     return segments;
   }
 
-  /// Parsing M3U8 media playlist
+  /// Parses the HLS media playlist from the given [uri].
+  ///
+  /// Returns an [HlsMediaPlaylist] if successful, otherwise `null`.
   Future<HlsMediaPlaylist?> parseMediaPlaylist(
     Uri uri, {
     Map<String, Object>? headers,
@@ -514,7 +507,9 @@ class UrlParserM3U8 implements UrlParser {
     return null;
   }
 
-  /// Parsing M3U8 resolution list
+  /// Parses the HLS playlist (master or media) from the given [uri].
+  ///
+  /// Returns an [HlsPlaylist] if successful, otherwise `null`.
   Future<HlsPlaylist?> parsePlaylist(
     Uri uri, {
     Map<String, Object>? headers,
@@ -533,7 +528,9 @@ class UrlParserM3U8 implements UrlParser {
     return playList;
   }
 
-  /// Parsing M3U8 data lines
+  /// Parses HLS playlist lines into an [HlsPlaylist] object.
+  ///
+  /// Returns the parsed [HlsPlaylist], or `null` if parsing fails.
   Future<HlsPlaylist?> parseLines(List<String> lines) async {
     HlsPlaylist? playList;
     try {
@@ -545,6 +542,7 @@ class UrlParserM3U8 implements UrlParser {
   }
 }
 
+/// Represents a single HLS segment with its key, URL, and download status.
 class HlsSegment {
   final String key;
   final String url;

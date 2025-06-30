@@ -1,30 +1,37 @@
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:flutter_video_caching/global/config.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../ext/log_ext.dart';
+import '../global/config.dart';
 import 'download_isolate_msg.dart';
 import 'download_status.dart';
 import 'download_task.dart';
 
+/// Entry point function for the download isolate.
+/// Sets up communication with the main isolate and listens for incoming messages
+/// to control download tasks (start, pause, cancel, etc.).
 void downloadIsolateEntry(SendPort mainSendPort) {
   final receivePort = ReceivePort();
+  // Send the SendPort of this isolate back to the main isolate for communication.
   mainSendPort.send(DownloadIsolateMsg(
     IsolateMsgType.sendPort,
     receivePort.sendPort,
   ));
   DownloadIsolate? downloadIsolate;
+  // Listen for messages from the main isolate.
   receivePort.listen((message) {
     if (message is DownloadIsolateMsg) {
       switch (message.type) {
         case IsolateMsgType.logPrint:
+          // Update log print configuration if needed.
           if (message.data != null && message.data is bool) {
             Config.logPrint = message.data as bool;
           }
           break;
         case IsolateMsgType.task:
+          // Handle download task messages (start, pause, cancel).
           if (message.data == null) break;
           final task = message.data as DownloadTask;
           downloadIsolate ??= DownloadIsolate();
@@ -44,21 +51,33 @@ void downloadIsolateEntry(SendPort mainSendPort) {
   });
 }
 
-/// The minimum interval for updating progress in milliseconds.
+/// The minimum interval (in milliseconds) for updating download progress.
 const int MIN_PROGRESS_UPDATE_INTERVAL = 500;
 
+/// Handles the actual download logic within the isolate, including starting,
+/// pausing, cancelling, and writing data to file.
 class DownloadIsolate {
+  /// Lock to ensure thread-safe file writing.
   final Lock _lock = Lock();
+
+  /// HTTP client used for downloading files.
   final HttpClient client = HttpClient();
+
+  /// Tracks the status of each download task by task ID.
   final Map<String, DownloadStatus> taskStatus = {};
+
+  /// Number of retry attempts left for the current download.
   int retryTimes = 0;
 
+  /// Starts downloading the file for the given [task], sending progress and status
+  /// updates back to the main isolate via [sendPort].
   Future<void> start(DownloadTask task, SendPort sendPort) async {
     try {
       HttpClientRequest request = await client.getUrl(task.uri);
 
       bool fileAppend = true;
       String range = '';
+      // Set up HTTP Range header for resuming or partial downloads.
       if (task.downloadedBytes > 0 || task.startRange > 0) {
         int startRange = task.downloadedBytes + task.startRange;
         range = 'bytes=$startRange-';
@@ -68,6 +87,7 @@ class DownloadIsolate {
         range += '${task.endRange}';
         fileAppend = false;
       }
+      // Add custom headers except 'host' and 'range'.
       if (task.headers != null) {
         task.headers!.forEach((key, value) {
           logIsolate('task.headers: ${task.headers}');
@@ -83,6 +103,7 @@ class DownloadIsolate {
       final response = await request.close();
       logIsolate('[DownloadIsolate] status code: ${response.statusCode} '
           '${task.uri} range: $range');
+      // Handle HTTP errors and retry logic.
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (response.statusCode == 416) retryTimes = 0;
         if (retryTimes > 0) {
@@ -115,6 +136,7 @@ class DownloadIsolate {
 
       File saveFile = File(task.isolateSavePath);
 
+      // Read data from the response stream.
       await for (var data in response) {
         // Check if it has been cancelled or suspended
         if (taskStatus[task.id] == DownloadStatus.PAUSED) {
@@ -152,6 +174,7 @@ class DownloadIsolate {
         }
       }
 
+      // Download complete, update status and write to file.
       task.data = buffer;
       task.status = DownloadStatus.COMPLETED;
       sendPort.send(DownloadIsolateMsg(IsolateMsgType.task, task));
@@ -170,19 +193,24 @@ class DownloadIsolate {
     }
   }
 
+  /// Marks the given [task] as paused.
   Future<void> pause(DownloadTask task) async {
     taskStatus[task.id] = DownloadStatus.PAUSED;
   }
 
+  /// Marks the given [task] as cancelled.
   Future<void> cancel(DownloadTask task) async {
     taskStatus[task.id] = DownloadStatus.CANCELLED;
   }
 
+  /// Resets the status and retry count for the given [task].
   void reset(DownloadTask task) {
     taskStatus.remove(task.id);
     retryTimes = 3;
   }
 
+  /// Writes the downloaded [data] to the specified [file].
+  /// Uses a lock to ensure thread safety. Appends or overwrites based on [append].
   Future<void> _writeToFile(File file, List<int> data, bool append) async {
     await _lock.synchronized(() async {
       try {

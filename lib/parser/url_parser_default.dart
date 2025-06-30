@@ -16,10 +16,14 @@ import '../global/config.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
-/// MP4 URL parser
+/// Default URL parser implementation.
+/// Handles caching, downloading, and parsing of common video files.
+/// Implements the [UrlParser] interface for common video files.
 class UrlParserDefault implements UrlParser {
-  /// Get the cache data from memory or file.
-  /// If there is no cache data, return null.
+  /// Retrieves cached data for the given [task] from memory or file.
+  ///
+  /// Returns a [Uint8List] containing the cached data if available,
+  /// or `null` if the data is not cached.
   @override
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -36,7 +40,10 @@ class UrlParserDefault implements UrlParser {
     return null;
   }
 
-  /// Download the data from network.
+  /// Downloads data from the network for the given [task].
+  ///
+  /// Returns a [Uint8List] containing the downloaded data,
+  /// or `null` if the download fails.
   @override
   Future<Uint8List?> download(DownloadTask task) async {
     logD('From network: ${task.url}');
@@ -54,8 +61,8 @@ class UrlParserDefault implements UrlParser {
     return dataNetwork;
   }
 
-  /// Push the task to the download manager.
-  /// If the task is already in the download manager, do nothing.
+  /// Pushes the [task] to the download manager for processing.
+  /// If the task is already in the download manager or cache, does nothing.
   @override
   Future<void> push(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
@@ -67,11 +74,12 @@ class UrlParserDefault implements UrlParser {
     await VideoProxy.downloadManager.addTask(task);
   }
 
-  /// Parse the request and return the data.
-  /// If the request is not valid, return false.
+  /// Parses the request and returns the data to the [socket].
   ///
-  /// Large file download is divided into segments, and each segment is 2Mb by default.
-  /// The segment size can be changed by modifying the `Config.segmentSize` value.
+  /// Handles HTTP range requests for large file downloads, splitting the file
+  /// into segments (default 2MB, configurable via [Config.segmentSize]).
+  ///
+  /// Returns `true` if parsing and response succeed, otherwise `false`.
   @override
   Future<bool> parse(
     Socket socket,
@@ -121,6 +129,9 @@ class UrlParserDefault implements UrlParser {
     }
   }
 
+  /// Parses and responds to range requests on Android.
+  ///
+  /// Handles segmented download and response for large files.
   Future<void> parseAndroid(
     Socket socket,
     Uri uri,
@@ -204,6 +215,9 @@ class UrlParserDefault implements UrlParser {
     }
   }
 
+  /// Parses and responds to range requests on iOS.
+  ///
+  /// Handles segmented download and response for large files.
   Future<void> parseIOS(
     Socket socket,
     Uri uri,
@@ -300,6 +314,9 @@ class UrlParserDefault implements UrlParser {
     }
   }
 
+  /// Sends a HEAD request to get the content length of the resource at [uri].
+  ///
+  /// Returns the content length as an [int].
   Future<int> head(Uri uri, {Map<String, Object>? headers}) async {
     HttpClient client = HttpClient();
     HttpClientRequest request = await client.headUrl(uri);
@@ -314,21 +331,19 @@ class UrlParserDefault implements UrlParser {
     return response.contentLength;
   }
 
-  /// Delete the file if it exceeds the size limit.
-  /// Sometimes because network problem, the download file size is larger than
-  /// the segment size, so we need to delete and re-download the file.
-  /// Or it may lead to source error.
+  /// Deletes the file if it exceeds the expected segment size.
+  ///
+  /// Used to handle cases where network issues cause oversized downloads.
   Future<void> deleteExceedSizeFile(DownloadTask task) async {
     String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
     File file = File('$cachePath/${task.saveFileName}');
     if (await file.exists()) await file.delete();
   }
 
-  /// Download task concurrently.<br>
-  /// The maximum number of concurrent downloads is 3. Too many concurrent
-  /// connections will result in long waiting times.<br>
-  /// If the number of concurrent downloads is less than 3, create a new task and
-  /// add it to the download queue.<br>
+  /// Manages concurrent download tasks.
+  ///
+  /// Ensures that no more than 3 concurrent downloads are active for the same URL.
+  /// If the number of concurrent downloads is less than 3, creates and adds new tasks.
   Future<void> concurrent(
     DownloadTask task,
     Map<String, String> headers,
@@ -363,10 +378,13 @@ class UrlParserDefault implements UrlParser {
     }
   }
 
-  /// Pre-cache the data from network.
+  /// Pre-caches data from the network.
   ///
-  /// [cacheSegments] is the number of segments to cache.
-  /// [downloadNow] is whether to download the data now or just push the task to the queue.
+  /// [cacheSegments]: Number of segments to cache.
+  /// [downloadNow]: If true, downloads immediately; otherwise, pushes tasks to the queue.
+  /// [progressListen]: If true, returns a [StreamController] with progress updates.
+  ///
+  /// Returns a [StreamController] emitting progress maps, or `null` if not listening.
   @override
   Future<StreamController<Map>?> precache(
     String url,
@@ -390,6 +408,7 @@ class UrlParserDefault implements UrlParser {
     int count = 0;
     while (count < cacheSegments) {
       DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
+      // Set the start and end range for each segment
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
       count++;

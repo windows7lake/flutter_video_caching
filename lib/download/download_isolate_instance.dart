@@ -3,26 +3,31 @@ import 'dart:isolate';
 
 import 'download_task.dart';
 
-/// This class represents an instance of a download isolate.
+/// Represents an instance of a download isolate, encapsulating the isolate,
+/// its communication ports, subscription, and the associated download task.
+/// This class is used to manage the lifecycle and state of a single download
+/// operation running in a separate isolate.
 class DownloadIsolateInstance {
-  /// The isolate instance.
+  /// The underlying Dart isolate that performs the download task.
   final Isolate isolate;
 
-  /// The receive port for the isolate.
+  /// The receive port used to receive messages from the isolate.
   final ReceivePort receivePort;
 
-  /// The control port for the isolate.
+  /// The send port used to control or communicate with the isolate.
   SendPort? controlPort;
 
-  /// The subscription for the isolate.
+  /// The stream subscription for handling messages from the receive port.
   StreamSubscription? subscription;
 
-  /// The task associated with this isolate instance.
+  /// The download task currently bound to this isolate instance.
   DownloadTask? task;
 
-  /// Indicates whether the isolate is busy processing a task.
+  /// Indicates whether the isolate is currently processing a task.
   bool isBusy = false;
 
+  /// Constructs a [DownloadIsolateInstance] with the given isolate, receive port,
+  /// and optional control port and subscription.
   DownloadIsolateInstance({
     required this.isolate,
     required this.receivePort,
@@ -30,18 +35,19 @@ class DownloadIsolateInstance {
     this.subscription,
   });
 
-  /// Binds a task to this isolate instance and marks it as busy.
+  /// Binds a [DownloadTask] to this isolate instance and marks it as busy.
   void bindTask(DownloadTask task) {
     this.task = task;
     isBusy = true;
   }
 
-  /// Unbinds the task from this isolate instance and marks it as not busy.
+  /// Unbinds the current task and marks the isolate as not busy.
   void reset() {
     task = null;
     isBusy = false;
   }
 
+  /// Returns a string representation of the isolate instance, including its state and properties.
   @override
   String toString() {
     return 'IsolateInstance [ '

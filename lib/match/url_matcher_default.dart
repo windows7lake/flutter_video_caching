@@ -1,5 +1,7 @@
 import 'url_matcher.dart';
 
+/// This file provides a default implementation of the [UrlMatcher] abstract class,
+/// offering concrete logic to identify and process various types of media-related URIs.
 class UrlMatcherDefault extends UrlMatcher {
   @override
   bool matchM3u8(Uri uri) {

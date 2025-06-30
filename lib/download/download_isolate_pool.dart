@@ -15,26 +15,33 @@ import 'download_isolate_msg.dart';
 import 'download_status.dart';
 import 'download_task.dart';
 
+/// The maximum number of isolates allowed in the pool.
 const int MAX_ISOLATE_POOL_SIZE = 1;
+
+/// The maximum task priority value.
 const int MAX_TASK_PRIORITY = 9999;
 
-/// DownloadIsolatePool manages a pool of isolates for downloading tasks.
+/// Manages a pool of isolates for handling concurrent download tasks.
+/// Responsible for task scheduling, isolate creation, task binding, and
+/// communication between the main isolate and download isolates.
 class DownloadIsolatePool {
-  /// Lock for synchronizing access to the pool.
+  /// Lock for synchronizing access to the pool to ensure thread safety.
   final Lock _lock = Lock();
 
-  /// List of isolates in the pool.
+  /// List of all isolate instances managed by the pool.
   final List<DownloadIsolateInstance> _isolateList = [];
 
-  /// List of tasks in the pool.
+  /// List of all download tasks managed by the pool.
   final List<DownloadTask> _taskList = [];
 
-  /// The maximum number of isolates in the pool.
+  /// The maximum number of isolates allowed in the pool.
   final int _poolSize;
 
-  /// Stream controller for broadcasting download task updates.
+  /// Stream controller for broadcasting download task updates to listeners.
   late final StreamController<DownloadTask> _streamController;
 
+  /// Constructs a [DownloadIsolatePool] with the specified [poolSize].
+  /// Throws an [ArgumentError] if the pool size is less than or equal to zero.
   DownloadIsolatePool({int poolSize = MAX_ISOLATE_POOL_SIZE})
       : _poolSize = poolSize {
     if (_poolSize <= 0) {
@@ -43,18 +50,25 @@ class DownloadIsolatePool {
     _streamController = StreamController.broadcast();
   }
 
+  /// Returns the stream controller for task updates.
   StreamController<DownloadTask> get streamController => _streamController;
 
+  /// Returns the list of all tasks in the pool.
   List<DownloadTask> get taskList => _taskList;
 
+  /// Returns the list of tasks that are not currently downloading.
   List<DownloadTask> get prepareTasks => _taskList
       .where((task) => task.status != DownloadStatus.DOWNLOADING)
       .toList();
 
+  /// Returns the list of all isolate instances in the pool.
   List<DownloadIsolateInstance> get isolateList => _isolateList;
 
+  /// Returns the maximum number of isolates in the pool.
   int get poolSize => _poolSize;
 
+  /// Disposes the pool, cancels all subscriptions, kills all isolates,
+  /// closes ports and the stream controller, and resets task IDs.
   Future<void> dispose() async {
     for (var isolate in _isolateList) {
       await isolate.subscription?.cancel();
@@ -70,12 +84,16 @@ class DownloadIsolatePool {
     DownloadTask.resetId();
   }
 
+  /// Finds a task in the pool by its [taskId].
   DownloadTask? findTaskById(String taskId) =>
       _taskList.where((task) => task.id == taskId).firstOrNull;
 
+  /// Finds an isolate instance by the associated task's [taskId].
   DownloadIsolateInstance? findIsolateByTaskId(String taskId) =>
       _isolateList.where((isolate) => isolate.task?.id == taskId).firstOrNull;
 
+  /// Notifies the isolate associated with [taskId] to update its status to [message].
+  /// If the isolate is not found and the message is to start downloading, resumes the task.
   void notifyIsolate(String taskId, DownloadStatus message) {
     DownloadIsolateInstance? isolate = findIsolateByTaskId(taskId);
     logV('[DownloadIsolatePool] notifyIsolate: ${isolate.toString()} $message');
@@ -92,6 +110,7 @@ class DownloadIsolatePool {
     }
   }
 
+  /// Adds a new [task] to the pool, creating a cache directory if needed.
   Future<DownloadTask> addTask(DownloadTask task) async {
     logV('[DownloadIsolatePool] addTask: ${task.toString()}');
     if (task.cacheDir.isEmpty) {
@@ -103,6 +122,8 @@ class DownloadIsolatePool {
     return task;
   }
 
+  /// Executes a [task], replacing any existing lower-priority task with the same cache key.
+  /// Schedules the isolate pool for task execution.
   Future<DownloadTask> executeTask(DownloadTask task) async {
     DownloadTask? existTask =
         _taskList.where((e) => e.matchUrl == task.matchUrl).firstOrNull;
@@ -116,11 +137,13 @@ class DownloadIsolatePool {
     return task;
   }
 
+  /// Resumes a paused or new [task] by binding it to an available isolate.
   Future<DownloadTask> resumeTask(DownloadTask task) async {
     await _resumeIsolateWithTask(task);
     return task;
   }
 
+  /// Schedules the pool to run tasks, ensuring only one thread runs this logic at a time.
   Future<void> roundIsolate() async {
     await _lock.synchronized(() async {
       if (_taskList.isEmpty) return;
@@ -128,10 +151,12 @@ class DownloadIsolatePool {
     });
   }
 
+  /// Internal method to assign tasks to available isolates, create new isolates if needed,
+  /// and handle task preemption based on priority.
   Future<void> _runIsolateWithTask() async {
     _taskList.sort((a, b) => b.priority - a.priority);
 
-    // Check if there are idle isolate instances
+    // Assign tasks to idle isolates
     List<DownloadIsolateInstance> isolatePool =
         _isolateList.where((isolate) => !isolate.isBusy).toList();
     if (isolatePool.isNotEmpty) {
@@ -142,7 +167,7 @@ class DownloadIsolatePool {
       }
     }
 
-    // Check whether the maximum number of isolated instance pools has been reached
+    // Create new isolates if pool size allows and assign tasks
     final tasks = prepareTasks;
     if (tasks.isNotEmpty && _isolateList.length < _poolSize) {
       for (int i = 0; i < tasks.length; i++) {
@@ -152,7 +177,7 @@ class DownloadIsolatePool {
       }
     }
 
-    // Check if there is an isolated instance being downloaded with a lower priority
+    // Preempt lower-priority tasks if higher-priority tasks are waiting
     for (DownloadTask task in prepareTasks) {
       List<DownloadIsolateInstance> busyIsolate =
           _isolateList.where((isolate) => isolate.isBusy).toList();
@@ -181,6 +206,7 @@ class DownloadIsolatePool {
     }
   }
 
+  /// Binds a [task] to an available isolate, or preempts a lower-priority task if needed.
   Future<void> _resumeIsolateWithTask(DownloadTask task) async {
     if (_isolateList.length < _poolSize) {
       DownloadIsolateInstance isolate = await _createIsolate();
@@ -214,6 +240,8 @@ class DownloadIsolatePool {
     minPriorityIsolate?.reset();
   }
 
+  /// Creates a new isolate for downloading and adds it to the pool.
+  /// Returns the created [DownloadIsolateInstance].
   Future<DownloadIsolateInstance> _createIsolate() async {
     final mainReceivePort = ReceivePort();
     final isolate = await Isolate.spawn(
@@ -229,6 +257,8 @@ class DownloadIsolatePool {
     return isolateInstance;
   }
 
+  /// Binds a [task] to the given [isolate], sets up message handling,
+  /// and starts the download process in the isolate.
   Future<void> _bindingIsolate(
     DownloadIsolateInstance isolate,
     DownloadTask task,
@@ -237,7 +267,7 @@ class DownloadIsolatePool {
     task.status = DownloadStatus.DOWNLOADING;
     isolate.bindTask(task);
     isolate.subscription?.onData((message) {
-      // logV('[DownloadIsolatePool] isolateListener ${message.toString()}');
+      // Handles messages from the isolate, including status updates and file caching.
       if (message is DownloadIsolateMsg) {
         switch (message.type) {
           case IsolateMsgType.sendPort:
@@ -285,8 +315,7 @@ class DownloadIsolatePool {
         }
       }
     });
-    // Get the information required by isolate in advance to prevent urlMatcher
-    // from being uninitialized when being called in isolate
+    // Prepares the file path for the isolate to use for saving the download.
     task.isolateSavePath = '${task.cacheDir}/${task.saveFileName}';
     isolate.controlPort?.send(DownloadIsolateMsg(IsolateMsgType.task, task));
   }

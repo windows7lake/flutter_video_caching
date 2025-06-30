@@ -9,21 +9,30 @@ import '../ext/string_ext.dart';
 import '../global/config.dart';
 import '../parser/video_caching.dart';
 
+/// A local HTTP proxy server implementation.
+/// Listens on a specified IP and port, accepts incoming socket connections,
+/// parses HTTP requests, and delegates video caching logic.
 class LocalProxyServer {
+  /// Constructor for LocalProxyServer.
+  /// Optionally accepts an IP and port to bind the server.
   LocalProxyServer({this.ip, this.port}) {
+    // Set global config values if provided.
     Config.ip = ip ?? Config.ip;
     Config.port = port ?? Config.port;
   }
 
-  /// Proxy Server IP
+  /// Proxy Server IP address.
   final String? ip;
 
-  /// Proxy Server port
+  /// Proxy Server port number.
   final int? port;
 
+  /// The underlying server socket instance.
   ServerSocket? server;
 
-  /// Start the proxy server
+  /// Starts the proxy server.
+  /// Binds to the configured IP and port, and listens for incoming connections.
+  /// If the port is already in use, it will try the next port.
   Future<void> start() async {
     try {
       final InternetAddress internetAddress = InternetAddress(Config.ip);
@@ -31,7 +40,7 @@ class LocalProxyServer {
       logD('Proxy server started ${server?.address.address}:${server?.port}');
       server?.listen(_handleConnection);
     } on SocketException catch (e) {
-      // If the port is occupied, try to use the next port
+      // If the port is occupied (error code 98), increment port and retry.
       if (e.osError?.errorCode == 98) {
         Config.port = Config.port + 1;
         start();
@@ -39,31 +48,37 @@ class LocalProxyServer {
     }
   }
 
-  /// Turn off proxy server
+  /// Shuts down the proxy server and closes the socket.
   Future<void> close() async {
     await server?.close();
   }
 
+  /// Handles an incoming socket connection.
+  /// Reads data from the socket, parses the HTTP request,
+  /// extracts method, path, protocol, and headers,
+  /// and delegates further processing to VideoCaching.
   Future<void> _handleConnection(Socket socket) async {
     try {
       logV('_handleConnection start');
       StringBuffer buffer = StringBuffer();
+      // Read data from the socket stream.
       await for (Uint8List data in socket) {
         buffer.write(String.fromCharCodes(data));
 
-        // Detect the end of the header (blank line \r\n\r\n)
+        // Wait until the end of HTTP headers (\r\n\r\n) is detected.
         if (!buffer.toString().contains(httpTerminal)) continue;
 
+        // Extract raw HTTP headers.
         String? rawHeaders = buffer.toString().split(httpTerminal).firstOrNull;
         List<String> lines = rawHeaders?.split('\r\n') ?? <String>[];
 
-        // Parsing request lines (compatible with non-standard requests)
+        // Parse the request line (e.g., GET /path HTTP/1.1).
         List<String>? requestLine = lines.firstOrNull?.split(' ') ?? <String>[];
         String method = requestLine.isNotEmpty ? requestLine[0] : '';
         String path = requestLine.length > 1 ? requestLine[1] : '/';
         String protocol = requestLine.length > 2 ? requestLine[2] : 'HTTP/1.1';
 
-        // Extract headers (such as Range, User-Agent)
+        // Parse HTTP headers into a map.
         Map<String, String> headers = <String, String>{};
         for (String line in lines.skip(1)) {
           int index = line.indexOf(':');
@@ -74,27 +89,31 @@ class LocalProxyServer {
           }
         }
 
+        // If no headers are found, send a 400 Bad Request response.
         if (headers.isEmpty) {
           await send400(socket);
           return;
         }
 
+        // Convert the path to a Uri object.
         Uri originUri = path.toOriginUri();
         logD('Handling Connections ========================================> \n'
             'protocol: $protocol, method: $method, path: $path \n'
             'headers: $headers \n'
             '$originUri');
 
+        // Delegate request handling to VideoCaching.
         await VideoCaching.parse(socket, originUri, headers);
       }
     } catch (e) {
       logW('⚠ ⚠ ⚠ Connections exception: $e');
     } finally {
-      await socket.close(); // 确保连接关闭
+      // Ensure the socket is closed after handling.
+      await socket.close();
     }
   }
 
-  /// 发送400
+  /// Sends a 400 Bad Request HTTP response to the client.
   Future<void> send400(Socket socket) async {
     logD('HTTP/1.1 400 Bad Request');
     final String headers = <String>[
