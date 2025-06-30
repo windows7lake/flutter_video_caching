@@ -6,7 +6,7 @@ homepage: https://github.com/windows7lake/flutter_video_caching
 
 environment:
   sdk: ^3.0.0
-  flutter: ">=1.17.0"
+  flutter: ">=3.10.0"
 
 dependencies:
   flutter:

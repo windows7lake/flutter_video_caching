@@ -172,6 +172,7 @@ class DownloadIsolatePool {
           IsolateMsgType.task,
           minPriorityIsolate.task,
         ));
+        await Future.delayed(const Duration(milliseconds: 500));
         minPriorityIsolate?.reset();
         if (minPriorityIsolate != null) {
           await _bindingIsolate(minPriorityIsolate, task);
