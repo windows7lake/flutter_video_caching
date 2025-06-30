@@ -1,31 +1,39 @@
-flutter_video_caching is a powerful flutter plugin for caching video. It can be use with
-video_player package. It supports formats like m3u8 and mp4, play and cache videos simultaneously,
-precache the video before playing.
+# flutter_video_caching
+
+`flutter_video_caching` is a powerful Flutter plugin for efficient video caching. 
+It supports integration with the `video_player` package and works with popular formats like m3u8 (HLS) and MP4. 
+The plugin enables simultaneous playback and caching, as well as pre-caching for smoother user experiences.
 
 ## Features
 
-+ `Multi-format support`: supports common video formats such as m3u8 (HLS) and MP4
-+ `Memory and file cache`: implements LRU (least recently used) memory cache strategy, combined with
-  local file cache to reduce network requests
-+ `Pre-caching mechanism`: supports downloading video clips in advance to improve the continuous
-  playback experience
-+ `Background download`: uses Isolate to achieve multi-task parallel download without blocking UI
-  threads
-+ `Priority scheduling`: supports setting priorities for download tasks and optimizes resource
-  allocation
+- **Multi-format support:** Works with m3u8 (HLS), MP4, and other common video formats.
+- **Memory & file cache:** LRU-based memory cache combined with local file cache to minimize network requests.
+- **Pre-caching:** Download video segments in advance to ensure seamless playback.
+- **Background downloading:** Uses Isolates for multi-task parallel downloads without blocking the UI.
+- **Priority scheduling:** Supports setting download task priorities for optimized resource allocation.
+- **Custom headers & cache file names:** Allows custom HTTP headers and cache file naming.
+- **Download resume:** Supports automatic resumption of interrupted downloads.
 
-## Getting started
+## Installation
 
-``` dart
+Add the dependency in your `pubspec.yaml`:
+
+```yaml
 dependencies:
-  flutter_video_caching: 0.3.0
+  flutter_video_caching: ^newest_version
 ```
 
-## Usage
+Then run:
 
-### 1. Init video proxy
+```sh
+flutter pub get
+```
 
-``` dart
+## Quick Start
+
+### 1. Initialize the video proxy
+
+```dart
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 void main() {
@@ -35,55 +43,21 @@ void main() {
 }
 ```
 
-#### API: VideoProxy.init():
+### 2. Use with `video_player`
 
-``` dart
-  /// Initialize the video proxy server.
-  ///
-  /// [ip] is the IP address of the proxy server.
-  /// [port] is the port number of the proxy server.
-  /// [maxMemoryCacheSize] is the maximum size of the memory cache in MB.
-  /// [maxStorageCacheSize] is the maximum size of the storage cache in MB.
-  /// [logPrint] is a boolean value to enable or disable logging.
-  /// [segmentSize] is the size of each segment in MB.
-  /// [maxConcurrentDownloads] is the maximum number of concurrent downloads.
-  static Future<void> init({
-    String? ip,
-    int? port,
-    int maxMemoryCacheSize = 100,
-    int maxStorageCacheSize = 1024,
-    bool logPrint = false,
-    int segmentSize = 2,
-    int maxConcurrentDownloads = 8,
-  })
-
-```
-
-
-### 2. Use with video_player
-
-``` dart
+```dart
 playControl = VideoPlayerController.networkUrl(url.toLocalUri());
 ```
 
-### 3. Precache video
+### 3. Pre-cache a video
 
-``` dart
+```dart
 VideoCaching.precache(url);
 ```
 
-#### API: VideoCaching.precache:
+### 4. Preload in `PageView` scenarios
 
-``` dart
-VideoCaching.precache(String url, {
-    int cacheSegments = 2,
-    bool downloadNow = true,
-  })
-```
-
-### 4. Use in PageView
-
-``` dart
+```dart
 PageView.builder(
   controller: pageController,
   itemCount: urls.length,
@@ -98,9 +72,9 @@ PageView.builder(
 );
 ```
 
-### 5. Revert video uri proxy when proxy server is broken
+### 5. Fallback to original URL if proxy fails
 
-``` dart
+```dart
 Future initPlayControl(Uri uri) async {
   playControl = VideoPlayerController.networkUrl(uri.toLocalUri())..setLooping(true);
   playControl.addListener(playListener);
@@ -108,8 +82,7 @@ Future initPlayControl(Uri uri) async {
 
 void playListener() {
   if (playControl.value.hasError) {
-    print("errorDescription: ${playControl.value.errorDescription}");
-    if (playControl.value.errorDescription!.contains("Source error")) {
+    if (playControl.value.errorDescription?.contains("Source error") ?? false) {
       initPlayControl(uri);
     }
   }
@@ -118,98 +91,70 @@ void playListener() {
 
 ### 6. Delete cache
 
-``` dart
-// params: [singleFile] 
-// true: just delete the cache of the file associated with the link
-// false: delete all caches under the directory associated with the link, including the directory
+```dart
+// Remove cache for a single file or the entire directory
 LruCacheSingleton().removeCacheByUrl(String url, {bool singleFile = false});
 ```
 
-### 7. Custom request header
+### 7. Custom request headers & cache file names
 
-Setup for playing:
+```dart
+// Custom header for playback
+_controller = VideoPlayerController.networkUrl(uri, httpHeaders: {'Token': 'xxxxxxx'});
 
-``` dart
-_controller = VideoPlayerController.networkUrl(uri,
-        httpHeaders: {'Token': 'xxxxxxx'});
-```
-
-Setup for precache:
-
-``` dart
+// Custom header for pre-caching
 VideoCaching.precache(url, headers: {'Token': 'xxxxxxx'});
-```
 
-Custom cache file name, the default file name generate by full url, if you want to custom the file name, pass `CUSTOM-CACHE-ID` to headers.
-
-``` dart
-_controller = VideoPlayerController.networkUrl(uri,
-        httpHeaders: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
-
+// Custom cache file name using CUSTOM-CACHE-ID
+_controller = VideoPlayerController.networkUrl(uri, httpHeaders: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
 VideoCaching.precache(url, headers: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
 ```
 
-### 8. Custom url match
+### 8. Custom URL matching
 
-``` dart
+```dart
 class UrlMatcherDefault extends UrlMatcher {
   @override
-  bool matchM3u8(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.m3u8');
-  }
+  bool matchM3u8(Uri uri) => uri.path.toLowerCase().endsWith('.m3u8');
 
   @override
-  bool matchM3u8Key(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.key');
-  }
+  bool matchM3u8Key(Uri uri) => uri.path.toLowerCase().endsWith('.key');
 
   @override
-  bool matchM3u8Segment(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.ts');
-  }
+  bool matchM3u8Segment(Uri uri) => uri.path.toLowerCase().endsWith('.ts');
 
   @override
-  bool matchMp4(Uri uri) {
-    return uri.path.toLowerCase().endsWith('.mp4');
-  }
+  bool matchMp4(Uri uri) => uri.path.toLowerCase().endsWith('.mp4');
 
   @override
   Uri matchCacheKey(Uri uri) {
-    Map<String, String> params = {};
-    params.addAll(uri.queryParameters);
-    params.removeWhere((key, _) => key != 'startRange' && key != 'endRange');
-    uri = uri.replace(queryParameters: params.isEmpty ? null : params);
-    return uri;
+    final params = Map<String, String>.from(uri.queryParameters)
+      ..removeWhere((key, _) => key != 'startRange' && key != 'endRange');
+    return uri.replace(queryParameters: params.isEmpty ? null : params);
   }
 }
 ```
-Use `UrlMatcher` to distinguish video types. For example: m3u8 matches URLs ending with .m3u8.<br>
 
-flutter_video_caching file cach logic:<br>
-+ m3u8: Each segment will be saved into one file.
-+ mp4 and others: The entire file will be split into multiple files, each with a size of 2Mb.
+- Use `UrlMatcher` to distinguish video types.
+- **Caching logic:**
+  - m3u8: Each segment is cached as a separate file.
+  - mp4/others: The file is split into 2MB segments for caching.
 
-The cache name of the file is generated by `saveFile`/`uri` + `?startRange=xx&endRange=xx` (startRange and endRange are used in mp4).
+## Api
 
-
-## QA
-
-### 1. How to set the maximum cache limit?
-
-### Answer: 
-
-Memory and file cache: implements LRU (least recently used) memory cache strategy, combined with local file cache to reduce network requests.
+### 1.VideoProxy.init:
 
 ```dart
-  /// Initialize the video proxy server.
+  /// Initializes the video proxy server and related components.
   ///
-  /// [ip] is the IP address of the proxy server.
-  /// [port] is the port number of the proxy server.
-  /// [maxMemoryCacheSize] is the maximum size of the memory cache in MB.
-  /// [maxStorageCacheSize] is the maximum size of the storage cache in MB.
-  /// [logPrint] is a boolean value to enable or disable logging.
-  /// [segmentSize] is the size of each segment in MB.
-  /// [maxConcurrentDownloads] is the maximum number of concurrent downloads.
+  /// [ip]: Optional IP address for the proxy server to bind.<br>
+  /// [port]: Optional port number for the proxy server to listen on.<br>
+  /// [maxMemoryCacheSize]: Maximum memory cache size in MB (default: 100).<br>
+  /// [maxStorageCacheSize]: Maximum storage cache size in MB (default: 1024).<br>
+  /// [logPrint]: Enables or disables logging output (default: false).<br>
+  /// [segmentSize]: Size of each video segment in MB (default: 2).<br>
+  /// [maxConcurrentDownloads]: Maximum number of concurrent downloads (default: 8).<br>
+  /// [urlMatcher]: Optional custom URL matcher for video URL filtering.<br>
   static Future<void> init({
     String? ip,
     int? port,
@@ -218,25 +163,81 @@ Memory and file cache: implements LRU (least recently used) memory cache strateg
     bool logPrint = false,
     int segmentSize = 2,
     int maxConcurrentDownloads = 8,
+    UrlMatcher? urlMatcher,
   })
 ```
 
-### 2. How to track download progress in video?
+### 2.VideoCaching.precache:
 
-### Answer: <br>
 ```dart
-VideoProxy.downloadManager.stream.listen((task) {
-      print('${task.uri}, ${task.progress}, ${task.downloadedBytes}, ${task.totalBytes}');
+  /// Pre-caches the video at the specified [url].
+  ///
+  /// [url]: The video URL to be pre-cached.
+  /// [headers]: Optional HTTP headers for the request.
+  /// [cacheSegments]: Number of segments to cache (default: 2).
+  /// [downloadNow]: If true, downloads segments immediately; if false, pushes to the queue (default: true).
+  /// [progressListen]: If true, returns a [StreamController] with progress updates (default: false).
+  ///
+  /// Returns a [StreamController] emitting progress/status updates, or `null` if not listening.
+  static Future<StreamController<Map>?> precache(
+    String url, {
+    Map<String, Object>? headers,
+    int cacheSegments = 2,
+    bool downloadNow = true,
+    bool progressListen = false,
+  })
+```
+
+
+## FAQ
+
+### 1. How to set the maximum cache limit?
+
+Set `maxMemoryCacheSize` and `maxStorageCacheSize` in `VideoProxy.init`.
+
+### 2. How to track download progress?
+
+```dart
+VideoProxy.downloadManager.stream.listen((Map map) {
 });
 ```
-The code show above, can track download progress for each segments of hls format, but no whole video link.<br>
-For m3u8, it track progress on each ts file. For mp4, it track progress on splite segment.<br>
-Currently, the function of tracking the download progress of the entire video has not been developed.<br>
+**For .m3u8:** 
+```
+{
+  'progress': 0.0,                // Download progress (0.0 ~ 1.0)
+  'segment_url': url,             // Current segment URL being downloaded
+  'parent_url': url,              // Main m3u8 playlist URL
+  'file_name': '',                // Name of the segment file
+  'hls_key': '',                  // The HLS key (generated from the URI) for the download, used to generate the cache directory,
+                                  // so that the segments of the same video can be cached in the same directory.
+  'total_segments': 0,            // Total number of segments
+  'current_segment_index': 0,     // Index of the current segment being downloaded
+}
+```
 
-### 3. Does this library handle download resume case?
+**For .mp4:** 
 
-### Answer: <br>
-For e.g.: user download https://example.ts file, assume it has more than 50ts file (segment).<br>
-Use Case: user download the hls video, out of 50, 10ts file was downloaded, during downloading other ts files, user terminate the app.<br>
-When user replay the video, the downloaad task will be continue, and 10ts file will be loaded from file system, then continue to download rest 40ts file.<br>
+```
+{
+  'progress': 0,                  // Download progress (0 ~ 100)
+  'url': url,                     // MP4 file URL
+  'startRange': 0,                // Start byte of the current download range
+  'endRange': 0,                  // End byte of the current download range
+}
+```
 
+### 3. Does the library support download resume?
+
+Yes. Downloaded segments are loaded from local cache, and unfinished segments will resume downloading when playback restarts.
+
+## Contributing
+
+Contributions are welcome! Please submit issues and pull requests.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+For more detailed API documentation, please refer to the source code comments or future documentation updates.

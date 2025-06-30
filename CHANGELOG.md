@@ -1,3 +1,9 @@
+## 0.3.5
+
+- fix: The concurrent download limit is not effective
+- doc: Improve code comments
+- doc: Update README
+
 ## 0.3.4
 
 - chore: Unified HLS resolution extraction logic for pre-cache and video playback (pr #13 from JagaranMaharjan)

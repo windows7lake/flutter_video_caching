@@ -387,7 +387,6 @@ class UrlParserM3U8 implements UrlParser {
 
     final List<String> segments = mediaList.take(cacheSegments).toList();
     final String hlsKey = url.generateMd5;
-    final int maxConcurrent = 5;
     int downloadedSize = 0;
 
     /// Downloads or loads a segment from cache and emits progress to the stream.
