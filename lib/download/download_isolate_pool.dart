@@ -80,6 +80,7 @@ class DownloadIsolatePool {
       isolate.isolate.kill(priority: Isolate.immediate);
     }
     _isolateList.clear();
+    _taskList.clear();
     await _streamController.close();
     DownloadTask.resetId();
   }
