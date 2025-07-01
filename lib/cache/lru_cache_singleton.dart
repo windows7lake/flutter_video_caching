@@ -100,9 +100,8 @@ class LruCacheSingleton {
     await _storageInit();
     await _storageCache.clear();
     Directory cacheDir = Directory(await FileExt.createCachePath());
-    if (!(await cacheDir.exists())) return;
-    for (FileSystemEntity file in cacheDir.listSync(recursive: true)) {
-      await file.delete(recursive: true);
+    if (await cacheDir.exists()) {
+      await cacheDir.delete(recursive: true);
     }
   }
 

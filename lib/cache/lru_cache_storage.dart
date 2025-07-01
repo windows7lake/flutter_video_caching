@@ -65,7 +65,7 @@ class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
       final FileSystemEntity? previous = map.remove(key);
       if (previous != null) {
         size -= (await previous.stat()).size;
-        previous.delete();
+        await previous.delete();
       }
       return previous;
     });
@@ -101,9 +101,8 @@ class LruCacheStorage extends LruCacheImpl<String, FileSystemEntity> {
         }
       }
       for (final key in keysToRemove) {
-        FileSystemEntity? toEvict = map[key];
+        FileSystemEntity? toEvict = map.remove(key);
         if (toEvict != null) {
-          map.remove(key);
           size -= (await toEvict.stat()).size;
           await toEvict.delete();
           evictionCount++;

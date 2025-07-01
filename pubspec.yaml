@@ -20,4 +20,9 @@ dependencies:
   synchronized: ^3.1.0+1
   logger: ^2.5.0
 
+dev_dependencies:
+  test: ^1.25.15
+  flutter_test:
+    sdk: flutter
+
 flutter:
