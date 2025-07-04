@@ -75,17 +75,17 @@ class DownloadIsolate {
     try {
       HttpClientRequest request = await client.getUrl(task.uri);
 
-      bool fileAppend = true;
+      bool fileAppend = false;
       String range = '';
       // Set up HTTP Range header for resuming or partial downloads.
       if (task.downloadedBytes > 0 || task.startRange > 0) {
         int startRange = task.downloadedBytes + task.startRange;
         range = 'bytes=$startRange-';
+        fileAppend = true;
       }
       if (task.endRange != null) {
         if (range.isEmpty) range = 'bytes=0-';
         range += '${task.endRange}';
-        fileAppend = false;
       }
       // Add custom headers except 'host' and 'range'.
       if (task.headers != null) {
@@ -214,8 +214,9 @@ class DownloadIsolate {
   Future<void> _writeToFile(File file, List<int> data, bool append) async {
     await _lock.synchronized(() async {
       try {
-        await file.writeAsBytes(data,
-            mode: append ? FileMode.append : FileMode.write);
+        FileMode fileMode = FileMode.write;
+        if (append) fileMode = FileMode.append;
+        await file.writeAsBytes(data, mode: fileMode);
       } catch (e) {
         logIsolate('[DownloadIsolate] write error: $e');
       }
