@@ -81,10 +81,13 @@ class DownloadIsolate {
       if (task.downloadedBytes > 0 || task.startRange > 0) {
         int startRange = task.downloadedBytes + task.startRange;
         range = 'bytes=$startRange-';
-        fileAppend = true;
       }
       if (task.endRange != null) {
-        if (range.isEmpty) range = 'bytes=0-';
+        if (range.isEmpty) {
+          range = 'bytes=0-';
+        } else {
+          fileAppend = true;
+        }
         range += '${task.endRange}';
       }
       // Add custom headers except 'host' and 'range'.

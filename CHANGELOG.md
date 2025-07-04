@@ -1,5 +1,9 @@
 ## 0.3.5
 
+- fix: write mode error (FileMode)
+
+## 0.3.5
+
 - fix: The concurrent download limit is not effective
 - doc: Improve code comments
 - doc: Update README
