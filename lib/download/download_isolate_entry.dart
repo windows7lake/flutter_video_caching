@@ -61,7 +61,9 @@ class DownloadIsolate {
   final Lock _lock = Lock();
 
   /// HTTP client used for downloading files.
-  final HttpClient client = HttpClient();
+  final HttpClient client = HttpClient()
+    ..badCertificateCallback =
+        (X509Certificate cert, String host, int port) => true;
 
   /// Tracks the status of each download task by task ID.
   final Map<String, DownloadStatus> taskStatus = {};
