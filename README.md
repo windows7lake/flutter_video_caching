@@ -147,8 +147,11 @@ class UrlMatcherDefault extends UrlMatcher {
 
 - Use `UrlMatcher` to distinguish video types.
 - **Caching logic:**
-  - m3u8: Each segment is cached as a separate file.
-  - mp4/others: The file is split into 2MB segments for caching.
+  + m3u8: Each segment is cached as a separate file.
+  + mp4/others: The file is split into 2MB segments for caching.
+
+
+To use your custom UrlMatcher, pass it to `VideoProxy.init()`.
 
 ### 9. Custom HttpClient
 
@@ -194,6 +197,7 @@ To use your custom client, pass it to `VideoProxy.init()`.
   /// [segmentSize]: Size of each video segment in MB (default: 2).<br>
   /// [maxConcurrentDownloads]: Maximum number of concurrent downloads (default: 8).<br>
   /// [urlMatcher]: Optional custom URL matcher for video URL filtering.<br>
+  /// [httpClientBuilder]: Optional custom HTTP client builder for creating HTTP clients.<br>
   static Future<void> init({
     String? ip,
     int? port,
@@ -203,6 +207,7 @@ To use your custom client, pass it to `VideoProxy.init()`.
     int segmentSize = 2,
     int maxConcurrentDownloads = 8,
     UrlMatcher? urlMatcher,
+    HttpClientBuilder? httpClientBuilder,
   })
 ```
 
