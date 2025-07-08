@@ -1,3 +1,7 @@
+## 0.3.7
+
+- feat: Add `HttpClientBuilder` abstract class for flexible `HttpClient` instantiation and configuration
+
 ## 0.3.6
 
 - fix: write mode error (FileMode)

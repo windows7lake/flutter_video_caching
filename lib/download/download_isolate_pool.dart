@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
 
-import 'package:flutter_video_caching/global/config.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../cache/lru_cache_singleton.dart';
 import '../ext/file_ext.dart';
 import '../ext/gesture_ext.dart';
 import '../ext/log_ext.dart';
+import '../global/config.dart';
+import '../proxy/video_proxy.dart';
 import 'download_isolate_entry.dart';
 import 'download_isolate_instance.dart';
 import 'download_isolate_msg.dart';
@@ -278,6 +279,10 @@ class DownloadIsolatePool {
             isolate.controlPort!.send(DownloadIsolateMsg(
               IsolateMsgType.logPrint,
               Config.logPrint,
+            ));
+            isolate.controlPort!.send(DownloadIsolateMsg(
+              IsolateMsgType.httpClient,
+              VideoProxy.httpClientBuilderImpl,
             ));
             isolate.controlPort!.send(DownloadIsolateMsg(
               IsolateMsgType.task,

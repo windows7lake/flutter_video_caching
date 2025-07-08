@@ -5,9 +5,14 @@ import 'package:synchronized/synchronized.dart';
 
 import '../ext/log_ext.dart';
 import '../global/config.dart';
+import '../http/http_client_builder.dart';
 import 'download_isolate_msg.dart';
 import 'download_status.dart';
 import 'download_task.dart';
+
+/// Http client builder for the download isolate.
+/// Used to create HTTP clients for downloading segments.
+HttpClientBuilder? httpClientBuilder;
 
 /// Entry point function for the download isolate.
 /// Sets up communication with the main isolate and listens for incoming messages
@@ -29,6 +34,10 @@ void downloadIsolateEntry(SendPort mainSendPort) {
           if (message.data != null && message.data is bool) {
             Config.logPrint = message.data as bool;
           }
+          break;
+        case IsolateMsgType.httpClient:
+          // Update HTTP client builder if needed.
+          httpClientBuilder = message.data as HttpClientBuilder;
           break;
         case IsolateMsgType.task:
           // Handle download task messages (start, pause, cancel).
@@ -61,7 +70,7 @@ class DownloadIsolate {
   final Lock _lock = Lock();
 
   /// HTTP client used for downloading files.
-  final HttpClient client = HttpClient();
+  final HttpClient? client = httpClientBuilder?.create();
 
   /// Tracks the status of each download task by task ID.
   final Map<String, DownloadStatus> taskStatus = {};
@@ -73,7 +82,8 @@ class DownloadIsolate {
   /// updates back to the main isolate via [sendPort].
   Future<void> start(DownloadTask task, SendPort sendPort) async {
     try {
-      HttpClientRequest request = await client.getUrl(task.uri);
+      HttpClientRequest request =
+          await (client ?? HttpClient()).getUrl(task.uri);
 
       bool fileAppend = false;
       String range = '';

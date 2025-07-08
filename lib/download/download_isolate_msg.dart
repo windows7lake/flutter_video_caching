@@ -3,7 +3,8 @@
 /// - [sendPort]: Used to send the SendPort for communication.
 /// - [task]: Used to send or receive download task information.
 /// - [logPrint]: Used to send log messages for debugging or monitoring.
-enum IsolateMsgType { sendPort, task, logPrint }
+/// - [httpClient]: Used to send or receive HTTP client Builder.
+enum IsolateMsgType { sendPort, task, logPrint, httpClient }
 
 /// Represents a message sent to or from the download isolate.
 /// This class encapsulates the message type and the associated data payload,

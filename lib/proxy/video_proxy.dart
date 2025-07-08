@@ -1,7 +1,9 @@
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
+import 'package:flutter_video_caching/http/http_client_default.dart';
 
 import '../download/download_manager.dart';
 import '../global/config.dart';
+import '../http/http_client_builder.dart';
 import '../match/url_matcher.dart';
 import '../match/url_matcher_default.dart';
 import 'local_proxy_server.dart';
@@ -21,6 +23,9 @@ class VideoProxy {
   /// URL matcher implementation for filtering and matching video URLs.
   static late UrlMatcher urlMatcherImpl;
 
+  /// HTTP client builder for creating HTTP clients.
+  static late HttpClientBuilder httpClientBuilderImpl;
+
   /// Initializes the video proxy server and related components.
   ///
   /// [ip]: Optional IP address for the proxy server to bind.<br>
@@ -31,6 +36,7 @@ class VideoProxy {
   /// [segmentSize]: Size of each video segment in MB (default: 2).<br>
   /// [maxConcurrentDownloads]: Maximum number of concurrent downloads (default: 8).<br>
   /// [urlMatcher]: Optional custom URL matcher for video URL filtering.<br>
+  /// [httpClientBuilder]: Optional custom HTTP client builder for creating HTTP clients.<br>
   static Future<void> init({
     String? ip,
     int? port,
@@ -40,6 +46,7 @@ class VideoProxy {
     int segmentSize = 2,
     int maxConcurrentDownloads = 8,
     UrlMatcher? urlMatcher,
+    HttpClientBuilder? httpClientBuilder,
   }) async {
     // Set global configuration values for cache sizes and segment size.
     Config.memoryCacheSize = maxMemoryCacheSize * Config.mbSize;
@@ -61,5 +68,8 @@ class VideoProxy {
 
     // Set the URL matcher implementation (custom or default).
     urlMatcherImpl = urlMatcher ?? UrlMatcherDefault();
+
+    // Set the HTTP client builder
+    httpClientBuilderImpl = httpClientBuilder ?? HttpClientDefault();
   }
 }

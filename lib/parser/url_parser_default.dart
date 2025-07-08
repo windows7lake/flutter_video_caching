@@ -318,7 +318,7 @@ class UrlParserDefault implements UrlParser {
   ///
   /// Returns the content length as an [int].
   Future<int> head(Uri uri, {Map<String, Object>? headers}) async {
-    HttpClient client = HttpClient();
+    HttpClient client = VideoProxy.httpClientBuilderImpl.create();
     HttpClientRequest request = await client.headUrl(uri);
     if (headers != null) {
       headers.forEach((key, value) {

@@ -150,9 +150,38 @@ class UrlMatcherDefault extends UrlMatcher {
   - m3u8: Each segment is cached as a separate file.
   - mp4/others: The file is split into 2MB segments for caching.
 
+### 9. Custom HttpClient
+
+You can customize the HTTP client used for video downloading and caching by implementing the HttpClientBuilder interface. 
+This allows you to configure certificate verification, custom headers, or other HTTP behaviors.
+
+Example: Allow Self-Signed Certificates
+```dart
+class HttpClientCustom extends HttpClientBuilder {
+  @override
+  HttpClient create() {
+    return HttpClient()
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+        // Print certificate info for debugging
+        debugPrint('Certificate subject: ${cert.subject}');
+        debugPrint('Issuer: ${cert.issuer}');
+        debugPrint('Valid until: ${cert.endValidity}');
+        debugPrint('SHA-1 fingerprint: ${cert.sha1}');
+
+        // Custom verification logic: here simply allow all certificates, should be stricter in real applications
+        // For example, verify if the certificate fingerprint matches the expected value
+        return true;
+      };
+  }
+}
+```
+To use your custom client, pass it to `VideoProxy.init()`.  
+
+> Note: Allowing all certificates is insecure and should only be used for testing. In production, implement strict certificate validation.
+
 ## Api
 
-### 1.VideoProxy.init:
+### 1. VideoProxy.init:
 
 ```dart
   /// Initializes the video proxy server and related components.
@@ -177,7 +206,7 @@ class UrlMatcherDefault extends UrlMatcher {
   })
 ```
 
-### 2.VideoCaching.precache:
+### 2. VideoCaching.precache:
 
 ```dart
   /// Pre-caches the video at the specified [url].
