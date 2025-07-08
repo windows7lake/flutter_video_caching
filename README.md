@@ -122,6 +122,9 @@ VideoCaching.precache(url, headers: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
 
 ### 8. Custom URL matching
 
+Implement the UrlMatcher abstract class (lib/match/url_matcher.dart) to define custom logic for matching .m3u8, .ts, .mp4, m3u8 encryption keys, and cache keys.
+The default cache key is the same as the original URL, but with query parameters removed, only `startRange` and `endRange` are kept.
+
 ```dart
 class UrlMatcherDefault extends UrlMatcher {
   @override
