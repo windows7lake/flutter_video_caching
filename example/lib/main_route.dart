@@ -3,6 +3,7 @@ import 'package:example/page/pre_cache_m3u8_play.dart';
 import 'package:flutter/material.dart';
 
 import 'page/download_page.dart';
+import 'page/http_client_custom_page.dart';
 import 'page/m3u8_parser_page.dart';
 import 'page/player/flick_player_page.dart';
 import 'page/player/fplayer_page.dart';
@@ -32,6 +33,7 @@ class _MainRouteState extends State<MainRoute> {
     'FlickPlayerPage': const FlickPlayerPage(),
     'PodPlayerPage': const PodPlayerPage(),
     'MediaKitPage': const MediaKitPage(),
+    'HttpClientCustom': const HttpClientCustomPage(),
   };
   final List<String> urls = [
     'http://vjs.zencdn.net/v/oceans.mp4',
