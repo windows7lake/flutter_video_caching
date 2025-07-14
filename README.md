@@ -6,17 +6,18 @@
 It supports integration with the `video_player` package and works with popular formats like m3u8 (HLS) and MP4. 
 The plugin enables simultaneous playback and caching, as well as pre-caching for smoother user experiences.
 
-## Features
+## 🎊 Features
 
 - **Multi-format support:** Works with m3u8 (HLS), MP4, and other common video formats.
 - **Memory & file cache:** LRU-based memory cache combined with local file cache to minimize network requests.
 - **Pre-caching:** Download video segments in advance to ensure seamless playback.
 - **Background downloading:** Uses Isolates for multi-task parallel downloads without blocking the UI.
 - **Priority scheduling:** Supports setting download task priorities for optimized resource allocation.
-- **Custom headers & cache file names:** Allows custom HTTP headers and cache file naming.
 - **Download resume:** Supports automatic resumption of interrupted downloads.
+- **Custom headers & cache file names:** Allows custom HTTP headers and cache file naming.
+- **Custom httpClient:** Allows to configure certificate verification, custom headers, or other HTTP behaviors.
 
-## Support plugin
+## 💡 Support plugin
 
 - [video_player](https://pub.dev/packages/video_player)
 - [flick_video_player](https://pub.dev/packages/flick_video_player)
@@ -24,7 +25,7 @@ The plugin enables simultaneous playback and caching, as well as pre-caching for
 - [flick_video_player](https://pub.dev/packages/flick_video_player)
 - [fplayer](https://pub.dev/packages/fplayer)
 
-## Installation
+## 🕹 Installation
 
 Add the dependency in your `pubspec.yaml`:
 
@@ -39,7 +40,7 @@ Then run:
 flutter pub get
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Initialize the video proxy
 
@@ -48,7 +49,7 @@ import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  VideoProxy.init();
+  VideoProxy.init(); // add line: init video proxy
   runApp(const HomeApp());
 }
 ```
@@ -65,7 +66,56 @@ playControl = VideoPlayerController.networkUrl(url.toLocalUri());
 VideoCaching.precache(url);
 ```
 
-### 4. Preload in `PageView` scenarios
+### 4. Platform configuration
+
+Since flutter_video_caching create a localhost HTTP server, configuration is necessary to allow http connections:
+
+#### Android: 
+
+Create or Add to `android/app/src/main/res/xml/network_security_config.xml`:
+
+``` xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">127.0.0.1</domain>
+  </domain-config>
+</network-security-config>
+```
+
+Config `network_security_config` in `AndroidManifest.xml` under `application`:
+
+``` xml
+<application ... android:networkSecurityConfig="@xml/network_security_config">
+```
+
+#### iOS
+
+Add the following to your projects Info.plist file:
+
+``` plist
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>127.0.0.1</key>
+        <dict>
+            <key>NSExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+            <key>NSIncludesSubdomains</key>
+            <false/>
+        </dict>
+    </dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+</dict>
+```
+
+See the example project for a full example.
+
+## ⚔️ Advanced Usage
+
+### 1. Preload in `PageView` scenarios
 
 ```dart
 PageView.builder(
@@ -82,7 +132,7 @@ PageView.builder(
 );
 ```
 
-### 5. Fallback to original URL if proxy fails
+### 2. Fallback to original URL if proxy fails
 
 ```dart
 Future initPlayControl(Uri uri) async {
@@ -99,14 +149,14 @@ void playListener() {
 }
 ```
 
-### 6. Delete cache
+### 3. Delete cache
 
 ```dart
 // Remove cache for a single file or the entire directory
 LruCacheSingleton().removeCacheByUrl(String url, {bool singleFile = false});
 ```
 
-### 7. Custom request headers & cache file names
+### 4. Custom request headers & cache file names
 
 ```dart
 // Custom header for playback
@@ -120,7 +170,7 @@ _controller = VideoPlayerController.networkUrl(uri, httpHeaders: {'CUSTOM-CACHE-
 VideoCaching.precache(url, headers: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
 ```
 
-### 8. Custom URL matching
+### 5. Custom URL matching
 
 Implement the UrlMatcher abstract class (lib/match/url_matcher.dart) to define custom logic for matching .m3u8, .ts, .mp4, m3u8 encryption keys, and cache keys.
 The default cache key is the same as the original URL, but with query parameters removed, only `startRange` and `endRange` are kept.
@@ -156,7 +206,7 @@ class UrlMatcherDefault extends UrlMatcher {
 
 To use your custom UrlMatcher, pass it to `VideoProxy.init()`.
 
-### 9. Custom HttpClient
+### 6. Custom HttpClient
 
 You can customize the HTTP client used for video downloading and caching by implementing the HttpClientBuilder interface. 
 This allows you to configure certificate verification, custom headers, or other HTTP behaviors.
@@ -185,7 +235,7 @@ To use your custom client, pass it to `VideoProxy.init()`.
 
 > Note: Allowing all certificates is insecure and should only be used for testing. In production, implement strict certificate validation.
 
-## Api
+## 🪧 Core Api
 
 ### 1. VideoProxy.init:
 
@@ -236,7 +286,7 @@ To use your custom client, pass it to `VideoProxy.init()`.
 ```
 
 
-## FAQ
+## ❓ FAQ
 
 ### 1. How to set the maximum cache limit?
 
@@ -277,11 +327,11 @@ VideoProxy.downloadManager.stream.listen((Map map) {
 
 Yes. Downloaded segments are loaded from local cache, and unfinished segments will resume downloading when playback restarts.
 
-## Contributing
+## 🔧 Contributing
 
 Contributions are welcome! Please submit issues and pull requests.
 
-## License
+## 🛡 License
 
 This project is licensed under the [MIT License](LICENSE).
 
