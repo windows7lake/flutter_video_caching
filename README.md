@@ -93,7 +93,7 @@ Config `network_security_config` in `AndroidManifest.xml` under `application`:
 
 Add the following to your projects Info.plist file:
 
-``` plist
+``` xml
 <key>NSAppTransportSecurity</key>
 <dict>
     <key>NSExceptionDomains</key>
