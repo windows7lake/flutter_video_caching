@@ -141,12 +141,15 @@ class UrlParserM3U8 implements UrlParser {
             }
           }
           if (lastLine.startsWith("#EXTINF") ||
+              lastLine.startsWith("#EXT-X-BYTERANGE") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
-            line = line.toSafeUrl();
-            line = line.startsWith('http')
-                ? line.toLocalUrl()
-                : '$line${line.contains('?') ? '&' : '?'}'
-                    'origin=${base64Url.encode(utf8.encode(uri.origin))}';
+            if (!line.startsWith("#EXT")) {
+              line = line.toSafeUrl();
+              line = line.startsWith('http')
+                  ? line.toLocalUrl()
+                  : '$line${line.contains('?') ? '&' : '?'}'
+                      'origin=${base64Url.encode(utf8.encode(uri.origin))}';
+            }
           }
           // Add HLS segment to download list
           if (hlsLine.startsWith("#EXT-X-KEY") ||
@@ -167,16 +170,22 @@ class UrlParserM3U8 implements UrlParser {
             }
           }
           if (lastLine.startsWith("#EXTINF") ||
+              lastLine.startsWith("#EXT-X-BYTERANGE") ||
               lastLine.startsWith("#EXT-X-STREAM-INF")) {
-            if (!hlsLine.startsWith('http')) {
-              int relativePath = 0;
-              while (hlsLine.startsWith("../")) {
-                hlsLine = hlsLine.substring(3);
-                relativePath++;
+            if (!line.startsWith("#EXT")) {
+              if (!hlsLine.startsWith('http')) {
+                int relativePath = 0;
+                while (hlsLine.startsWith("../")) {
+                  hlsLine = hlsLine.substring(3);
+                  relativePath++;
+                }
+                hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
               }
-              hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
+              concurrentAdd(
+                HlsSegment(url: hlsLine, key: task.hlsKey!),
+                headers,
+              );
             }
-            concurrentAdd(HlsSegment(url: hlsLine, key: task.hlsKey!), headers);
           }
           buffer.write('$line\r\n');
           lastLine = line;

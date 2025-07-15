@@ -1,3 +1,7 @@
+## 0.3.9
+
+- fix: parse EXT-X-BYTERANGE failed
+
 ## 0.3.8
 
 - doc: Update README

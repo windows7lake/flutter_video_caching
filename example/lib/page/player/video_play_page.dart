@@ -17,6 +17,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
+    // 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+    // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+    'https://storage.googleapis.com/tiksetif-a2d3d-stream-videos/2d72aa13-9dd9-4372-b8bd-69fa30ce565c/master.m3u8',
     'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
     'https://t.vchaturl.com/60af0a4a4a8771f0bfb387c7371d0102/video/9e462fae647e406ab1ecef64695c8b8d-337ae773f8993fc0d8e6dce1a471c3cf-video-ld-encrypt-stream.m3u8?MtsHlsUriToken=jyL/MHXnUFyNC/Aekt7%2BZ5VKReuFC7TgGlei6lPSk8Z4l3w3C89lcJtMMlXhg/JqCNVVlcLWP0jy8f2UJI2d4A==',
     'http://vjs.zencdn.net/v/oceans.mp4',

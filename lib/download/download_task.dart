@@ -79,6 +79,13 @@ class DownloadTask {
   })  : id = _autoId.toString(),
         saveFile = fileName ?? uri.toString() {
     _autoId++;
+    // if (headers?.containsKey("range") == true) {
+    //   String rangeStr = headers!["range"].toString();
+    //   RegExp exp = RegExp(r'bytes=(\d+)-(\d*)');
+    //   RegExpMatch? rangeMatch = exp.firstMatch(rangeStr);
+    //   startRange = int.tryParse(rangeMatch?.group(1) ?? '0') ?? 0;
+    //   endRange = int.tryParse(rangeMatch?.group(2) ?? '0') ?? -1;
+    // }
   }
 
   /// Returns the URL string of the download target.
