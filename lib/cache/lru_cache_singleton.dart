@@ -130,6 +130,12 @@ class LruCacheSingleton {
     await _storageInit();
     return _storageCache.size.toMemorySize;
   }
+  
+  /// Returns the size of the disk cache.
+  Future<int> storageSizeInBytes() async {
+    await _storageInit();
+    return _storageCache.size;
+  }
 
   /// Returns the internal map of the disk cache.
   LinkedHashMap<String, FileSystemEntity> storageMap() {
