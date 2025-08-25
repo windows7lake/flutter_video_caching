@@ -1,3 +1,7 @@
+## 0.3.10
+
+- feat: support storageSizeInBytes (pr #20 from cenumi)
+
 ## 0.3.9
 
 - fix: parse EXT-X-BYTERANGE failed
