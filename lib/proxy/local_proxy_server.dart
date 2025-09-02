@@ -40,6 +40,7 @@ class LocalProxyServer {
       logD('Proxy server started ${server?.address.address}:${server?.port}');
       server?.listen(_handleConnection);
     } on SocketException catch (e) {
+      logW('Proxy server Socket close: $e');
       // If the port is occupied (error code 98), increment port and retry.
       if (e.osError?.errorCode == 98) {
         Config.port = Config.port + 1;
@@ -106,7 +107,7 @@ class LocalProxyServer {
         await VideoCaching.parse(socket, originUri, headers);
       }
     } catch (e) {
-      logW('⚠ ⚠ ⚠ Connections exception: $e');
+      logW('⚠ ⚠ ⚠ Socket connections close: $e');
     } finally {
       // Ensure the socket is closed after handling.
       await socket.close();

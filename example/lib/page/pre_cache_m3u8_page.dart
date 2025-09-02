@@ -180,8 +180,7 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> with M3U8MX {
           _step.value = 1;
           _segmentProgress.clear();
           String url =
-              // 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
-              'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
+              'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
           _resolutions = await getResolutionOptions(url);
           setState(() {});
         },

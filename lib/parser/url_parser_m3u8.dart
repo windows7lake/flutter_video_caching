@@ -209,7 +209,7 @@ class UrlParserM3U8 implements UrlParser {
       logD('Return request data: $uri');
       return true;
     } catch (e) {
-      logW('[UrlParserM3U8] ⚠ ⚠ ⚠ parse error: $e');
+      logW('[UrlParserM3U8] ⚠ ⚠ ⚠ parse socket close: $e');
       return false;
     } finally {
       await socket.close();
@@ -520,6 +520,7 @@ class UrlParserM3U8 implements UrlParser {
   ///
   /// Returns the parsed [HlsPlaylist], or `null` if parsing fails.
   Future<HlsPlaylist?> parseLines(List<String> lines) async {
+    if (lines.isEmpty) return null;
     HlsPlaylist? playList;
     try {
       playList = await VideoProxy.hlsPlaylistParser.parse(Uri.base, lines);

@@ -1,3 +1,7 @@
+## 0.3.11
+
+- fix: SocketException Write failed
+
 ## 0.3.10
 
 - feat: support storageSizeInBytes (pr #20 from cenumi)
