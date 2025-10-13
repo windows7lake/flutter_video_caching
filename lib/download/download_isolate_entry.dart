@@ -103,7 +103,6 @@ class DownloadIsolate {
       // Add custom headers except 'host' and 'range'.
       if (task.headers != null) {
         task.headers!.forEach((key, value) {
-          logIsolate('task.headers: ${task.headers}');
           String keyLower = key.toLowerCase();
           if (keyLower == 'host' || keyLower == 'range') return;
           request.headers.set(key, value);

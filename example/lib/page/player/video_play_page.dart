@@ -17,6 +17,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
+    'http://8.bf8bf.com/video/shengwanwu/%E7%AC%AC01%E9%9B%86/index.m3u8',
     // 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
     // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
     'https://storage.googleapis.com/tiksetif-a2d3d-stream-videos/2d72aa13-9dd9-4372-b8bd-69fa30ce565c/master.m3u8',

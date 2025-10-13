@@ -4,11 +4,16 @@ import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'main_route.dart';
+import 'page/http_client_custom_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
-  await VideoProxy.init(logPrint: true, urlMatcher: UrlMatcherCustom());
+  await VideoProxy.init(
+    logPrint: true,
+    urlMatcher: UrlMatcherCustom(),
+    // httpClientBuilder: HttpClientCustom(),
+  );
   runApp(const HomeApp());
 }
 
