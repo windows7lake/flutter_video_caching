@@ -2,8 +2,8 @@
 
 [![Pub Version](https://img.shields.io/pub/v/flutter_video_caching)](https://pub.dev/packages/flutter_video_caching) [![Pub Points](https://img.shields.io/pub/points/flutter_video_caching)](https://pub.dev/packages/flutter_video_caching) [![GitHub](https://img.shields.io/badge/github-flutter_video_caching-blue?logo=github)](https://github.com/windows7lake/flutter_video_caching)
 
-`flutter_video_caching` is a powerful Flutter plugin for efficient video caching. 
-It supports integration with the `video_player` package and works with popular formats like m3u8 (HLS) and MP4. 
+`flutter_video_caching` is a powerful Flutter plugin for efficient video caching.
+It supports integration with the `video_player` package and works with popular formats like m3u8 (HLS) and MP4.
 The plugin enables simultaneous playback and caching, as well as pre-caching for smoother user experiences.
 
 ## 🎊 Features
@@ -70,11 +70,11 @@ VideoCaching.precache(url);
 
 Since flutter_video_caching create a localhost HTTP server, configuration is necessary to allow http connections:
 
-#### Android: 
+#### Android:
 
 Create or Add to `android/app/src/main/res/xml/network_security_config.xml`:
 
-``` xml
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
   <domain-config cleartextTrafficPermitted="true">
@@ -85,7 +85,7 @@ Create or Add to `android/app/src/main/res/xml/network_security_config.xml`:
 
 Config `network_security_config` in `AndroidManifest.xml` under `application`:
 
-``` xml
+```xml
 <application ... android:networkSecurityConfig="@xml/network_security_config">
 ```
 
@@ -93,7 +93,7 @@ Config `network_security_config` in `AndroidManifest.xml` under `application`:
 
 Add the following to your projects Info.plist file:
 
-``` xml
+```xml
 <key>NSAppTransportSecurity</key>
 <dict>
     <key>NSExceptionDomains</key>
@@ -170,7 +170,14 @@ _controller = VideoPlayerController.networkUrl(uri, httpHeaders: {'CUSTOM-CACHE-
 VideoCaching.precache(url, headers: {'CUSTOM-CACHE-ID': 'xxxxxxx'});
 ```
 
-### 5. Custom URL matching
+### 5. Check cache
+
+```dart
+// Check whether the video was cached
+VideoCaching.isCached(url, headers: {'Token': 'xxxxxxx'}, cacheSegments = 2);
+```
+
+### 6. Custom URL matching
 
 Implement the UrlMatcher abstract class (lib/match/url_matcher.dart) to define custom logic for matching .m3u8, .ts, .mp4, m3u8 encryption keys, and cache keys.
 The default cache key is the same as the original URL, but with query parameters removed, only `startRange` and `endRange` are kept.
@@ -200,18 +207,18 @@ class UrlMatcherDefault extends UrlMatcher {
 
 - Use `UrlMatcher` to distinguish video types.
 - **Caching logic:**
-  + m3u8: Each segment is cached as a separate file.
-  + mp4/others: The file is split into 2MB segments for caching.
-
+  - m3u8: Each segment is cached as a separate file.
+  - mp4/others: The file is split into 2MB segments for caching.
 
 To use your custom UrlMatcher, pass it to `VideoProxy.init()`.
 
-### 6. Custom HttpClient
+### 7. Custom HttpClient
 
-You can customize the HTTP client used for video downloading and caching by implementing the HttpClientBuilder interface. 
+You can customize the HTTP client used for video downloading and caching by implementing the HttpClientBuilder interface.
 This allows you to configure certificate verification, custom headers, or other HTTP behaviors.
 
 Example: Allow Self-Signed Certificates
+
 ```dart
 class HttpClientCustom extends HttpClientBuilder {
   @override
@@ -231,7 +238,8 @@ class HttpClientCustom extends HttpClientBuilder {
   }
 }
 ```
-To use your custom client, pass it to `VideoProxy.init()`.  
+
+To use your custom client, pass it to `VideoProxy.init()`.
 
 > Note: Allowing all certificates is insecure and should only be used for testing. In production, implement strict certificate validation.
 
@@ -285,7 +293,6 @@ To use your custom client, pass it to `VideoProxy.init()`.
   })
 ```
 
-
 ## ❓ FAQ
 
 ### 1. How to set the maximum cache limit?
@@ -298,7 +305,9 @@ Set `maxMemoryCacheSize` and `maxStorageCacheSize` in `VideoProxy.init`.
 VideoProxy.downloadManager.stream.listen((Map map) {
 });
 ```
-**For .m3u8:** 
+
+**For .m3u8:**
+
 ```
 {
   'progress': 0.0,                // Download progress (0.0 ~ 1.0)
@@ -312,7 +321,7 @@ VideoProxy.downloadManager.stream.listen((Map map) {
 }
 ```
 
-**For .mp4:** 
+**For .mp4:**
 
 ```
 {
