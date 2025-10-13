@@ -23,26 +23,26 @@ class LocalLogFilter extends LogFilter {
 
 /// Prints a message in an isolate if logging is enabled.
 /// Used for logging in Dart isolates where [Logger] may not be available.
-logIsolate(dynamic message) {
+void logIsolate(dynamic message) {
   if (Config.logPrint) {
     print(message);
   }
 }
 
 /// Logs a verbose message using the global logger.
-logV(dynamic message) => LogInstance.logger.t(message);
+void logV(dynamic message) => LogInstance.logger.t(message);
 
 /// Logs a debug message using the global logger.
-logD(dynamic message) => LogInstance.logger.d(message);
+void logD(dynamic message) => LogInstance.logger.d(message);
 
 /// Logs an info message using the global logger.
-logI(dynamic message) => LogInstance.logger.i(message);
+void logI(dynamic message) => LogInstance.logger.i(message);
 
 /// Logs a warning message using the global logger.
-logW(dynamic message) => LogInstance.logger.w(message);
+void logW(dynamic message) => LogInstance.logger.w(message);
 
 /// Logs an error message using the global logger.
-logE(dynamic message) => LogInstance.logger.e(message);
+void logE(dynamic message) => LogInstance.logger.e(message);
 
 /// Logs a fatal (wtf) message using the global logger.
-logN(dynamic message) => LogInstance.logger.f(message);
+void logN(dynamic message) => LogInstance.logger.f(message);
