@@ -27,6 +27,22 @@ class VideoCaching {
     await UrlParserFactory.createParser(uri).parse(socket, uri, headers);
   }
 
+  /// Whether the video is cached.
+  ///
+  /// [url]: The video URL to check.
+  /// [headers]: Optional HTTP headers to use for the request.
+  /// [cacheSegments]: Number of segments to cache.
+  ///
+  /// Returns `true` if the video is cached, otherwise `false`.
+  static Future<bool> isCached(
+    String url, {
+    Map<String, Object>? headers,
+    int cacheSegments = 2,
+  }) {
+    return UrlParserFactory.createParser(url.toSafeUri())
+        .isCached(url, headers, cacheSegments);
+  }
+
   /// Pre-caches the video at the specified [url].
   ///
   /// [url]: The video URL to be pre-cached.

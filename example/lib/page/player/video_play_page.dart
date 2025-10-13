@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
-import 'package:flutter_video_caching/global/config.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPlayPage extends StatefulWidget {
@@ -45,8 +44,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     logD('remoteUri: $remoteUri');
     Uri uri = url.toLocalUri();
     // Uri uri = Uri.parse(remoteUri);
-    _controller = VideoPlayerController.networkUrl(uri,
-        httpHeaders: {Config.customCacheId: "custom_cache_id"})
+    _controller = VideoPlayerController.networkUrl(uri)
       ..setLooping(true)
       ..initialize().then((_) {
         setState(() {});

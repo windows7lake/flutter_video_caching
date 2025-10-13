@@ -372,6 +372,39 @@ class UrlParserM3U8 implements UrlParser {
     concurrentLoop(idleSegment, headers);
   }
 
+  /// Whether the video is cached.
+  ///
+  /// [url]: The video URL to check.
+  /// [headers]: Optional HTTP headers to use for the request.
+  /// [cacheSegments]: Number of segments to cache.
+  ///
+  /// Returns `true` if the video is cached, otherwise `false`.
+  @override
+  Future<bool> isCached(
+    String url,
+    Map<String, Object>? headers,
+    int cacheSegments,
+  ) async {
+    List<String> mediaList = await parseSegment(url.toSafeUri(), headers);
+    int totalSize = mediaList.length;
+    if (cacheSegments > totalSize) cacheSegments = totalSize;
+    if (mediaList.isEmpty) return false;
+
+    final List<String> segments = mediaList.take(cacheSegments).toList();
+    final String hlsKey = url.generateMd5;
+
+    for (final segment in segments) {
+      final task = DownloadTask(
+        uri: segment.toSafeUri(),
+        hlsKey: hlsKey,
+        headers: headers,
+      );
+      Uint8List? data = await cache(task);
+      if (data == null) return false;
+    }
+    return true;
+  }
+
   /// Pre-caches HLS video segments from the network.
   ///
   /// Parses the given HLS playlist URL, selects a specified number of segments to cache,

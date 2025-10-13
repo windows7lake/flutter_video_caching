@@ -1,3 +1,7 @@
+## 0.4.0
+
+- feat: add `VideoCaching.isCached` to check if a video is cached
+
 ## 0.3.11
 
 - fix: SocketException Write failed

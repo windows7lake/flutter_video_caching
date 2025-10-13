@@ -382,6 +382,40 @@ class UrlParserMp4 implements UrlParser {
     }
   }
 
+  /// Whether the video is cached.
+  ///
+  /// [url]: The video URL to check.
+  /// [headers]: Optional HTTP headers to use for the request.
+  /// [cacheSegments]: Number of segments to cache.
+  ///
+  /// Returns `true` if the video is cached, otherwise `false`.
+  @override
+  Future<bool> isCached(
+    String url,
+    Map<String, Object>? headers,
+    int cacheSegments,
+  ) async {
+    int contentLength = await head(url.toSafeUri(), headers: headers);
+    if (contentLength > 0) {
+      int segmentSize = contentLength ~/ Config.segmentSize +
+          (contentLength % Config.segmentSize > 0 ? 1 : 0);
+      if (cacheSegments > segmentSize) {
+        cacheSegments = segmentSize;
+      }
+    }
+    int count = 0;
+    while (count < cacheSegments) {
+      DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
+      // Set the start and end range for each segment
+      task.startRange += Config.segmentSize * count;
+      task.endRange = task.startRange + Config.segmentSize - 1;
+      count++;
+      Uint8List? data = await cache(task);
+      if (data == null) return false;
+    }
+    return true;
+  }
+
   /// Pre-caches data from the network.
   ///
   /// [cacheSegments]: Number of segments to cache.<br>
