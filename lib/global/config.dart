@@ -16,7 +16,7 @@ class Config {
   static int port = 20250;
 
   /// Returns the server URL in the format "ip:port".
-  static get serverUrl => "$ip:$port";
+  static String get serverUrl => "$ip:$port";
 
   /// The size of one megabyte in bytes.
   static int mbSize = 1000 * 1000;
