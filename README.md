@@ -293,6 +293,26 @@ To use your custom client, pass it to `VideoProxy.init()`.
   })
 ```
 
+## 🎛 Local Video Server
+
+### 1. To start video server
+
+run `main.dart` in `server` directory.
+
+### 2. Config local domain name
+
+#### Macos
+
+run `scutil --get LocalHostName` in terminal to get your computer name. Then you can use `http://computer-name.local:8080` to access services.
+
+#### Windows
+
+Modify the hosts in `C:\Windows\System32\drivers\etc\hosts`, add `127.0.0.1  computer-name.local` to the end of the file. Then you can use `http://computer-name.local:8080` to access services.
+
+#### Linux
+
+Modify the hosts in `/etc/hosts`, add `127.0.0.1  computer-name.local` to the end of the file. Then you can use `http://computer-name.local:8080` to access services.
+
 ## ❓ FAQ
 
 ### 1. How to set the maximum cache limit?
