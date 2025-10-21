@@ -1,3 +1,8 @@
+## 0.4.1
+
+- feat: add support for local video server.
+- fix: segment in m3u8 file which start with "/", it will cause save directory error.
+
 ## 0.4.0
 
 - feat: add `VideoCaching.isCached` to check if a video is cached

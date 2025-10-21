@@ -16,7 +16,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
-    'http://8.bf8bf.com/video/shengwanwu/%E7%AC%AC01%E9%9B%86/index.m3u8',
+    'http://linchuanghudeimac.local:8080/videos/playlist.m3u8',
+    // 'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
+    // 'http://8.bf8bf.com/video/shengwanwu/%E7%AC%AC01%E9%9B%86/index.m3u8',
     // 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
     // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
     'https://storage.googleapis.com/tiksetif-a2d3d-stream-videos/2d72aa13-9dd9-4372-b8bd-69fa30ce565c/master.m3u8',
@@ -34,6 +36,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   void initState() {
     super.initState();
     initController();
+    VideoCaching.isCached(urls[0], cacheSegments: 5).then((value) {
+      logW("cache: $value");
+    });
   }
 
   void initController() {

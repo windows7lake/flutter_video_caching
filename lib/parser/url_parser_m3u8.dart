@@ -111,6 +111,14 @@ class UrlParserM3U8 implements UrlParser {
       HlsSegment? hlsSegment = findSegmentByUri(uri);
       if (hlsSegment != null) task.hlsKey = hlsSegment.key;
       Uint8List? data = await cache(task);
+      // if the task has been added, wait for the download to complete
+      bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
+      if (exitUri) {
+        while (data == null) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          data = await cache(task);
+        }
+      }
       if (data == null) {
         concurrentLoop(hlsSegment, headers);
         task.priority += 10;
@@ -175,11 +183,23 @@ class UrlParserM3U8 implements UrlParser {
             if (!line.startsWith("#EXT")) {
               if (!hlsLine.startsWith('http')) {
                 int relativePath = 0;
+                // when hlsLine is relative path
                 while (hlsLine.startsWith("../")) {
                   hlsLine = hlsLine.substring(3);
                   relativePath++;
                 }
-                hlsLine = '${uri.pathPrefix(relativePath)}/' + hlsLine;
+                // when hlsLine start with /, and prefix contain hlsLine
+                String prefix = '${uri.pathPrefix(relativePath)}/';
+                if (hlsLine.startsWith("/")) {
+                  List<String> split = hlsLine.split("/");
+                  List<String> result = [];
+                  for (var item in split) {
+                    if (prefix.contains(item)) continue;
+                    result.add(item);
+                  }
+                  hlsLine = result.join("/");
+                }
+                hlsLine = prefix + hlsLine;
               }
               concurrentAdd(
                 HlsSegment(url: hlsLine, key: task.hlsKey!),
@@ -489,11 +509,23 @@ class UrlParserM3U8 implements UrlParser {
       String? segmentUrl = segment.url;
       if (segmentUrl != null && !segmentUrl.startsWith('http')) {
         int relativePath = 0;
+        // when hlsLine is relative path
         while (segmentUrl!.startsWith("../")) {
           segmentUrl = segmentUrl.substring(3);
           relativePath++;
         }
-        segmentUrl = '${uri.pathPrefix(relativePath)}/' + segmentUrl;
+        // when hlsLine start with /, and prefix contain hlsLine
+        String prefix = '${uri.pathPrefix(relativePath)}/';
+        if (segmentUrl.startsWith("/")) {
+          List<String> split = segmentUrl.split("/");
+          List<String> result = [];
+          for (var item in split) {
+            if (prefix.contains(item)) continue;
+            result.add(item);
+          }
+          segmentUrl = result.join("/");
+        }
+        segmentUrl = prefix + segmentUrl;
       }
       if (segmentUrl == null) continue;
       segments.add(segmentUrl);
