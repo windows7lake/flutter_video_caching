@@ -3,6 +3,8 @@ import 'package:example/page/pre_cache_m3u8_play.dart';
 import 'package:flutter/material.dart';
 
 import 'page/download_page.dart';
+import 'page/fplayer_page_view_page.dart';
+import 'page/fplayer_page_view_page2.dart';
 import 'page/http_client_custom_page.dart';
 import 'page/m3u8_parser_page.dart';
 import 'page/player/flick_player_page.dart';
@@ -30,6 +32,8 @@ class _MainRouteState extends State<MainRoute> {
     'VideoPageView': const VideoPageViewPage(),
     'StorageCache': const StorageCachePage(),
     'FPlayer': const FPlayerPage(),
+    'FPlayerPageView': const FPlayerPageViewPage(),
+    'FPlayerPageView2': const FPlayerPageViewPage2(),
     'FlickPlayerPage': const FlickPlayerPage(),
     'PodPlayerPage': const PodPlayerPage(),
     'MediaKitPage': const MediaKitPage(),
