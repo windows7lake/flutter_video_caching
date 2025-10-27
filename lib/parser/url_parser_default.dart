@@ -244,7 +244,8 @@ class UrlParserDefault implements UrlParser {
         file.writeAsString(contentLength.toString());
         LruCacheSingleton().storagePut(task.matchUrl, file);
       }
-      if (requestRangeStart == 0 && requestRangeEnd == 1) {
+      if (contentLength == 0 || contentLength == -1) {
+      } else if (requestRangeStart == 0 && requestRangeEnd == 1) {
         responseHeaders.add('content-range: bytes 0-1/$contentLength');
         await socket.append(responseHeaders.join('\r\n'));
         await socket.append([0]);
@@ -328,6 +329,18 @@ class UrlParserDefault implements UrlParser {
     }
     HttpClientResponse response = await request.close();
     client.close();
+    // Get content-length from content-range, if failed get from content-length
+    String? contentRange =
+        response.headers.value(HttpHeaders.contentRangeHeader);
+    if (contentRange != null) {
+      final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
+      if (match != null && match.group(3) != null) {
+        String total = match.group(3)!;
+        if (total.isNotEmpty && total != '0') {
+          return int.parse(total);
+        }
+      }
+    }
     return response.contentLength;
   }
 

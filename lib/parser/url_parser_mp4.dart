@@ -332,6 +332,18 @@ class UrlParserMp4 implements UrlParser {
     }
     HttpClientResponse response = await request.close();
     client.close();
+    // Get content-length from content-range, if failed get from content-length
+    String? contentRange =
+        response.headers.value(HttpHeaders.contentRangeHeader);
+    if (contentRange != null) {
+      final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
+      if (match != null && match.group(3) != null) {
+        String total = match.group(3)!;
+        if (total.isNotEmpty && total != '0') {
+          return int.parse(total);
+        }
+      }
+    }
     return response.contentLength;
   }
 
