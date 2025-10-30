@@ -1,3 +1,7 @@
+## 0.4.3
+
+- fix: mp4 cache error when concurrent downloading
+
 ## 0.4.2
 
 - fix: mp4 download failed on iOS when content-length return error value
