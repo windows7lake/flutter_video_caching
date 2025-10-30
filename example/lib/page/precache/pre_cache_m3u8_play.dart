@@ -6,7 +6,7 @@ import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:flutter_video_caching/global/config.dart';
 import 'package:video_player/video_player.dart';
 
-import '../mixin/m3u8_mx.dart';
+import '../../mixin/m3u8_mx.dart';
 
 class PreCacheM3u8Play extends StatefulWidget {
   const PreCacheM3u8Play({super.key});

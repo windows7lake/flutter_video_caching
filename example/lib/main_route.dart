@@ -1,10 +1,10 @@
-import 'package:example/page/pre_cache_m3u8_page.dart';
-import 'package:example/page/pre_cache_m3u8_play.dart';
+import 'package:example/page/precache/pre_cache_m3u8_page.dart';
+import 'package:example/page/precache/pre_cache_m3u8_play.dart';
 import 'package:flutter/material.dart';
 
 import 'page/download_page.dart';
-import 'page/fplayer_page_view_page.dart';
-import 'page/fplayer_page_view_page2.dart';
+import 'page/page_view/fplayer_page_view_page.dart';
+import 'page/page_view/fplayer_page_view_page2.dart';
 import 'page/http_client_custom_page.dart';
 import 'page/m3u8_parser_page.dart';
 import 'page/player/flick_player_page.dart';
@@ -13,7 +13,7 @@ import 'page/player/media_kit_page.dart';
 import 'page/player/pod_player_page.dart';
 import 'page/player/video_play_page.dart';
 import 'page/storage_cache_page.dart';
-import 'page/video_page_view_page.dart';
+import 'page/page_view/video_page_view_page.dart';
 
 class MainRoute extends StatefulWidget {
   const MainRoute({super.key});

@@ -6,7 +6,7 @@ import 'package:flutter_video_caching/ext/log_ext.dart';
 import 'package:flutter_video_caching/flutter_video_caching.dart';
 import 'package:flutter_video_caching/global/config.dart';
 
-import '../mixin/m3u8_mx.dart';
+import '../../mixin/m3u8_mx.dart';
 
 class PreCacheM3u8Page extends StatefulWidget {
   const PreCacheM3u8Page({super.key});
