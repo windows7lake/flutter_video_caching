@@ -1,3 +1,7 @@
+## 0.4.4
+
+- fix: default parser cache error when concurrent downloading
+
 ## 0.4.3
 
 - fix: mp4 cache error when concurrent downloading

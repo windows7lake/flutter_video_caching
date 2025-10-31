@@ -177,6 +177,14 @@ class UrlParserDefault implements UrlParser {
       logD('Request range：${task.startRange}-${task.endRange}');
 
       Uint8List? data = await cache(task);
+      // if the task has been added, wait for the download to complete
+      bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
+      if (exitUri) {
+        while (data == null) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          data = await cache(task);
+        }
+      }
       if (data == null) {
         concurrent(task, headers);
         task.priority += 10;
@@ -277,6 +285,14 @@ class UrlParserDefault implements UrlParser {
       logD('Request range：${task.startRange}-${task.endRange}');
 
       Uint8List? data = await cache(task);
+      // if the task has been added, wait for the download to complete
+      bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
+      if (exitUri) {
+        while (data == null) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          data = await cache(task);
+        }
+      }
       if (data == null) {
         concurrent(task, headers);
         task.priority += 10;
