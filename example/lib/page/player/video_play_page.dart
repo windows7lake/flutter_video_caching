@@ -16,6 +16,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
+    'https://storage.googleapis.com/video-cdn.vdone.vn/users/19565/ConvertToFluter-1761536867738.mp4/highpp-ts.m3u8',
     // 'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     'http://8.bf8bf.com/video/shengwanwu/%E7%AC%AC01%E9%9B%86/index.m3u8',
     // 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
@@ -35,9 +36,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   void initState() {
     super.initState();
     initController();
-    VideoCaching.isCached(urls[0], cacheSegments: 5).then((value) {
-      logW("cache: $value");
-    });
+    // VideoCaching.isCached(urls[0], cacheSegments: 5).then((value) {
+    //   logW("cache: $value");
+    // });
   }
 
   void initController() {
@@ -45,9 +46,9 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
     logD('localUri: $localUri');
-    logD('remoteUri: $remoteUri');
+    // logD('remoteUri: $remoteUri');
     Uri uri = url.toLocalUri();
-    // Uri uri = Uri.parse(remoteUri);
+    // Uri uri = Uri.parse(url);
     _controller = VideoPlayerController.networkUrl(uri)
       ..setLooping(true)
       ..initialize().then((_) {

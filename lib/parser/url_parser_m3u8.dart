@@ -109,8 +109,23 @@ class UrlParserM3U8 implements UrlParser {
         headers: headers,
       );
       HlsSegment? hlsSegment = findSegmentByUri(uri);
-      if (hlsSegment != null) task.hlsKey = hlsSegment.key;
-      Uint8List? data = await cache(task);
+      if (hlsSegment != null) {
+        task.hlsKey = hlsSegment.key;
+        task.startRange = hlsSegment.startRange;
+        task.endRange = hlsSegment.endRange;
+      }
+      // parse EXT-X-BYTERANGE to get range header
+      if (headers.containsKey('range')) {
+        String range = headers['range'] ?? '';
+        if (range.startsWith("bytes=")) range = range.substring(6);
+        List rangeList = range.split('-');
+        if (rangeList.length == 2) {
+          task.startRange = int.tryParse(rangeList[0]) ?? 0;
+          task.endRange = int.tryParse(rangeList[1]);
+        }
+      }
+      // Uint8List? data = await cache(task);
+      Uint8List? data;
       // if the task has been added, wait for the download to complete
       bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
       if (exitUri) {
@@ -130,6 +145,7 @@ class UrlParserM3U8 implements UrlParser {
         // Parse and rewrite M3U8 playlist lines for local proxying
         List<String> lines = readLineFromUint8List(data);
         String lastLine = '';
+        int lastEndRange = 0;
         StringBuffer buffer = StringBuffer();
         for (String line in lines) {
           String hlsLine = line.trim();
@@ -201,8 +217,32 @@ class UrlParserM3U8 implements UrlParser {
                 }
                 hlsLine = prefix + hlsLine;
               }
+              // parse EXT-X-BYTERANGE to get range header
+              int startRange = 0;
+              int? endRange;
+              if (lastLine.startsWith("#EXT-X-BYTERANGE")) {
+                final reg = RegExp(r'#EXT-X-BYTERANGE:(\d+)(?:@(\d+))?');
+                final match = reg.firstMatch(line);
+                if (match != null) {
+                  if (match.groupCount == 2) {
+                    int offset = int.tryParse(match.group(1)!) ?? 0;
+                    startRange = int.tryParse(match.group(2)!) ?? 0;
+                    endRange = offset == 0 ? null : startRange + offset;
+                  } else if (match.groupCount == 1) {
+                    startRange = lastEndRange;
+                    int offset = int.tryParse(match.group(1)!) ?? 0;
+                    endRange = offset == 0 ? null : startRange + offset;
+                    lastEndRange = endRange ?? 0;
+                  }
+                }
+              }
               concurrentAdd(
-                HlsSegment(url: hlsLine, key: task.hlsKey!),
+                HlsSegment(
+                  url: hlsLine,
+                  key: task.hlsKey!,
+                  startRange: startRange,
+                  endRange: endRange,
+                ),
                 headers,
               );
             }
@@ -217,11 +257,22 @@ class UrlParserM3U8 implements UrlParser {
       } else if (VideoProxy.urlMatcherImpl.matchM3u8Segment(task.uri)) {
         contentType = 'video/MP2T';
       }
+      // return contentRange and contentLength to video player which parse from EXT-X-BYTERANGE
+      String contentRange = "";
+      String contentLength = "";
+      if (task.startRange != 0 && task.endRange != null) {
+        contentRange = 'bytes=${task.startRange}-${task.endRange!}';
+        contentLength = (task.endRange! - task.startRange + 1).toString();
+      }
       String responseHeaders = <String>[
-        'HTTP/1.1 200 OK',
+        contentRange.isEmpty
+            ? 'HTTP/1.1 200 OK'
+            : 'HTTP/1.1 206 Partial Content',
         'Content-Type: $contentType',
         'Connection: keep-alive',
         if (contentType == 'video/MP2T') 'Accept-Ranges: bytes',
+        if (contentRange.isNotEmpty) 'Content-Range: $contentRange',
+        if (contentLength.isNotEmpty) 'Content-Length: $contentLength',
       ].join('\r\n');
       await socket.append(responseHeaders);
       await socket.append(data);
@@ -600,11 +651,15 @@ class UrlParserM3U8 implements UrlParser {
 class HlsSegment {
   final String key;
   final String url;
+  final int startRange;
+  final int? endRange;
   DownloadStatus status;
 
   HlsSegment({
     required this.key,
     required this.url,
     this.status = DownloadStatus.IDLE,
+    this.startRange = 0,
+    this.endRange,
   });
 }
