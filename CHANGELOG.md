@@ -1,3 +1,7 @@
+## 0.4.5
+
+- fix: m3u8 bytes-range parse
+
 ## 0.4.4
 
 - fix: default parser cache error when concurrent downloading
