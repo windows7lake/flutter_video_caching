@@ -3,17 +3,17 @@ import 'package:example/page/precache/pre_cache_m3u8_play.dart';
 import 'package:flutter/material.dart';
 
 import 'page/download_page.dart';
-import 'page/page_view/fplayer_page_view_page.dart';
-import 'page/page_view/fplayer_page_view_page2.dart';
 import 'page/http_client_custom_page.dart';
 import 'page/m3u8_parser_page.dart';
+import 'page/page_view/fplayer_page_view_page.dart';
+import 'page/page_view/fplayer_page_view_page2.dart';
+import 'page/page_view/video_page_view_page.dart';
 import 'page/player/flick_player_page.dart';
 import 'page/player/fplayer_page.dart';
 import 'page/player/media_kit_page.dart';
 import 'page/player/pod_player_page.dart';
 import 'page/player/video_play_page.dart';
 import 'page/storage_cache_page.dart';
-import 'page/page_view/video_page_view_page.dart';
 
 class MainRoute extends StatefulWidget {
   const MainRoute({super.key});
@@ -40,6 +40,7 @@ class _MainRouteState extends State<MainRoute> {
     'HttpClientCustom': const HttpClientCustomPage(),
   };
   final List<String> urls = [
+    'https://storage.googleapis.com/video-cdn.vdone.vn/users/19565/ConvertToFluter-1761536867738.mp4/highpp-ts.m3u8',
     'http://vjs.zencdn.net/v/oceans.mp4',
     'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
     'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',

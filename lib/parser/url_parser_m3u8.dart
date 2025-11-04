@@ -124,8 +124,7 @@ class UrlParserM3U8 implements UrlParser {
           task.endRange = int.tryParse(rangeList[1]);
         }
       }
-      // Uint8List? data = await cache(task);
-      Uint8List? data;
+      Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
       bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
       if (exitUri) {
@@ -260,7 +259,7 @@ class UrlParserM3U8 implements UrlParser {
       // return contentRange and contentLength to video player which parse from EXT-X-BYTERANGE
       String contentRange = "";
       String contentLength = "";
-      if (task.startRange != 0 && task.endRange != null) {
+      if (task.endRange != null) {
         contentRange = 'bytes=${task.startRange}-${task.endRange!}';
         contentLength = (task.endRange! - task.startRange + 1).toString();
       }
@@ -456,19 +455,21 @@ class UrlParserM3U8 implements UrlParser {
     Map<String, Object>? headers,
     int cacheSegments,
   ) async {
-    List<String> mediaList = await parseSegment(url.toSafeUri(), headers);
+    List<HlsSegment> mediaList = await parseSegment(url.toSafeUri(), headers);
     int totalSize = mediaList.length;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
     if (mediaList.isEmpty) return false;
 
-    final List<String> segments = mediaList.take(cacheSegments).toList();
+    final List<HlsSegment> segments = mediaList.take(cacheSegments).toList();
     final String hlsKey = url.generateMd5;
 
     for (final segment in segments) {
       final task = DownloadTask(
-        uri: segment.toSafeUri(),
+        uri: segment.url.toSafeUri(),
         hlsKey: hlsKey,
         headers: headers,
+        startRange: segment.startRange,
+        endRange: segment.endRange,
       );
       Uint8List? data = await cache(task);
       if (data == null) return false;
@@ -493,21 +494,23 @@ class UrlParserM3U8 implements UrlParser {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
 
-    List<String> mediaList = await parseSegment(url.toSafeUri(), headers);
+    List<HlsSegment> mediaList = await parseSegment(url.toSafeUri(), headers);
     int totalSize = mediaList.length;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
     if (mediaList.isEmpty) return _streamController;
 
-    final List<String> segments = mediaList.take(cacheSegments).toList();
+    final List<HlsSegment> segments = mediaList.take(cacheSegments).toList();
     final String hlsKey = url.generateMd5;
     int downloadedSize = 0;
 
     /// Downloads or loads a segment from cache and emits progress to the stream.
-    Future<void> processSegment(String segment) async {
+    Future<void> processSegment(HlsSegment segment) async {
       final task = DownloadTask(
-        uri: segment.toSafeUri(),
+        uri: segment.url.toSafeUri(),
         hlsKey: hlsKey,
         headers: headers,
+        startRange: segment.startRange,
+        endRange: segment.endRange,
       );
       Uint8List? data = await cache(task);
       if (data == null) {
@@ -534,9 +537,11 @@ class UrlParserM3U8 implements UrlParser {
     } else {
       for (final segment in segments) {
         final task = DownloadTask(
-          uri: segment.toSafeUri(),
+          uri: segment.url.toSafeUri(),
           hlsKey: hlsKey,
           headers: headers,
+          startRange: segment.startRange,
+          endRange: segment.endRange,
         );
         push(task);
       }
@@ -548,14 +553,14 @@ class UrlParserM3U8 implements UrlParser {
   /// Parses M3U8 TS file segment URLs from the playlist at [uri].
   ///
   /// Returns a list of segment URLs.
-  Future<List<String>> parseSegment(
+  Future<List<HlsSegment>> parseSegment(
     Uri uri,
     Map<String, Object>? headers,
   ) async {
     final HlsMediaPlaylist? playList =
         await parseMediaPlaylist(uri, headers: headers);
-    if (playList == null) return <String>[];
-    List<String> segments = <String>[];
+    if (playList == null) return <HlsSegment>[];
+    List<HlsSegment> segments = <HlsSegment>[];
     for (final Segment segment in playList.segments) {
       String? segmentUrl = segment.url;
       if (segmentUrl != null && !segmentUrl.startsWith('http')) {
@@ -579,7 +584,16 @@ class UrlParserM3U8 implements UrlParser {
         segmentUrl = prefix + segmentUrl;
       }
       if (segmentUrl == null) continue;
-      segments.add(segmentUrl);
+      int? endRange;
+      if (segment.byterangeOffset != null && segment.byterangeOffset != null) {
+        endRange = segment.byterangeLength! - segment.byterangeOffset! - 1;
+      }
+      segments.add(HlsSegment(
+        key: segmentUrl.generateMd5,
+        url: segmentUrl,
+        startRange: segment.byterangeOffset ?? 0,
+        endRange: endRange,
+      ));
     }
     return segments;
   }
