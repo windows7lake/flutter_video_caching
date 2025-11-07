@@ -22,7 +22,7 @@ The plugin enables simultaneous playback and caching, as well as pre-caching for
 - [video_player](https://pub.dev/packages/video_player)
 - [flick_video_player](https://pub.dev/packages/flick_video_player)
 - [pod_player](https://pub.dev/packages/pod_player)
-- [flick_video_player](https://pub.dev/packages/flick_video_player)
+- [media_kit](https://pub.dev/packages/media_kit)
 - [fplayer](https://pub.dev/packages/fplayer)
 
 ## 🕹 Installation
