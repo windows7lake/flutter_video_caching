@@ -1,3 +1,7 @@
+## 0.4.6
+
+- fix: parse EXT-X-MAP failed
+
 ## 0.4.5
 
 - fix: m3u8 bytes-range parse

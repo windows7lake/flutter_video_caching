@@ -150,11 +150,13 @@ class UrlParserM3U8 implements UrlParser {
           String hlsLine = line.trim();
           String? parseUri;
           if (hlsLine.startsWith("#EXT-X-KEY") ||
-              hlsLine.startsWith("#EXT-X-MEDIA")) {
+              hlsLine.startsWith("#EXT-X-MEDIA") ||
+              hlsLine.startsWith("#EXT-X-MAP")) {
             Match? match = RegExp(r'URI="([^"]+)"').firstMatch(hlsLine);
             if (match != null && match.groupCount >= 1) {
               parseUri = match.group(1);
               if (parseUri != null) {
+                parseUri = parseUri.toSafeUrl();
                 String newUri = parseUri.startsWith('http')
                     ? parseUri.toLocalUrl()
                     : '$parseUri${parseUri.contains('?') ? '&' : '?'}'
@@ -176,7 +178,8 @@ class UrlParserM3U8 implements UrlParser {
           }
           // Add HLS segment to download list
           if (hlsLine.startsWith("#EXT-X-KEY") ||
-              hlsLine.startsWith("#EXT-X-MEDIA")) {
+              hlsLine.startsWith("#EXT-X-MEDIA") ||
+              hlsLine.startsWith("#EXT-X-MAP")) {
             if (parseUri != null) {
               if (!parseUri.startsWith('http')) {
                 int relativePath = 0;
