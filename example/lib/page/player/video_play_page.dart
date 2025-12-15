@@ -16,6 +16,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
+    'https://europe.olemovienews.com/ts4/20251025/9ao27jr9/mp4/9ao27jr9.mp4/master.m3u8',
     'https://storage.googleapis.com/weppo-app.firebasestorage.app/videos/tamires/5xath5800ge85hara2x6fd9b/hls/master.m3u8',
     'https://storage.googleapis.com/video-cdn.vdone.vn/users/19565/ConvertToFluter-1761536867738.mp4/highpp-ts.m3u8',
     // 'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
@@ -43,16 +44,19 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   }
 
   void initController() {
-    var url = urls[0];
+    var url = urls[2];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
     logD('localUri: $localUri');
     // logD('remoteUri: $remoteUri');
-    Uri uri = url.toLocalUri();
-    // Uri uri = Uri.parse(url);
+    // Uri uri = url.toLocalUri();
+    Uri uri = Uri.parse(url);
+    logW('url：$url  uri：$uri');
+    logW('controller initialized 1：${DateTime.now().toIso8601String()}');
     _controller = VideoPlayerController.networkUrl(uri)
       ..setLooping(true)
       ..initialize().then((_) {
+        logW('controller initialized 2：${DateTime.now().toIso8601String()}');
         setState(() {});
         timer = Timer(const Duration(milliseconds: 200), () {
           _controller.play();

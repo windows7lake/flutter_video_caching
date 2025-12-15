@@ -38,7 +38,12 @@ class LocalProxyServer {
       final InternetAddress internetAddress = InternetAddress(Config.ip);
       server = await ServerSocket.bind(internetAddress, Config.port);
       logD('Proxy server started ${server?.address.address}:${server?.port}');
-      server?.listen(_handleConnection);
+      if (server == null) {
+        retry();
+      } else {
+        startHealthCheck();
+        server?.listen(_handleConnection);
+      }
     } on SocketException catch (e) {
       logW('Proxy server Socket close: $e');
       // If the port is occupied (error code 98), increment port and retry.
@@ -47,6 +52,29 @@ class LocalProxyServer {
         start();
       }
     }
+  }
+
+  void startHealthCheck() {
+    Timer.periodic(Duration(seconds: 10), (timer) async {
+      try {
+        final socket = await Socket.connect(
+          Config.ip,
+          Config.port,
+          timeout: Duration(seconds: 1),
+        );
+        socket.destroy();
+        logD('Proxy server health check pass...');
+      } catch (e) {
+        print('Server seems down: $e');
+        retry();
+      }
+    });
+  }
+
+  void retry() {
+    logD('Proxy server restarting...');
+    server?.close();
+    Future.delayed(Duration(seconds: 1), start);
   }
 
   /// Shuts down the proxy server and closes the socket.
