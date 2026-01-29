@@ -35,9 +35,6 @@ class DownloadPool {
   /// Stream controller for broadcasting download task updates to listeners.
   late final StreamController<DownloadTask> _streamController;
 
-  /// Number of retry attempts left for the current download.
-  int _retryTimes = 0;
-
   /// The last time progress was updated.
   DateTime _progressTime = DateTime.now();
 
@@ -106,7 +103,20 @@ class DownloadPool {
     final task = findTaskById(taskId);
     if (task != null) {
       task.status = status;
-      FunctionProxy.debounce(roundTask);
+      if (status == DownloadStatus.DOWNLOADING) {
+        if (downloadingTasks.length > _poolSize) {
+          DownloadTask lowest = downloadingTasks
+              .where((e) => e.id != taskId)
+              .reduce((a, b) => a.priority < b.priority ? a : b);
+          lowest.status = DownloadStatus.PAUSED;
+        }
+        _download(task);
+      } else if (status == DownloadStatus.COMPLETED ||
+          status == DownloadStatus.FAILED ||
+          status == DownloadStatus.CANCELLED) {
+        _taskList.removeWhere((task) => task.id == taskId);
+        _notifyTask(task);
+      }
     }
   }
 
@@ -114,7 +124,20 @@ class DownloadPool {
     final task = findTaskByUrl(url);
     if (task != null) {
       task.status = status;
-      FunctionProxy.debounce(roundTask);
+      if (status == DownloadStatus.DOWNLOADING) {
+        if (downloadingTasks.length > _poolSize) {
+          DownloadTask lowest = downloadingTasks
+              .where((e) => e.url != url)
+              .reduce((a, b) => a.priority < b.priority ? a : b);
+          lowest.status = DownloadStatus.PAUSED;
+        }
+        _download(task);
+      } else if (status == DownloadStatus.COMPLETED ||
+          status == DownloadStatus.FAILED ||
+          status == DownloadStatus.CANCELLED) {
+        _taskList.removeWhere((task) => task.url == url);
+        _notifyTask(task);
+      }
     }
   }
 
@@ -123,9 +146,23 @@ class DownloadPool {
     await _lock.synchronized(() async {
       if (_taskList.isEmpty) return;
       _taskList.sort((a, b) => b.priority - a.priority);
-      while (downloadingTasks.length < _poolSize) {
-        if (_taskList.isNotEmpty) {
-          DownloadTask task = prepareTasks.first;
+      if (_taskList.length > _poolSize) {
+        for (var task in _taskList.sublist(_poolSize)) {
+          if (task.status == DownloadStatus.DOWNLOADING) {
+            task.status = DownloadStatus.PAUSED;
+            _notifyTask(task);
+          }
+        }
+      }
+      if (downloadingTasks.length < _poolSize) {
+        for (int i = 0; i < _taskList.length; i++) {
+          DownloadTask task = _taskList[i];
+          if (task.status == DownloadStatus.DOWNLOADING) continue;
+          if (downloadingTasks.length >= _poolSize) {
+            task.status = DownloadStatus.PAUSED;
+            _notifyTask(task);
+            continue;
+          }
           task.status = DownloadStatus.DOWNLOADING;
           _notifyTask(task);
           _download(task);
@@ -135,36 +172,45 @@ class DownloadPool {
   }
 
   Future<void> _download(DownloadTask task) async {
-    try {
-      final request = await _client.getUrl(task.uri);
-      Map<String, Object> headers = _downloadHeader(task);
-      headers.forEach((key, value) => request.headers.add(key, value));
+    HttpClientRequest request = await _client.getUrl(task.uri);
+    Map<String, Object> headers = _downloadHeader(task);
+    headers.forEach(request.headers.add);
 
-      final response = await request.close();
-      if (!_downloadResponse(response, task)) {
-        return;
-      }
+    HttpClientResponse response = await request.close();
+    if (!_downloadResponse(response, task)) return;
 
-      final file = File(task.filePath);
-      final sink = file.openWrite();
-      await for (final chunk in response) {
+    File file = File(task.savePath);
+    bool append = task.downloadedBytes > 0 || task.startRange > 0;
+    FileMode fileMode = append ? FileMode.append : FileMode.write;
+    IOSink sink = file.openWrite(mode: fileMode);
+
+    late StreamSubscription subscription;
+    subscription = response.listen(
+      (chunk) {
         if (task.status == DownloadStatus.PAUSED ||
             task.status == DownloadStatus.COMPLETED) {
-          (await response.detachSocket()).close();
+          subscription.cancel();
           _notifyTask(task);
-          break;
+          return;
         }
         task.downloadedBytes += chunk.length;
         sink.add(chunk);
         _downloadProgress(response, task);
-      }
-
-      await sink.close();
-    } catch (e) {
-      logV('[DownloadPool] Download error: $e');
-    } finally {
-      logV('[DownloadPool] Download close: ${task.url}');
-    }
+      },
+      onDone: () {
+        task.progress = 1;
+        updateTaskById(task.id, DownloadStatus.COMPLETED);
+        sink.close();
+        FunctionProxy.debounce(roundTask);
+        logV('[DownloadPool] Download done: ${task.url}');
+      },
+      onError: (error) {
+        updateTaskById(task.id, DownloadStatus.FAILED);
+        sink.close();
+        FunctionProxy.debounce(roundTask);
+        logV('[DownloadPool] Download error: $error');
+      },
+    );
   }
 
   Map<String, Object> _downloadHeader(DownloadTask task) {
@@ -173,6 +219,7 @@ class DownloadPool {
     String range = '';
     if (task.downloadedBytes > 0 || task.startRange > 0) {
       int startRange = task.downloadedBytes + task.startRange;
+      task.startRange = startRange;
       range = 'bytes=$startRange-';
     }
     if (task.endRange != null) {
@@ -199,22 +246,22 @@ class DownloadPool {
     }
     // Handle HTTP errors and retry logic.
     final range = 'range: ${task.startRange}-${task.endRange}';
-    if (response.statusCode == 416) _retryTimes = 0;
-    if (_retryTimes > 0) {
-      logV('[DownloadPool] retry $_retryTimes: ${task.uri} $range');
-      _retryTimes--;
+    if (response.statusCode == 416) task.retryTimes = 0;
+    if (task.retryTimes > 0) {
+      logV('[DownloadPool] retry ${task.retryTimes}: ${task.uri} $range');
+      task.retryTimes--;
+      task.startRange = task.startRange - task.downloadedBytes;
       _download(task);
       return false;
     }
     logV('[DownloadPool] failed: ${task.uri} $range');
-    task.status = DownloadStatus.FAILED;
-    _notifyTask(task);
+    updateTaskById(task.id, DownloadStatus.FAILED);
     return false;
   }
 
   void _downloadProgress(HttpClientResponse response, DownloadTask task) {
     // Calculate the total file size
-    final totalBytes = task.downloadedBytes + response.contentLength;
+    final totalBytes = task.startRange + response.contentLength;
     task.totalBytes = response.contentLength == -1 ? 0 : totalBytes;
 
     // Calculate the interval between the current time and the last update time
@@ -235,11 +282,17 @@ class DownloadPool {
   }
 
   void _notifyTask(DownloadTask task) {
+    if (_streamController.isClosed) return;
     _streamController.sink.add(task);
-    if (task.status == DownloadStatus.FAILED ||
-        task.status == DownloadStatus.PAUSED ||
-        task.status == DownloadStatus.COMPLETED) {
-      roundTask();
-    }
+  }
+
+  void dispose() {
+    downloadingTasks.forEach((e) {
+      updateTaskById(e.id, DownloadStatus.CANCELLED);
+    });
+    _taskList.clear();
+    _streamController.close();
+    _client.close();
+    DownloadTask.resetId();
   }
 }

@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_video_caching/flutter_video_caching.dart';
+import 'package:flutter_video_caching/download2/download_manager.dart';
+import 'package:flutter_video_caching/download2/download_status.dart';
+import 'package:flutter_video_caching/download2/download_task.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -63,7 +65,7 @@ class _DownloadPageState extends State<DownloadPage> {
         priority: i,
       ));
     }
-    await _manager.roundIsolate();
+    await _manager.roundTask();
     setState(() {});
   }
 
@@ -111,6 +113,9 @@ class _DownloadPageState extends State<DownloadPage> {
                   ElevatedButton(
                     onPressed: () {
                       switch (task.status) {
+                        case DownloadStatus.IDLE:
+                          _manager.resumeTaskById(task.id);
+                          break;
                         case DownloadStatus.DOWNLOADING:
                           _manager.pauseTaskById(task.id);
                           break;
@@ -159,6 +164,8 @@ class _DownloadPageState extends State<DownloadPage> {
         return 'Pause';
       case DownloadStatus.PAUSED:
         return 'Resume';
+      case DownloadStatus.IDLE:
+        return 'Start';
       default:
         return 'Cancel';
     }

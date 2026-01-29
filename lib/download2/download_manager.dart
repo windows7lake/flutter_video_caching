@@ -50,7 +50,6 @@ class DownloadManager {
   /// Cancels a task by its [taskId].
   void cancelTaskById(String taskId) {
     _downloadPool.updateTaskById(taskId, DownloadStatus.CANCELLED);
-    allTasks.removeWhere((task) => task.id == taskId);
   }
 
   /// Pauses a task by its URL.
@@ -66,7 +65,6 @@ class DownloadManager {
   /// Cancels a task by its URL and removes it from the task list.
   void cancelTaskByUrl(String url) {
     _downloadPool.updateTaskByUrl(url, DownloadStatus.CANCELLED);
-    allTasks.removeWhere((task) => task.url == url);
   }
 
   /// Pauses all downloading tasks.
@@ -80,5 +78,26 @@ class DownloadManager {
   void removeAllTask() {
     pauseAllTasks();
     allTasks.clear();
+  }
+
+  /// Checks if a task with the given match URL exists.
+  bool isMatchUrlExit(String url) {
+    return allTasks.where((task) => task.matchUrl == url).isNotEmpty;
+  }
+
+  /// Checks if a task with the given URL exists.
+  bool isUrlExit(String url) {
+    return allTasks.where((task) => task.uri.toString() == url).isNotEmpty;
+  }
+
+  /// Checks if a task with the given URL is currently downloading.
+  bool isUrlDownloading(String url) {
+    return downloadingTasks
+        .where((task) => task.uri.toString() == url)
+        .isNotEmpty;
+  }
+
+  void dispose() {
+    _downloadPool.dispose();
   }
 }

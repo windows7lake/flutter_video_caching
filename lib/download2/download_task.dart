@@ -48,6 +48,9 @@ class DownloadTask {
   /// so that the segments of the same video can be cached in the same directory.
   String? hlsKey;
 
+  /// The number of retry attempts for the download task.
+  int retryTimes;
+
   /// The list of data chunks downloaded (as bytes).
   List<int> data = [];
 
@@ -57,8 +60,6 @@ class DownloadTask {
 
   /// The timestamp (in milliseconds) when the task was created.
   int createAt = DateTime.now().millisecondsSinceEpoch;
-
-  String filePath = "";
 
   /// Constructs a new DownloadTask with the given parameters.
   /// [uri] is required. [fileName] is optional; if not provided, uses the URI as the file name.
@@ -75,6 +76,7 @@ class DownloadTask {
     this.endRange,
     this.headers,
     this.hlsKey,
+    this.retryTimes = 0,
   })  : id = _autoId.toString(),
         saveFile = fileName ?? uri.toString() {
     _autoId++;
@@ -122,6 +124,9 @@ class DownloadTask {
     }
     return '${matchUrl}.$extensionName';
   }
+
+  /// Returns the file path to be used for saving.
+  String get savePath => "$cacheDir/$saveFileName";
 
   /// Static auto-incremented ID for generating unique task IDs.
   static int _autoId = 1;
