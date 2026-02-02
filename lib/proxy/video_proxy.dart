@@ -63,13 +63,13 @@ class VideoProxy {
     // Create the HLS playlist parser instance.
     hlsPlaylistParser = HlsPlaylistParser.create();
 
+    // Set the HTTP client builder
+    httpClientBuilderImpl = httpClientBuilder ?? HttpClientDefault();
+
     // Initialize the download manager with the specified concurrency.
     downloadManager = DownloadManager(maxConcurrentDownloads);
 
     // Set the URL matcher implementation (custom or default).
     urlMatcherImpl = urlMatcher ?? UrlMatcherDefault();
-
-    // Set the HTTP client builder
-    httpClientBuilderImpl = httpClientBuilder ?? HttpClientDefault();
   }
 }

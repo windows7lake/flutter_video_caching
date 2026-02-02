@@ -134,7 +134,7 @@ class UrlParserM3U8 implements UrlParser {
         }
       }
       if (data == null) {
-        concurrentLoop(hlsSegment, headers);
+        // concurrentLoop(hlsSegment, headers);
         task.priority += 10;
         data = await download(task);
       }
@@ -276,6 +276,9 @@ class UrlParserM3U8 implements UrlParser {
         if (contentRange.isNotEmpty) 'Content-Range: $contentRange',
         if (contentLength.isNotEmpty) 'Content-Length: $contentLength',
       ].join('\r\n');
+
+      logW("[UrlParserM3U8] append 1: ${responseHeaders}");
+      logW("[UrlParserM3U8] append 2: ${data.length}");
       await socket.append(responseHeaders);
       await socket.append(data);
       await socket.flush();

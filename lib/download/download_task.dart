@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+
 import '../ext/log_ext.dart';
 import '../ext/string_ext.dart';
 import '../global/config.dart';
@@ -48,6 +50,12 @@ class DownloadTask {
   /// so that the segments of the same video can be cached in the same directory.
   String? hlsKey;
 
+  /// The number of retry attempts for the download task.
+  int retryTimes;
+
+  /// The CancelToken used to cancel the download request (nullable).
+  CancelToken? cancelToken;
+
   /// The list of data chunks downloaded (as bytes).
   List<int> data = [];
 
@@ -57,9 +65,6 @@ class DownloadTask {
 
   /// The timestamp (in milliseconds) when the task was created.
   int createAt = DateTime.now().millisecondsSinceEpoch;
-
-  /// The file path to be used in isolate operations.
-  String isolateSavePath = "";
 
   /// Constructs a new DownloadTask with the given parameters.
   /// [uri] is required. [fileName] is optional; if not provided, uses the URI as the file name.
@@ -76,16 +81,11 @@ class DownloadTask {
     this.endRange,
     this.headers,
     this.hlsKey,
+    this.retryTimes = 0,
+    this.cancelToken,
   })  : id = _autoId.toString(),
         saveFile = fileName ?? uri.toString() {
     _autoId++;
-    // if (headers?.containsKey("range") == true) {
-    //   String rangeStr = headers!["range"].toString();
-    //   RegExp exp = RegExp(r'bytes=(\d+)-(\d*)');
-    //   RegExpMatch? rangeMatch = exp.firstMatch(rangeStr);
-    //   startRange = int.tryParse(rangeMatch?.group(1) ?? '0') ?? 0;
-    //   endRange = int.tryParse(rangeMatch?.group(2) ?? '0') ?? -1;
-    // }
   }
 
   /// Returns the URL string of the download target.
@@ -106,7 +106,7 @@ class DownloadTask {
     }
     Map<String, String> queryParameters = {};
     queryParameters.addAll(safeUri.queryParameters);
-    if (startRange > 0) {
+    if (startRange > 0 && downloadedBytes == 0) {
       queryParameters.putIfAbsent("startRange", () => startRange.toString());
     }
     if (endRange != null) {
@@ -130,6 +130,9 @@ class DownloadTask {
     }
     return '${matchUrl}.$extensionName';
   }
+
+  /// Returns the file path to be used for saving.
+  String get savePath => "$cacheDir/$saveFileName";
 
   /// Static auto-incremented ID for generating unique task IDs.
   static int _autoId = 1;

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+import 'package:native_dio_adapter/native_dio_adapter.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../ext/file_ext.dart';
 import '../ext/gesture_ext.dart';
 import '../ext/log_ext.dart';
-import '../proxy/video_proxy.dart';
 import 'download_status.dart';
 import 'download_task.dart';
 
@@ -30,7 +31,7 @@ class DownloadPool {
   final List<DownloadTask> _taskList = [];
 
   /// HTTP client used for downloading files.
-  late final HttpClient _client;
+  late final Dio _client;
 
   /// Stream controller for broadcasting download task updates to listeners.
   late final StreamController<DownloadTask> _streamController;
@@ -44,7 +45,7 @@ class DownloadPool {
     if (_poolSize <= 0) {
       throw ArgumentError('Pool size must be greater than 0');
     }
-    _client = VideoProxy.httpClientBuilderImpl.create();
+    _client = Dio()..httpClientAdapter = NativeAdapter();
     _streamController = StreamController.broadcast();
   }
 
@@ -172,58 +173,46 @@ class DownloadPool {
   }
 
   Future<void> _download(DownloadTask task) async {
-    HttpClientRequest request = await _client.getUrl(task.uri);
-    Map<String, Object> headers = _downloadHeader(task);
-    headers.forEach(request.headers.add);
-
-    HttpClientResponse response = await request.close();
-    if (!_downloadResponse(response, task)) return;
-
-    File file = File(task.savePath);
+    DateTime startTime = DateTime.now();
+    if (task.cancelToken == null) {
+      task.cancelToken = CancelToken();
+    }
     bool append = task.downloadedBytes > 0 || task.startRange > 0;
-    FileMode fileMode = append ? FileMode.append : FileMode.write;
-    IOSink sink = file.openWrite(mode: fileMode);
-
-    late StreamSubscription subscription;
-    subscription = response.listen(
-      (chunk) {
+    Map<String, Object> headers = _downloadHeader(task);
+    await _client.download(
+      task.url,
+      task.savePath,
+      cancelToken: task.cancelToken,
+      fileAccessMode: append ? FileAccessMode.append : FileAccessMode.write,
+      deleteOnError: false,
+      onReceiveProgress: (received, total) {
+        _downloadProgress(task, received, total);
         if (task.status == DownloadStatus.PAUSED ||
             task.status == DownloadStatus.COMPLETED) {
-          subscription.cancel();
-          _notifyTask(task);
-          return;
+          task.cancelToken?.cancel();
+          task.cancelToken = null;
+          _updateProgress(task);
         }
-        task.downloadedBytes += chunk.length;
-        sink.add(chunk);
-        _downloadProgress(response, task);
       },
-      onDone: () {
-        task.progress = 1;
-        updateTaskById(task.id, DownloadStatus.COMPLETED);
-        sink.close();
-        FunctionProxy.debounce(roundTask);
-        logV('[DownloadPool] Download done: ${task.url}');
-      },
-      onError: (error) {
-        updateTaskById(task.id, DownloadStatus.FAILED);
-        sink.close();
-        FunctionProxy.debounce(roundTask);
-        logV('[DownloadPool] Download error: $error');
-      },
-    );
+      options: Options(headers: headers),
+    ).then((response) {
+      _downloadResponse(task, startTime);
+    }).catchError((error) {
+      _downloadError(task, error);
+    });
   }
 
   Map<String, Object> _downloadHeader(DownloadTask task) {
     Map<String, Object> headers = {};
     // Set up HTTP Range header for resuming or partial downloads.
     String range = '';
-    if (task.downloadedBytes > 0 || task.startRange > 0) {
-      int startRange = task.downloadedBytes + task.startRange;
-      task.startRange = startRange;
-      range = 'bytes=$startRange-';
+    if (task.downloadedBytes > 0) {
+      range = 'bytes=${task.downloadedBytes}-';
+    }
+    if (range.isEmpty) {
+      range = 'bytes=${task.startRange}-';
     }
     if (task.endRange != null) {
-      if (range.isEmpty) range = 'bytes=0-';
       range += '${task.endRange}';
     }
     headers.putIfAbsent('Range', () => range);
@@ -238,31 +227,10 @@ class DownloadPool {
     return headers;
   }
 
-  bool _downloadResponse(HttpClientResponse response, DownloadTask task) {
-    if (response.statusCode >= 200 && response.statusCode < 300) return true;
-    // Check if contentLength is valid
-    if (response.contentLength == -1) {
-      logV('[DownloadPool] failed to get the total file size.');
-    }
-    // Handle HTTP errors and retry logic.
-    final range = 'range: ${task.startRange}-${task.endRange}';
-    if (response.statusCode == 416) task.retryTimes = 0;
-    if (task.retryTimes > 0) {
-      logV('[DownloadPool] retry ${task.retryTimes}: ${task.uri} $range');
-      task.retryTimes--;
-      task.startRange = task.startRange - task.downloadedBytes;
-      _download(task);
-      return false;
-    }
-    logV('[DownloadPool] failed: ${task.uri} $range');
-    updateTaskById(task.id, DownloadStatus.FAILED);
-    return false;
-  }
-
-  void _downloadProgress(HttpClientResponse response, DownloadTask task) {
+  void _downloadProgress(DownloadTask task, int received, int total) {
     // Calculate the total file size
-    final totalBytes = task.startRange + response.contentLength;
-    task.totalBytes = response.contentLength == -1 ? 0 : totalBytes;
+    task.downloadedBytes = task.startRange + received;
+    task.totalBytes = total == -1 ? 0 : (task.startRange + total);
 
     // Calculate the interval between the current time and the last update time
     final currentTime = DateTime.now();
@@ -272,13 +240,50 @@ class DownloadPool {
     // or the download is complete, then update progress
     if (task.status == DownloadStatus.DOWNLOADING &&
         timeDiff >= MIN_PROGRESS_UPDATE_INTERVAL) {
-      if (task.totalBytes > 0) {
-        task.progress = task.downloadedBytes / task.totalBytes;
-      }
+      _updateProgress(task);
       _progressTime = currentTime;
-      _notifyTask(task);
-      logV("[DownloadPool] DOWNLOADING ${task.toString()}");
     }
+  }
+
+  void _downloadResponse(DownloadTask task, DateTime startTime) {
+    File saveFile = File(task.savePath);
+    task.progress = 1;
+    task.data = saveFile.readAsBytesSync();
+    updateTaskById(task.id, DownloadStatus.COMPLETED);
+    int duration = DateTime.now().difference(startTime).inSeconds;
+    logV('[DownloadPool] Download done time: $duration s: ${task.url}');
+    FunctionProxy.debounce(roundTask);
+  }
+
+  void _downloadError(DownloadTask task, dynamic error) {
+    File saveFile = File(task.savePath);
+    // Check if the download was cancelled.
+    if (CancelToken.isCancel(error)) {
+      logV('[DownloadPool] Download file size: ${saveFile.lengthSync()}');
+      logV('[DownloadPool] Download ${task.status.name}: ${task.url}');
+    } else {
+      // Handle HTTP errors and retry logic.
+      saveFile.deleteSync();
+      updateTaskById(task.id, DownloadStatus.FAILED);
+      logV('[DownloadPool] Download error: $error');
+      if (error is DioException && error.response?.statusCode == 416) {
+        task.retryTimes = 0;
+      }
+      if (task.retryTimes > 0) {
+        logV('[DownloadPool] Download retry ${task.retryTimes}: ${task.uri}');
+        task.retryTimes--;
+        _download(task);
+      }
+      FunctionProxy.debounce(roundTask);
+    }
+  }
+
+  void _updateProgress(DownloadTask task) {
+    if (task.totalBytes > 0) {
+      task.progress = task.downloadedBytes / task.totalBytes;
+    }
+    _notifyTask(task);
+    logV("[DownloadPool] DOWNLOADING ${task.toString()}");
   }
 
   void _notifyTask(DownloadTask task) {

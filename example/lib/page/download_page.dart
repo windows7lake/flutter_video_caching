@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_video_caching/download2/download_manager.dart';
-import 'package:flutter_video_caching/download2/download_status.dart';
-import 'package:flutter_video_caching/download2/download_task.dart';
+import 'package:flutter_video_caching/flutter_video_caching.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});

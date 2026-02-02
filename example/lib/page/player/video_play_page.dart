@@ -49,8 +49,8 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     String remoteUri = localUri.toOriginUrl();
     logD('localUri: $localUri');
     // logD('remoteUri: $remoteUri');
-    // Uri uri = url.toLocalUri();
-    Uri uri = Uri.parse(url);
+    Uri uri = url.toLocalUri();
+    // Uri uri = Uri.parse(url);
     logW('url：$url  uri：$uri');
     logW('controller initialized 1：${DateTime.now().toIso8601String()}');
     _controller = VideoPlayerController.networkUrl(uri)

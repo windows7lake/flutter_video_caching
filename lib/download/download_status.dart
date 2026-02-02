@@ -14,9 +14,6 @@ enum DownloadStatus {
   /// The download has completed successfully.
   COMPLETED,
 
-  /// The download has finished all related operations (e.g., post-processing).
-  FINISHED,
-
   /// The download has been cancelled before completion.
   CANCELLED,
 
