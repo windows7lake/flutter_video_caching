@@ -19,10 +19,10 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
     'https://europe.olemovienews.com/ts4/20251025/9ao27jr9/mp4/9ao27jr9.mp4/master.m3u8',
     'https://storage.googleapis.com/weppo-app.firebasestorage.app/videos/tamires/5xath5800ge85hara2x6fd9b/hls/master.m3u8',
     'https://storage.googleapis.com/video-cdn.vdone.vn/users/19565/ConvertToFluter-1761536867738.mp4/highpp-ts.m3u8',
-    // 'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
+    'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     'http://8.bf8bf.com/video/shengwanwu/%E7%AC%AC01%E9%9B%86/index.m3u8',
-    // 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-    // 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+    'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+    'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
     'https://storage.googleapis.com/tiksetif-a2d3d-stream-videos/2d72aa13-9dd9-4372-b8bd-69fa30ce565c/master.m3u8',
     'https://customer-fzuyyy7va6ohx90h.cloudflarestream.com/861279ab37d84dbfbf3247322fbcfc63/manifest/video.m3u8',
     'https://t.vchaturl.com/60af0a4a4a8771f0bfb387c7371d0102/video/9e462fae647e406ab1ecef64695c8b8d-337ae773f8993fc0d8e6dce1a471c3cf-video-ld-encrypt-stream.m3u8?MtsHlsUriToken=jyL/MHXnUFyNC/Aekt7%2BZ5VKReuFC7TgGlei6lPSk8Z4l3w3C89lcJtMMlXhg/JqCNVVlcLWP0jy8f2UJI2d4A==',
@@ -44,7 +44,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   }
 
   void initController() {
-    var url = urls[2];
+    var url = urls[4];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
     logD('localUri: $localUri');

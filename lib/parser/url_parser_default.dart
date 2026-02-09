@@ -335,29 +335,30 @@ class UrlParserDefault implements UrlParser {
   ///
   /// Returns the content length as an [int].
   Future<int> head(Uri uri, {Map<String, Object>? headers}) async {
-    HttpClient client = VideoProxy.httpClientBuilderImpl.create();
-    HttpClientRequest request = await client.headUrl(uri);
-    if (headers != null) {
-      headers.forEach((key, value) {
-        if (key == 'host' && value == Config.serverUrl) return;
-        request.headers.set(key, value);
-      });
-    }
-    HttpClientResponse response = await request.close();
-    client.close();
-    // Get content-length from content-range, if failed get from content-length
-    String? contentRange =
-        response.headers.value(HttpHeaders.contentRangeHeader);
-    if (contentRange != null) {
-      final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
-      if (match != null && match.group(3) != null) {
-        String total = match.group(3)!;
-        if (total.isNotEmpty && total != '0') {
-          return int.parse(total);
-        }
-      }
-    }
-    return response.contentLength;
+    // HttpClient client = VideoProxy.httpClientBuilderImpl.create();
+    // HttpClientRequest request = await client.headUrl(uri);
+    // if (headers != null) {
+    //   headers.forEach((key, value) {
+    //     if (key == 'host' && value == Config.serverUrl) return;
+    //     request.headers.set(key, value);
+    //   });
+    // }
+    // HttpClientResponse response = await request.close();
+    // client.close();
+    // // Get content-length from content-range, if failed get from content-length
+    // String? contentRange =
+    //     response.headers.value(HttpHeaders.contentRangeHeader);
+    // if (contentRange != null) {
+    //   final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
+    //   if (match != null && match.group(3) != null) {
+    //     String total = match.group(3)!;
+    //     if (total.isNotEmpty && total != '0') {
+    //       return int.parse(total);
+    //     }
+    //   }
+    // }
+    // return response.contentLength;
+    return Future.value(-1);
   }
 
   /// Deletes the file if it exceeds the expected segment size.

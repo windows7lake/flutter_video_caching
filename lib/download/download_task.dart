@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 
 import '../ext/log_ext.dart';
@@ -19,14 +17,11 @@ class DownloadTask {
   /// The priority of the task (default is 1, higher means higher priority).
   int priority;
 
-  /// The directory where the file will be cached.
-  String cacheDir;
-
-  /// The name of the file to be saved.
-  String saveFile;
-
   /// The progress of the download, from 0.0 (not started) to 1.0 (completed).
   double progress;
+
+  /// The number of bytes cached so far.
+  int cachedBytes;
 
   /// The number of bytes downloaded so far.
   int downloadedBytes;
@@ -59,12 +54,11 @@ class DownloadTask {
   /// The list of data chunks downloaded (as bytes).
   List<int> data = [];
 
-  /// The file object where the downloaded data was saved, used to get the
-  /// cache file entity which was downloaded in isolate.
-  File? file;
+  /// The directory where the file will be cached.
+  String cacheDir;
 
-  /// The timestamp (in milliseconds) when the task was created.
-  int createAt = DateTime.now().millisecondsSinceEpoch;
+  /// The name of the file to be saved.
+  String fileName;
 
   /// Constructs a new DownloadTask with the given parameters.
   /// [uri] is required. [fileName] is optional; if not provided, uses the URI as the file name.
@@ -74,6 +68,7 @@ class DownloadTask {
     String? fileName,
     this.cacheDir = "",
     this.progress = 0.0,
+    this.cachedBytes = 0,
     this.downloadedBytes = 0,
     this.totalBytes = 0,
     this.status = DownloadStatus.IDLE,
@@ -84,7 +79,7 @@ class DownloadTask {
     this.retryTimes = 0,
     this.cancelToken,
   })  : id = _autoId.toString(),
-        saveFile = fileName ?? uri.toString() {
+        this.fileName = fileName ?? uri.toString() {
     _autoId++;
   }
 
@@ -97,19 +92,22 @@ class DownloadTask {
     headers = headers?.map((key, value) => MapEntry(key.toLowerCase(), value));
     Uri safeUri;
     try {
-      safeUri = saveFile.toSafeUri();
+      safeUri = fileName.toSafeUri();
     } catch (e) {
-      safeUri = Uri(host: saveFile);
+      safeUri = Uri(host: fileName);
     }
     if (headers != null && headers!.containsKey(cacheKey)) {
       safeUri = safeUri.replace(host: headers![cacheKey].toString());
     }
     Map<String, String> queryParameters = {};
     queryParameters.addAll(safeUri.queryParameters);
-    if (startRange > 0 && downloadedBytes == 0) {
+    if (startRange > 0) {
       queryParameters.putIfAbsent("startRange", () => startRange.toString());
     }
     if (endRange != null) {
+      if (!queryParameters.containsKey("startRange")) {
+        queryParameters.putIfAbsent("startRange", () => '0');
+      }
       queryParameters.putIfAbsent("endRange", () => endRange.toString());
     }
     safeUri = safeUri.replace(queryParameters: queryParameters);
@@ -119,14 +117,14 @@ class DownloadTask {
 
   /// Returns the file name to be used for saving, including the extension.
   String get saveFileName {
-    String? extensionName = saveFile.split(".").lastOrNull;
+    String? extensionName = fileName.split(".").lastOrNull;
     try {
-      Uri uri = saveFile.toSafeUri();
+      Uri uri = fileName.toSafeUri();
       if (uri.pathSegments.isNotEmpty) {
         extensionName = uri.pathSegments.last.split(".").lastOrNull;
       }
     } catch (e) {
-      logD("Uri parse error: $saveFile");
+      logD("Uri parse error: $fileName");
     }
     return '${matchUrl}.$extensionName';
   }
@@ -164,9 +162,10 @@ class DownloadTask {
         'Priority: $priority, '
         'Progress: $progress, '
         'DownloadedBytes: $downloadedBytes, '
+        'cachedBytes: $cachedBytes, '
         'TotalBytes: $totalBytes, '
         'CacheDir: $cacheDir, '
-        'SaveFile: $saveFile, '
+        'fileName: $fileName, '
         'HLSKey: $hlsKey, '
         ' ]';
   }

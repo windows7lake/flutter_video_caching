@@ -44,7 +44,7 @@ class VideoProxy {
     int maxStorageCacheSize = 1024,
     bool logPrint = false,
     int segmentSize = 2,
-    int maxConcurrentDownloads = 8,
+    int maxConcurrentDownloads = 4,
     UrlMatcher? urlMatcher,
     HttpClientBuilder? httpClientBuilder,
   }) async {

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:native_dio_adapter/native_dio_adapter.dart';
 import 'package:synchronized/synchronized.dart';
 
+import '../cache/lru_cache_singleton.dart';
 import '../ext/file_ext.dart';
 import '../ext/gesture_ext.dart';
 import '../ext/log_ext.dart';
@@ -80,7 +82,6 @@ class DownloadPool {
       String cachePath = await FileExt.createCachePath();
       task.cacheDir = cachePath;
     }
-    task.saveFile = task.saveFile;
     _taskList.add(task);
     return task;
   }
@@ -177,7 +178,7 @@ class DownloadPool {
     if (task.cancelToken == null) {
       task.cancelToken = CancelToken();
     }
-    bool append = task.downloadedBytes > 0 || task.startRange > 0;
+    bool append = task.cachedBytes > 0;
     Map<String, Object> headers = _downloadHeader(task);
     await _client.download(
       task.url,
@@ -189,6 +190,8 @@ class DownloadPool {
         _downloadProgress(task, received, total);
         if (task.status == DownloadStatus.PAUSED ||
             task.status == DownloadStatus.COMPLETED) {
+          task.cachedBytes += task.downloadedBytes;
+          task.downloadedBytes = task.cachedBytes;
           task.cancelToken?.cancel();
           task.cancelToken = null;
           _updateProgress(task);
@@ -206,13 +209,11 @@ class DownloadPool {
     Map<String, Object> headers = {};
     // Set up HTTP Range header for resuming or partial downloads.
     String range = '';
-    if (task.downloadedBytes > 0) {
-      range = 'bytes=${task.downloadedBytes}-';
-    }
-    if (range.isEmpty) {
-      range = 'bytes=${task.startRange}-';
+    if (task.startRange > 0 || task.cachedBytes > 0) {
+      range = 'bytes=${task.startRange + task.cachedBytes}-';
     }
     if (task.endRange != null) {
+      if (range.isEmpty) range = 'bytes=0-';
       range += '${task.endRange}';
     }
     headers.putIfAbsent('Range', () => range);
@@ -229,8 +230,8 @@ class DownloadPool {
 
   void _downloadProgress(DownloadTask task, int received, int total) {
     // Calculate the total file size
-    task.downloadedBytes = task.startRange + received;
-    task.totalBytes = total == -1 ? 0 : (task.startRange + total);
+    task.downloadedBytes = task.cachedBytes + received;
+    task.totalBytes = total == -1 ? 0 : (task.cachedBytes + total);
 
     // Calculate the interval between the current time and the last update time
     final currentTime = DateTime.now();
@@ -250,20 +251,22 @@ class DownloadPool {
     task.progress = 1;
     task.data = saveFile.readAsBytesSync();
     updateTaskById(task.id, DownloadStatus.COMPLETED);
+    LruCacheSingleton().memoryPut(task.matchUrl, Uint8List.fromList(task.data));
+    LruCacheSingleton().storagePut(task.matchUrl, saveFile);
     int duration = DateTime.now().difference(startTime).inSeconds;
-    logV('[DownloadPool] Download done time: $duration s: ${task.url}');
+    logV('[DownloadPool] Download done time: $duration s: ${task.toString()}');
     FunctionProxy.debounce(roundTask);
   }
 
   void _downloadError(DownloadTask task, dynamic error) {
     File saveFile = File(task.savePath);
     // Check if the download was cancelled.
-    if (CancelToken.isCancel(error)) {
+    if (error is DioException && CancelToken.isCancel(error)) {
       logV('[DownloadPool] Download file size: ${saveFile.lengthSync()}');
       logV('[DownloadPool] Download ${task.status.name}: ${task.url}');
     } else {
       // Handle HTTP errors and retry logic.
-      saveFile.deleteSync();
+      if (saveFile.existsSync()) saveFile.deleteSync();
       updateTaskById(task.id, DownloadStatus.FAILED);
       logV('[DownloadPool] Download error: $error');
       if (error is DioException && error.response?.statusCode == 416) {
