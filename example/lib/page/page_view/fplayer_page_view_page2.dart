@@ -13,8 +13,8 @@ class FPlayerPageViewPage2 extends StatefulWidget {
 class _FPlayerPageViewPageState extends State<FPlayerPageViewPage2> {
   final PageController pageController = PageController();
   final List<String> urls = [
-    'http://vjs.zencdn.net/v/oceans.mp4',
-    'http://player.alicdn.com/video/aliyunmedia.mp4',
+    'https://vjs.zencdn.net/v/oceans.mp4',
+    'https://player.alicdn.com/video/aliyunmedia.mp4',
     'https://www.runoob.com/try/demo_source/mov_bbb.mp4',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
     'https://www.tootootool.com/wp-content/uploads/2020/11/SampleVideo_176x144_5mb.3gp',

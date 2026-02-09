@@ -16,6 +16,8 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
+    'https://video.rizzult.ai/story_content/17664301838250.mov',
+    'http://jiexi.yuandongkj.top/Vtche/BF/3749826515.m3u8',
     'https://europe.olemovienews.com/ts4/20251025/9ao27jr9/mp4/9ao27jr9.mp4/master.m3u8',
     'https://storage.googleapis.com/weppo-app.firebasestorage.app/videos/tamires/5xath5800ge85hara2x6fd9b/hls/master.m3u8',
     'https://storage.googleapis.com/video-cdn.vdone.vn/users/19565/ConvertToFluter-1761536867738.mp4/highpp-ts.m3u8',

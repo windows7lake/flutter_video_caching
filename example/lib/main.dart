@@ -13,7 +13,7 @@ void main() async {
   await VideoProxy.init(
     logPrint: true,
     urlMatcher: UrlMatcherCustom(),
-    httpClientBuilder: HttpClientCustom(),
+    // httpClientBuilder: HttpClientCustom(),
   );
   runApp(const HomeApp());
 }

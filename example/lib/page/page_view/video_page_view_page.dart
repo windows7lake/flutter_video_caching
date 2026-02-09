@@ -15,8 +15,8 @@ class VideoPageViewPage extends StatefulWidget {
 class _VideoPageViewPageState extends State<VideoPageViewPage> {
   final PageController pageController = PageController();
   final List<String> urls = [
-    'http://vjs.zencdn.net/v/oceans.mp4',
-    'http://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
+    'https://vjs.zencdn.net/v/oceans.mp4',
+    'https://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
   ];
   Timer? timer;

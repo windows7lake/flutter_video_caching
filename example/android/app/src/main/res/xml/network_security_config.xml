@@ -10,6 +10,7 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">127.0.0.1</domain>
         <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="true">jiexi.yuandongkj.top</domain>
     </domain-config>
 
     <base-config cleartextTrafficPermitted="false">
