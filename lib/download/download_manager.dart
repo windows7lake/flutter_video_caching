@@ -80,20 +80,15 @@ class DownloadManager {
     allTasks.clear();
   }
 
-  /// Checks if a task with the given match URL exists.
-  bool isMatchUrlExit(String url) {
-    return allTasks.where((task) => task.matchUrl == url).isNotEmpty;
-  }
-
   /// Checks if a task with the given URL exists.
-  bool isUrlExit(String url) {
-    return allTasks.where((task) => task.uri.toString() == url).isNotEmpty;
+  bool isTaskExit(DownloadTask task) {
+    return allTasks.where((t) => t.matchUrl == task.matchUrl).isNotEmpty;
   }
 
   /// Checks if a task with the given URL is currently downloading.
-  bool isUrlDownloading(String url) {
+  bool isUrlDownloading(DownloadTask task) {
     return downloadingTasks
-        .where((task) => task.uri.toString() == url)
+        .where((t) => t.matchUrl == task.matchUrl)
         .isNotEmpty;
   }
 

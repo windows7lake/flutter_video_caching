@@ -92,7 +92,7 @@ class UrlParserM3U8 implements UrlParser {
       }
       Uint8List? data = await cache(task);
       if (data == null) {
-        if (VideoProxy.downloadManager.isUrlDownloading(task.url)) {
+        if (VideoProxy.downloadManager.isUrlDownloading(task)) {
           while (data == null) {
             await Future.delayed(const Duration(milliseconds: 100));
             data = await cache(task);
@@ -372,36 +372,34 @@ class UrlParserM3U8 implements UrlParser {
     int downloadedSize = 0;
 
     /// Downloads or loads a segment from cache and emits progress to the stream.
-    Future<void> processSegment(HlsSegment segment) async {
-      final task = DownloadTask(
-        uri: segment.url.toSafeUri(),
-        hlsKey: hlsKey,
-        headers: headers,
-        startRange: segment.startRange,
-        endRange: segment.endRange,
-      );
-      Uint8List? data = await cache(task);
-      if (data == null) {
-        await download(task);
-      }
+    Future<void> processSegments() async {
+      for (final segment in segments) {
+        final task = DownloadTask(
+          uri: segment.url.toSafeUri(),
+          hlsKey: hlsKey,
+          headers: headers,
+          startRange: segment.startRange,
+          endRange: segment.endRange,
+        );
+        Uint8List? data = await cache(task);
+        if (data == null) await download(task);
 
-      downloadedSize += 1;
-      if (_streamController?.isClosed ?? false) return;
-      _streamController?.sink.add({
-        'progress': downloadedSize / cacheSegments,
-        'segment_url': segment,
-        'parent_url': url,
-        'file_name': task.fileName,
-        'hls_key': hlsKey,
-        'total_segments': segments.length,
-        'current_segment_index': downloadedSize - 1,
-      });
+        downloadedSize += 1;
+        if (_streamController?.isClosed ?? false) return;
+        _streamController?.sink.add({
+          'progress': downloadedSize / cacheSegments,
+          'segment_url': segment,
+          'parent_url': url,
+          'file_name': task.fileName,
+          'hls_key': hlsKey,
+          'total_segments': segments.length,
+          'current_segment_index': downloadedSize - 1,
+        });
+      }
     }
 
     if (downloadNow) {
-      for (final segment in segments) {
-        await processSegment(segment);
-      }
+      processSegments();
     } else {
       for (final segment in segments) {
         final task = DownloadTask(
@@ -602,7 +600,7 @@ class UrlParserM3U8 implements UrlParser {
       concurrentComplete(segment, headers);
       return;
     }
-    bool exitUri = VideoProxy.downloadManager.isUrlDownloading(segment.url);
+    bool exitUri = VideoProxy.downloadManager.isUrlDownloading(task);
     if (exitUri) {
       concurrentComplete(segment, headers, status: DownloadStatus.DOWNLOADING);
       return;

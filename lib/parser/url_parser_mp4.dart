@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
 import '../cache/lru_cache_singleton.dart';
 import '../download/download_status.dart';
 import '../download/download_task.dart';
@@ -27,12 +29,15 @@ class UrlParserMp4 implements UrlParser {
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) {
-      logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}');
+      logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}, '
+          'total memory size: ${await LruCacheSingleton().memoryFormatSize()}'
+          'Request range：${task.startRange}-${task.endRange}');
       return dataMemory;
     }
     Uint8List? dataFile = await LruCacheSingleton().storageGet(task.matchUrl);
     if (dataFile != null) {
-      logD('From file: ${task.matchUrl}');
+      logD('From file: ${task.matchUrl} '
+          'Request range：${task.startRange}-${task.endRange}');
       await LruCacheSingleton().memoryPut(task.matchUrl, dataFile);
       return dataFile;
     }
@@ -47,8 +52,7 @@ class UrlParserMp4 implements UrlParser {
   Future<Uint8List?> download(DownloadTask task) async {
     logD('From network: ${task.url}');
     Uint8List? dataNetwork;
-    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
-    task.cacheDir = cachePath;
+    task.cacheDir = await FileExt.createCachePath(task.uri.generateMd5);
     await VideoProxy.downloadManager.executeTask(task);
     await for (DownloadTask taskStream in VideoProxy.downloadManager.stream) {
       if (taskStream.status == DownloadStatus.COMPLETED &&
@@ -58,19 +62,6 @@ class UrlParserMp4 implements UrlParser {
       }
     }
     return dataNetwork;
-  }
-
-  /// Pushes the [task] to the download manager for processing.
-  /// If the task is already in the download manager or cache, does nothing.
-  @override
-  Future<void> push(DownloadTask task) async {
-    Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
-    if (dataMemory != null) return;
-    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
-    File file = File('$cachePath/${task.saveFileName}');
-    if (await file.exists()) return;
-    task.cacheDir = cachePath;
-    await VideoProxy.downloadManager.addTask(task);
   }
 
   /// Parses the request and returns the data to the [socket].
@@ -176,11 +167,12 @@ class UrlParserMp4 implements UrlParser {
         endRange: endRange,
         headers: headers,
       );
-      logD('Request range：${task.startRange}-${task.endRange}');
+      logD('Start ${task.url} '
+          'Request range：${task.startRange}-${task.endRange}');
 
       Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
-      bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
+      bool exitUri = VideoProxy.downloadManager.isTaskExit(task);
       if (exitUri) {
         while (data == null) {
           await Future.delayed(const Duration(milliseconds: 100));
@@ -189,7 +181,7 @@ class UrlParserMp4 implements UrlParser {
       }
       if (data == null) {
         concurrent(task, headers);
-        task.priority += 10;
+        task.priority += 2;
         data = await download(task);
       }
       if (data == null) {
@@ -268,8 +260,6 @@ class UrlParserMp4 implements UrlParser {
     int contentLength = requestRangeEnd - requestRangeStart + 1;
     responseHeaders.add('content-length: $contentLength');
     await socket.append(responseHeaders.join('\r\n'));
-    logD('content-range：$requestRangeStart-$requestRangeEnd');
-    logD('content-length：$contentLength');
 
     bool downloading = true;
     int startRange =
@@ -283,11 +273,12 @@ class UrlParserMp4 implements UrlParser {
         endRange: endRange,
         headers: headers,
       );
-      logD('Request range：${task.startRange}-${task.endRange}');
+      logD('Start ${task.url} '
+          'Request range：${task.startRange}-${task.endRange}');
 
       Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
-      bool exitUri = VideoProxy.downloadManager.isUrlExit(task.url);
+      bool exitUri = VideoProxy.downloadManager.isTaskExit(task);
       if (exitUri) {
         while (data == null) {
           await Future.delayed(const Duration(milliseconds: 100));
@@ -296,7 +287,7 @@ class UrlParserMp4 implements UrlParser {
       }
       if (data == null) {
         concurrent(task, headers);
-        task.priority += 10;
+        task.priority += 2;
         data = await download(task);
       }
       if (data == null) {
@@ -336,41 +327,32 @@ class UrlParserMp4 implements UrlParser {
   ///
   /// Returns the content length as an [int].
   Future<int> head(Uri uri, {Map<String, Object>? headers}) async {
-    // HttpClient client = VideoProxy.httpClientBuilderImpl.create();
-    // HttpClientRequest request = await client.headUrl(uri);
-    // if (headers != null) {
-    //   headers.forEach((key, value) {
-    //     String keyLower = key.toLowerCase();
-    //     if (keyLower == 'host' && value == Config.serverUrl) return;
-    //     if (keyLower == 'range') return;
-    //     request.headers.set(key, value);
-    //   });
-    // }
-    // HttpClientResponse response = await request.close();
-    // client.close();
-    // // Get content-length from content-range, if failed get from content-length
-    // String? contentRange =
-    //     response.headers.value(HttpHeaders.contentRangeHeader);
-    // if (contentRange != null) {
-    //   final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
-    //   if (match != null && match.group(3) != null) {
-    //     String total = match.group(3)!;
-    //     if (total.isNotEmpty && total != '0') {
-    //       return int.parse(total);
-    //     }
-    //   }
-    // }
-    // return response.contentLength;
-    return Future.value(-1);
-  }
-
-  /// Deletes the file if it exceeds the expected segment size.
-  ///
-  /// Used to handle cases where network issues cause oversized downloads.
-  Future<void> deleteExceedSizeFile(DownloadTask task) async {
-    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
-    File file = File('$cachePath/${task.saveFileName}');
-    if (await file.exists()) await file.delete();
+    Dio client = VideoProxy.httpClientBuilderImpl.create();
+    if (headers != null) {
+      headers.forEach((key, value) {
+        String keyLower = key.toLowerCase();
+        if (keyLower == 'host' && value == Config.serverUrl) return;
+        if (keyLower == 'range') return;
+        client.options.headers[key] = value;
+      });
+    }
+    Response response = await client.headUri(uri);
+    // Get content-length from content-range, if failed get from content-length
+    String? contentRange =
+        response.headers.value(HttpHeaders.contentRangeHeader);
+    if (contentRange != null) {
+      final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
+      if (match != null && match.group(3) != null) {
+        String total = match.group(3)!;
+        if (total.isNotEmpty && total != '0') {
+          return int.parse(total);
+        }
+      }
+    }
+    String? contentLength =
+        response.headers.value(HttpHeaders.contentLengthHeader);
+    client.close();
+    return int.tryParse(contentLength ?? '-1') ?? -1;
   }
 
   /// Manages concurrent download tasks.
@@ -381,11 +363,11 @@ class UrlParserMp4 implements UrlParser {
     DownloadTask task,
     Map<String, String> headers,
   ) async {
-    int activeSize = VideoProxy.downloadManager.allTasks
-        .where((e) => e.url == task.url)
-        .length;
     DownloadTask newTask = task;
-    while (activeSize < 3) {
+    int activeSize = VideoProxy.downloadManager.allTasks
+        .where((e) => e.url == newTask.url)
+        .length;
+    while (activeSize < 2) {
       newTask = DownloadTask(
         uri: newTask.uri,
         startRange: newTask.startRange + Config.segmentSize,
@@ -398,15 +380,14 @@ class UrlParserMp4 implements UrlParser {
       Uint8List? dataMemory =
           await LruCacheSingleton().memoryGet(newTask.matchUrl);
       if (dataMemory != null) isExit = true;
-      String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
-      File file = File('$cachePath/${task.saveFileName}');
-      if (await file.exists()) isExit = true;
+      newTask.cacheDir = await FileExt.createCachePath(newTask.uri.generateMd5);
+      File file = File(newTask.savePath);
+      if (file.existsSync()) isExit = true;
       if (isExit) continue;
       logD("Asynchronous download start： ${newTask.toString()}");
-      newTask.cacheDir = cachePath;
       await VideoProxy.downloadManager.executeTask(newTask);
       activeSize = VideoProxy.downloadManager.allTasks
-          .where((e) => e.url == task.url)
+          .where((e) => e.url == newTask.url)
           .length;
     }
   }
@@ -504,5 +485,18 @@ class UrlParserMp4 implements UrlParser {
       }
     }
     return _streamController;
+  }
+
+  /// Pushes the [task] to the download manager for processing.
+  /// If the task is already in the download manager or cache, does nothing.
+  @override
+  Future<void> push(DownloadTask task) async {
+    Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
+    if (dataMemory != null) return;
+    String cachePath = await FileExt.createCachePath(task.uri.generateMd5);
+    File file = File('$cachePath/${task.saveFileName}');
+    if (await file.exists()) return;
+    task.cacheDir = cachePath;
+    await VideoProxy.downloadManager.addTask(task);
   }
 }
