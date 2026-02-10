@@ -101,7 +101,7 @@ class _FPlayerPageViewPageState extends State<FPlayerPageViewPage2> {
   void dispose() {
     playControllers.values.map((e) => e.release());
     pageController.dispose();
-    VideoProxy.downloadManager.removeAllTask();
+    VideoProxy.downloadManager.cancelAllTask();
     super.dispose();
   }
 }

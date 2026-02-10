@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import '../ext/string_ext.dart';
 import 'download_pool.dart';
 import 'download_status.dart';
 import 'download_task.dart';
 
+/// A manager class that handles download tasks using a [DownloadPool].
 class DownloadManager {
   /// The pool that manages all download threads.
   late DownloadPool _downloadPool;
@@ -67,6 +69,32 @@ class DownloadManager {
     _downloadPool.updateTaskByUrl(url, DownloadStatus.CANCELLED);
   }
 
+  /// Pauses all tasks about the given URL, including tasks that match the URL's MD5 hash.
+  void pauseTaskAboutUrl(String url) {
+    for (var task in downloadingTasks) {
+      if (task.url == url) {
+        pauseTaskById(task.id);
+      } else if (task.hlsKey == task.url.generateMd5) {
+        pauseTaskById(task.id);
+      }
+    }
+  }
+
+  /// Cancel all tasks about the given URL, including tasks that match the URL's MD5 hash.
+  void cancelTaskAboutUrl(String url) {
+    List<String> taskIdsToCancel = [];
+    for (var task in allTasks) {
+      if (task.url == url) {
+        pauseTaskById(task.id);
+        taskIdsToCancel.add(task.id);
+      } else if (task.hlsKey == task.url.generateMd5) {
+        pauseTaskById(task.id);
+        taskIdsToCancel.add(task.id);
+      }
+    }
+    allTasks.removeWhere((task) => taskIdsToCancel.contains(task.id));
+  }
+
   /// Pauses all downloading tasks.
   void pauseAllTasks() {
     downloadingTasks.forEach((task) {
@@ -75,7 +103,7 @@ class DownloadManager {
   }
 
   /// Cancels and removes all tasks from the manager.
-  void removeAllTask() {
+  void cancelAllTask() {
     pauseAllTasks();
     allTasks.clear();
   }
@@ -92,6 +120,7 @@ class DownloadManager {
         .isNotEmpty;
   }
 
+  /// Disposes of the download manager
   void dispose() {
     _downloadPool.dispose();
   }

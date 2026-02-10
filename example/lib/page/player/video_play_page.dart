@@ -143,7 +143,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   void dispose() {
     timer?.cancel();
     _controller.dispose();
-    VideoProxy.downloadManager.removeAllTask();
+    VideoProxy.downloadManager.cancelAllTask();
     super.dispose();
   }
 }

@@ -295,9 +295,7 @@ class DownloadPool {
   }
 
   void dispose() {
-    downloadingTasks.forEach((e) {
-      updateTaskById(e.id, DownloadStatus.CANCELLED);
-    });
+    _taskList.forEach((e) => updateTaskById(e.id, DownloadStatus.PAUSED));
     _taskList.clear();
     _streamController.close();
     _client.close();

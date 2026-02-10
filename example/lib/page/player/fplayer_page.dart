@@ -273,7 +273,7 @@ class _FPlayerPageState extends State<FPlayerPage> {
 
   @override
   void dispose() async {
-    VideoProxy.downloadManager.removeAllTask();
+    VideoProxy.downloadManager.cancelAllTask();
     super.dispose();
     try {
       await ScreenBrightness().resetApplicationScreenBrightness();

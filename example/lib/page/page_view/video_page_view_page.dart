@@ -18,6 +18,7 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
     'https://vjs.zencdn.net/v/oceans.mp4',
     'https://mirror.aarnet.edu.au/pub/TED-talks/911Mothers_2010W-480p.mp4',
     'https://test-streams.mux.dev/x36xhzz/url_6/193039199_mp4_h264_aac_hq_7.m3u8',
+    'http://jiexi.yuandongkj.top/Vtche/BF/3749826515.m3u8',
   ];
   Timer? timer;
   int currentIndex = 0;
@@ -42,10 +43,13 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
           return VideoPlayerWidget(url: url);
         },
         onPageChanged: (index) {
-          currentIndex = index;
-          if (index + 1 < urls.length) {
-            VideoCaching.precache(urls[index + 1], downloadNow: false);
+          if (currentIndex >= 0 && currentIndex < urls.length) {
+            VideoProxy.downloadManager.cancelTaskAboutUrl(urls[currentIndex]);
           }
+          currentIndex = index;
+          // if (index + 1 < urls.length) {
+          //   VideoCaching.precache(urls[index + 1], downloadNow: false);
+          // }
         },
       ),
     );
@@ -55,7 +59,7 @@ class _VideoPageViewPageState extends State<VideoPageViewPage> {
   void dispose() {
     timer?.cancel();
     pageController.dispose();
-    VideoProxy.downloadManager.removeAllTask();
+    VideoProxy.downloadManager.cancelAllTask();
     super.dispose();
   }
 }
