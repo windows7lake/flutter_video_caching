@@ -18,8 +18,9 @@ import '../global/config.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
-/// MP4 URL parser implementation.
-/// Handles caching, downloading, and parsing of MP4 video files.
+/// Default URL parser implementation.
+/// Handles caching, downloading, and parsing of common video files.
+/// Implements the [UrlParser] interface for common video files.
 class UrlParserDefault implements UrlParser {
   /// Retrieves cached data for the given [task] from memory or file.
   ///

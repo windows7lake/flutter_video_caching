@@ -6,12 +6,14 @@
 It supports integration with the `video_player` package and works with popular formats like m3u8 (HLS) and MP4.
 The plugin enables simultaneous playback and caching, as well as pre-caching for smoother user experiences.
 
+> **Version 1.x.x released, to migrate from v0.4.x, please refer to [MIGRATION.MD](MIGRATION.MD).**
+
 ## 🎊 Features
 
 - **Multi-format support:** Works with m3u8 (HLS), MP4, and other common video formats.
 - **Memory & file cache:** LRU-based memory cache combined with local file cache to minimize network requests.
 - **Pre-caching:** Download video segments in advance to ensure seamless playback.
-- **Background downloading:** Uses Isolates for multi-task parallel downloads without blocking the UI.
+- **Background downloading:** Multi-task parallel downloads without blocking the UI.
 - **Priority scheduling:** Supports setting download task priorities for optimized resource allocation.
 - **Download resume:** Supports automatic resumption of interrupted downloads.
 - **Custom headers & cache file names:** Allows custom HTTP headers and cache file naming.
@@ -222,9 +224,14 @@ Example: Allow Self-Signed Certificates
 ```dart
 class HttpClientCustom extends HttpClientBuilder {
   @override
-  HttpClient create() {
-    return HttpClient()
-      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+  Dio create() {
+    Dio dio = Dio();
+    dio.httpClientAdapter = IOHttpClientAdapter(createHttpClient: () {
+      final client =
+      HttpClient(context: SecurityContext(withTrustedRoots: false));
+      // You can test the intermediate / root cert here. We just ignore it.
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) {
         // Print certificate info for debugging
         debugPrint('Certificate subject: ${cert.subject}');
         debugPrint('Issuer: ${cert.issuer}');
@@ -235,6 +242,9 @@ class HttpClientCustom extends HttpClientBuilder {
         // For example, verify if the certificate fingerprint matches the expected value
         return true;
       };
+      return client;
+    });
+    return dio;
   }
 }
 ```
@@ -242,6 +252,24 @@ class HttpClientCustom extends HttpClientBuilder {
 To use your custom client, pass it to `VideoProxy.init()`.
 
 > Note: Allowing all certificates is insecure and should only be used for testing. In production, implement strict certificate validation.
+
+### 8. Monitor download progress
+
+```dart
+VideoProxy.downloadManager.stream.listen((task) {
+  // Handle download progress updates
+  task.progress; // Download progress (0.0 ~ 1.0)
+});
+```
+
+### 9. Cancel tasks associated with a URL
+
+If you want to cancel all download tasks related to a specific URL, you can use the following method.
+For example, if the user navigates away from a video page and you want to stop downloading the remaining segments.
+This will cancel all tasks that have the specified URL as their main m3u8 playlist URL or MP4 file URL.
+```dart
+VideoProxy.downloadManager.cancelTaskAboutUrl(url);
+```
 
 ## 🪧 Core Api
 
@@ -355,6 +383,11 @@ VideoProxy.downloadManager.stream.listen((Map map) {
 ### 3. Does the library support download resume?
 
 Yes. Downloaded segments are loaded from local cache, and unfinished segments will resume downloading when playback restarts.
+
+
+### 4. After the cache reaches the maximum value set by the memory cache or storage cache, how does the plugin handle the cache?
+
+LRU (Least Recently Used) cache, which evicts the least recently accessed item when the cache is full, making space for new data, based on the principle that recently used data is more likely to be used again soon.
 
 ## 🔧 Contributing
 

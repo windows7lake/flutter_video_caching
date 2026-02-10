@@ -1,5 +1,6 @@
 ## 1.0.0
 
+**Breaking Changed**
 - refactor: remove `isolate` to simplify the code and improve performance
 - refactor: adjust the task schedule logic to ensure high-priority tasks are executed first, improving responsiveness
 - feat: use dio as the default http client for better performance and reliability

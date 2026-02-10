@@ -18,6 +18,9 @@ import '../ext/uri_ext.dart';
 import '../proxy/video_proxy.dart';
 import 'url_parser.dart';
 
+/// M3U8 URL parser implementation.
+/// Handles caching, downloading, and parsing of HLS (M3U8) video streams.
+/// Implements the [UrlParser] interface for HLS video files.
 class UrlParserM3U8 implements UrlParser {
   /// Retrieves cached data for the given [task] from memory or file.
   ///
