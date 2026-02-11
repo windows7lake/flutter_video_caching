@@ -1,3 +1,7 @@
+## 1.1.0
+
+- feat: Allow specifying custom cache root path in VideoProxy.init()
+
 ## 1.0.0
 
 **Breaking Changed**
