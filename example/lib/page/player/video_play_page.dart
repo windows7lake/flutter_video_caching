@@ -46,7 +46,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   }
 
   void initController() {
-    var url = urls[0];
+    var url = urls[1];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
     logD('localUri: $localUri');

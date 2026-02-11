@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 /// creating cache directories and deleting them.
 class FileExt {
   /// Stores the root path of the cache directory.
-  static String _cacheRootPath = "";
+  static String cacheRootPath = "";
 
   /// Creates and returns the path to the cache directory.
   ///
@@ -16,14 +16,12 @@ class FileExt {
   ///
   /// Returns a [Future] that completes with the cache directory path.
   static Future<String> createCachePath([String? cacheDir]) async {
-    String rootPath = _cacheRootPath;
+    String rootPath = cacheRootPath;
     // Initialize the root path if it is empty.
     if (rootPath.isEmpty) {
-      rootPath = (await getApplicationCacheDirectory()).path;
-      _cacheRootPath = rootPath;
+      rootPath = '${(await getApplicationCacheDirectory()).path}/videos';
+      cacheRootPath = rootPath;
     }
-    // Append 'videos' to the root path.
-    rootPath = '$rootPath/videos';
     // Append the custom cache directory if provided.
     if (cacheDir != null && cacheDir.isNotEmpty) {
       rootPath = '$rootPath/$cacheDir';
@@ -39,8 +37,8 @@ class FileExt {
   /// If the root cache path is not initialized, the method does nothing.
   /// The deletion is recursive.
   static Future<void> deleteCacheDirByKey(String key) async {
-    if (_cacheRootPath.isEmpty) return;
-    await Directory('$_cacheRootPath/$key').delete(recursive: true);
+    if (cacheRootPath.isEmpty) return;
+    await Directory('$cacheRootPath/$key').delete(recursive: true);
   }
 
   /// Deletes the default cache directory.
@@ -48,10 +46,7 @@ class FileExt {
   /// If the root cache path is not initialized, the method does nothing.
   /// The deletion is recursive.
   static Future<void> deleteDefaultCacheDir() async {
-    if (_cacheRootPath.isEmpty) return;
-    await Directory('$_cacheRootPath').delete(recursive: true);
+    if (cacheRootPath.isEmpty) return;
+    await Directory('$cacheRootPath').delete(recursive: true);
   }
-
-  /// Returns the current root path of the cache directory.
-  static String get cacheRootPath => _cacheRootPath;
 }

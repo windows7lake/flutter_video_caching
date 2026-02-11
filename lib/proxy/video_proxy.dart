@@ -1,9 +1,10 @@
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
-import 'package:flutter_video_caching/http/http_client_default.dart';
 
 import '../download/download_manager.dart';
+import '../ext/file_ext.dart';
 import '../global/config.dart';
 import '../http/http_client_builder.dart';
+import '../http/http_client_default.dart';
 import '../match/url_matcher.dart';
 import '../match/url_matcher_default.dart';
 import 'local_proxy_server.dart';
@@ -32,6 +33,7 @@ class VideoProxy {
   /// [port]: Optional port number for the proxy server to listen on.<br>
   /// [maxMemoryCacheSize]: Maximum memory cache size in MB (default: 100).<br>
   /// [maxStorageCacheSize]: Maximum storage cache size in MB (default: 1024).<br>
+  /// [cacheDir]: Custom cache directory path (default: '').<br>
   /// [logPrint]: Enables or disables logging output (default: false).<br>
   /// [segmentSize]: Size of each video segment in MB (default: 2).<br>
   /// [maxConcurrentDownloads]: Maximum number of concurrent downloads (default: 8).<br>
@@ -42,6 +44,7 @@ class VideoProxy {
     int? port,
     int maxMemoryCacheSize = 100,
     int maxStorageCacheSize = 1024,
+    String cacheDir = '',
     bool logPrint = false,
     int segmentSize = 2,
     int maxConcurrentDownloads = 4,
@@ -52,6 +55,9 @@ class VideoProxy {
     Config.memoryCacheSize = maxMemoryCacheSize * Config.mbSize;
     Config.storageCacheSize = maxStorageCacheSize * Config.mbSize;
     Config.segmentSize = segmentSize * Config.mbSize;
+
+    // Set the cache root path for file operations.
+    FileExt.cacheRootPath = cacheDir;
 
     // Enable or disable logging.
     Config.logPrint = logPrint;

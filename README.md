@@ -282,6 +282,7 @@ VideoProxy.downloadManager.cancelTaskAboutUrl(url);
   /// [port]: Optional port number for the proxy server to listen on.<br>
   /// [maxMemoryCacheSize]: Maximum memory cache size in MB (default: 100).<br>
   /// [maxStorageCacheSize]: Maximum storage cache size in MB (default: 1024).<br>
+  /// [cacheDir]: Custom cache directory path (default: '').<br>
   /// [logPrint]: Enables or disables logging output (default: false).<br>
   /// [segmentSize]: Size of each video segment in MB (default: 2).<br>
   /// [maxConcurrentDownloads]: Maximum number of concurrent downloads (default: 8).<br>
@@ -292,6 +293,7 @@ VideoProxy.downloadManager.cancelTaskAboutUrl(url);
     int? port,
     int maxMemoryCacheSize = 100,
     int maxStorageCacheSize = 1024,
+    String cacheDir = '',
     bool logPrint = false,
     int segmentSize = 2,
     int maxConcurrentDownloads = 8,
