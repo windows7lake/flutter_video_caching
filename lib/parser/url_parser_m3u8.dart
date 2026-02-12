@@ -442,6 +442,7 @@ class UrlParserM3U8 implements UrlParser {
         await parseMediaPlaylist(uri, headers: headers);
     if (playList == null) return <HlsSegment>[];
     List<HlsSegment> segments = <HlsSegment>[];
+    Uri? baseUri = playList.baseUri?.toSafeUri();
     for (final Segment segment in playList.segments) {
       String? segmentUrl = segment.url;
       if (segmentUrl != null && !segmentUrl.startsWith('http')) {
@@ -452,7 +453,7 @@ class UrlParserM3U8 implements UrlParser {
           relativePath++;
         }
         // when hlsLine start with /, and prefix contain hlsLine
-        String prefix = '${uri.pathPrefix(relativePath)}/';
+        String prefix = '${baseUri?.pathPrefix(relativePath)}/';
         if (segmentUrl.startsWith("/")) {
           List<String> split = segmentUrl.split("/");
           List<String> result = [];
@@ -492,7 +493,7 @@ class UrlParserM3U8 implements UrlParser {
     if (playList is HlsMasterPlaylist) {
       for (final Uri? _uri in playList.mediaPlaylistUrls) {
         if (_uri == null) continue;
-        Uri masterUri = '${uri.pathPrefix()}${_uri.path}'.toSafeUri();
+        Uri masterUri = '${uri.base}${_uri.path}'.toSafeUri();
         HlsMediaPlaylist? mediaPlayList = await parseMediaPlaylist(
           masterUri,
           headers: headers,
@@ -523,18 +524,18 @@ class UrlParserM3U8 implements UrlParser {
     if (uint8List == null) uint8List = await download(task);
     if (uint8List == null) return null;
     List<String> lines = readLineFromUint8List(uint8List);
-    final HlsPlaylist? playList = await parseLines(lines);
+    final HlsPlaylist? playList = await parseLines(lines, uri);
     return playList;
   }
 
   /// Parses HLS playlist lines into an [HlsPlaylist] object.
   ///
   /// Returns the parsed [HlsPlaylist], or `null` if parsing fails.
-  Future<HlsPlaylist?> parseLines(List<String> lines) async {
+  Future<HlsPlaylist?> parseLines(List<String> lines, Uri uri) async {
     if (lines.isEmpty) return null;
     HlsPlaylist? playList;
     try {
-      playList = await VideoProxy.hlsPlaylistParser.parse(Uri.base, lines);
+      playList = await VideoProxy.hlsPlaylistParser.parse(uri, lines);
     } catch (e) {
       logE('Exception: ${e}');
     }

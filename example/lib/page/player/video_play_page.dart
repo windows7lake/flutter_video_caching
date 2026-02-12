@@ -16,6 +16,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   late VideoPlayerController _controller;
   Timer? timer;
   List<String> urls = [
+    'https://vip.dytt-cine.com/20251215/64622_4555b7a6/index.m3u8',
     'https://video.rizzult.ai/story_content/17664301838250.mov',
     'http://jiexi.yuandongkj.top/Vtche/BF/3749826515.m3u8',
     'https://europe.olemovienews.com/ts4/20251025/9ao27jr9/mp4/9ao27jr9.mp4/master.m3u8',
@@ -46,7 +47,7 @@ class _VideoPlayPageState extends State<VideoPlayPage> {
   }
 
   void initController() {
-    var url = urls[1];
+    var url = urls[6];
     String localUri = url.toLocalUrl();
     String remoteUri = localUri.toOriginUrl();
     logD('localUri: $localUri');
