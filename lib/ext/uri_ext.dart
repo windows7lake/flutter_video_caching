@@ -21,6 +21,14 @@ extension UriExt on Uri {
     return newUri.toString().replaceAll('?', '');
   }
 
+  /// Returns the base URL of the URI, consisting of the scheme, host, and port (if present).
+  String get base {
+    return this.scheme +
+        '://' +
+        this.host +
+        (this.hasPort ? ':${this.port}' : '');
+  }
+
   /// Generates the MD5 hash of the URI as a string.
   ///
   /// Converts the URI to a string, encodes it as UTF-8, and returns the MD5 hash.

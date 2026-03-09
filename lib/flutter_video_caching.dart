@@ -1,4 +1,6 @@
 export 'package:flutter_hls_parser/flutter_hls_parser.dart';
+export 'package:dio/dio.dart';
+export 'package:dio/io.dart';
 
 export 'cache/lru_cache_singleton.dart';
 export 'download/download_manager.dart';

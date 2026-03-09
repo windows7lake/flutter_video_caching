@@ -78,6 +78,6 @@ extension UrlExt on String {
 
   /// Cleans the current string and parses it as a Uri object.
   Uri toSafeUri() {
-    return Uri.parse(toSafeUrl());
+    return Uri.tryParse(toSafeUrl()) ?? Uri();
   }
 }

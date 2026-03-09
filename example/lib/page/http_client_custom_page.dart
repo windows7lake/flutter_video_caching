@@ -55,15 +55,14 @@ class _HttpClientCustomPageState extends State<HttpClientCustomPage> {
       final client = HttpClientCustom().create();
 
       // Note: Here we use httpbin.org's self-signed certificate test endpoint
-      HttpClientRequest request =
-          await client.getUrl(Uri.parse('https://self-signed.badssl.com'));
-      HttpClientResponse response = await request.close();
+      Response response =
+          await client.getUri(Uri.parse('https://self-signed.badssl.com'));
 
       setState(() {
         _result =
             'Self-signed certificate verification succeeded (with callback)\n'
             'Status code: ${response.statusCode}\n'
-            'Content length: ${response.contentLength}';
+            'Content length: ${response.headers.value(Headers.contentLengthHeader)}';
       });
     } catch (e) {
       setState(() {
@@ -87,15 +86,14 @@ class _HttpClientCustomPageState extends State<HttpClientCustomPage> {
     try {
       final client = HttpClientDefault().create();
       // This will fail because badCertificateCallback is not configured
-      HttpClientRequest request =
-          await client.getUrl(Uri.parse('https://self-signed.badssl.com'));
-      HttpClientResponse response = await request.close();
+      Response response =
+          await client.getUri(Uri.parse('https://self-signed.badssl.com'));
 
       setState(() {
         _result =
             'Self-signed certificate verification succeeded without callback (unexpected!)\n'
             'Status code: ${response.statusCode}\n'
-            'Content length: ${response.contentLength}';
+            'Content length: ${response.headers.value(Headers.contentLengthHeader)}';
       });
     } catch (e) {
       setState(() {
@@ -176,9 +174,14 @@ class _HttpClientCustomPageState extends State<HttpClientCustomPage> {
 
 class HttpClientCustom extends HttpClientBuilder {
   @override
-  HttpClient create() {
-    return HttpClient()
-      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+  Dio create() {
+    Dio dio = Dio();
+    dio.httpClientAdapter = IOHttpClientAdapter(createHttpClient: () {
+      final client =
+          HttpClient(context: SecurityContext(withTrustedRoots: false));
+      // You can test the intermediate / root cert here. We just ignore it.
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) {
         // Print certificate info for debugging
         debugPrint('Certificate subject: ${cert.subject}');
         debugPrint('Issuer: ${cert.issuer}');
@@ -189,5 +192,8 @@ class HttpClientCustom extends HttpClientBuilder {
         // For example, verify if the certificate fingerprint matches the expected value
         return true;
       };
+      return client;
+    });
+    return dio;
   }
 }

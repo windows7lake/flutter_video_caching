@@ -192,6 +192,6 @@ class _PreCacheM3u8PageState extends State<PreCacheM3u8Page> with M3U8MX {
   @override
   void dispose() {
     super.dispose();
-    VideoProxy.downloadManager.removeAllTask();
+    VideoProxy.downloadManager.cancelAllTask();
   }
 }

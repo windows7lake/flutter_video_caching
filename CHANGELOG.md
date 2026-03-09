@@ -1,3 +1,20 @@
+## 1.1.1
+
+- fix: precache m3u8 with EXT-X-STREAM-INF tag failed
+
+## 1.1.0
+
+- feat: Allow specifying custom cache root path in VideoProxy.init()
+
+## 1.0.0
+
+**Breaking Changed**
+- refactor: remove `isolate` to simplify the code and improve performance
+- refactor: adjust the task schedule logic to ensure high-priority tasks are executed first, improving responsiveness
+- feat: use dio as the default http client for better performance and reliability
+- feat: restarting the proxy server after an interruption
+- fix: handle socket exception during download to prevent crashes and improve stability
+
 ## 0.4.6
 
 - fix: parse EXT-X-MAP failed

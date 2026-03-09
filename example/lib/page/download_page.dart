@@ -63,7 +63,7 @@ class _DownloadPageState extends State<DownloadPage> {
         priority: i,
       ));
     }
-    await _manager.roundIsolate();
+    await _manager.roundTask();
     setState(() {});
   }
 
@@ -111,6 +111,9 @@ class _DownloadPageState extends State<DownloadPage> {
                   ElevatedButton(
                     onPressed: () {
                       switch (task.status) {
+                        case DownloadStatus.IDLE:
+                          _manager.resumeTaskById(task.id);
+                          break;
                         case DownloadStatus.DOWNLOADING:
                           _manager.pauseTaskById(task.id);
                           break;
@@ -159,6 +162,8 @@ class _DownloadPageState extends State<DownloadPage> {
         return 'Pause';
       case DownloadStatus.PAUSED:
         return 'Resume';
+      case DownloadStatus.IDLE:
+        return 'Start';
       default:
         return 'Cancel';
     }
