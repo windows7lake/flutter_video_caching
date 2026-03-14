@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 
 import '../download/download_manager.dart';
@@ -12,6 +14,9 @@ import 'local_proxy_server.dart';
 /// Manages the initialization and configuration of the local video proxy server,
 /// HLS playlist parser, download manager, and URL matcher for video streaming and caching.
 class VideoProxy {
+  /// Whether [init] has been called.
+  static bool _initialized = false;
+
   /// The local HTTP proxy server instance.
   static late LocalProxyServer _localProxyServer;
 
@@ -77,5 +82,41 @@ class VideoProxy {
 
     // Set the URL matcher implementation (custom or default).
     urlMatcherImpl = urlMatcher ?? UrlMatcherDefault();
+
+    _initialized = true;
+  }
+
+  /// Restarts the local proxy server without re-initializing other components
+  /// (cache, download manager, URL matcher, etc.).
+  ///
+  /// This is intended to be called when the app returns to the foreground
+  /// after the OS has suspended or killed the proxy server in the background.
+  ///
+  /// Throws [StateError] if [init] has not been called yet.
+  static Future<void> restart() async {
+    if (!_initialized) {
+      throw StateError('VideoProxy.init() must be called before restart()');
+    }
+    await _localProxyServer.restart();
+  }
+
+  /// Checks whether the proxy server is currently reachable.
+  ///
+  /// Returns `true` if a TCP connection to the proxy succeeds, `false`
+  /// otherwise. This can be used to decide whether [restart] is needed
+  /// (e.g., after returning from background).
+  static Future<bool> isRunning() async {
+    if (!_initialized) return false;
+    try {
+      final socket = await Socket.connect(
+        Config.ip,
+        Config.port,
+        timeout: Duration(seconds: 1),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
