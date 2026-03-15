@@ -17,6 +17,9 @@ class VideoProxy {
   /// Whether [init] has been called.
   static bool _initialized = false;
 
+  /// Stored concurrency setting for recreating the download manager on restart.
+  static int _maxConcurrentDownloads = 4;
+
   /// The local HTTP proxy server instance.
   static late LocalProxyServer _localProxyServer;
 
@@ -78,6 +81,7 @@ class VideoProxy {
     httpClientBuilderImpl = httpClientBuilder ?? HttpClientDefault();
 
     // Initialize the download manager with the specified concurrency.
+    _maxConcurrentDownloads = maxConcurrentDownloads;
     downloadManager = DownloadManager(maxConcurrentDownloads);
 
     // Set the URL matcher implementation (custom or default).
@@ -86,17 +90,25 @@ class VideoProxy {
     _initialized = true;
   }
 
-  /// Restarts the local proxy server without re-initializing other components
-  /// (cache, download manager, URL matcher, etc.).
+  /// Restarts the local proxy server and recreates the download manager.
   ///
-  /// This is intended to be called when the app returns to the foreground
-  /// after the OS has suspended or killed the proxy server in the background.
+  /// When the app returns from background, the OS may have killed TCP
+  /// connections between the download manager (Dio) and the CDN. Simply
+  /// restarting the server socket is not enough — the download manager's
+  /// in-flight tasks and HTTP client hold stale connection state that can
+  /// cause requests to hang. This method disposes the old download manager
+  /// and creates a fresh one so that all subsequent requests use new
+  /// connections.
   ///
   /// Throws [StateError] if [init] has not been called yet.
   static Future<void> restart() async {
     if (!_initialized) {
       throw StateError('VideoProxy.init() must be called before restart()');
     }
+    // Dispose stale download state (dead TCP connections, in-flight tasks)
+    // and recreate with a fresh Dio client.
+    downloadManager.dispose();
+    downloadManager = DownloadManager(_maxConcurrentDownloads);
     await _localProxyServer.restart();
   }
 
