@@ -49,10 +49,12 @@ class LocalProxyServer {
       }
     } on SocketException catch (e) {
       logW('Proxy server Socket close: $e');
-      // If the port is occupied (error code 98), increment port and retry.
-      if (e.osError?.errorCode == 98) {
+      // If the port is occupied (EADDRINUSE), increment port and retry.
+      // Error code 48 on macOS/iOS, 98 on Linux.
+      final code = e.osError?.errorCode;
+      if (code == 48 || code == 98) {
         Config.port = Config.port + 1;
-        start();
+        await start();
       }
     }
   }
