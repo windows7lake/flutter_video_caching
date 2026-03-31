@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 
 import '../download/download_manager.dart';
@@ -12,6 +14,12 @@ import 'local_proxy_server.dart';
 /// Manages the initialization and configuration of the local video proxy server,
 /// HLS playlist parser, download manager, and URL matcher for video streaming and caching.
 class VideoProxy {
+  /// Whether [init] has been called.
+  static bool _initialized = false;
+
+  /// Stored concurrency setting for recreating the download manager on restart.
+  static int _maxConcurrentDownloads = 4;
+
   /// The local HTTP proxy server instance.
   static late LocalProxyServer _localProxyServer;
 
@@ -73,9 +81,54 @@ class VideoProxy {
     httpClientBuilderImpl = httpClientBuilder ?? HttpClientDefault();
 
     // Initialize the download manager with the specified concurrency.
+    _maxConcurrentDownloads = maxConcurrentDownloads;
     downloadManager = DownloadManager(maxConcurrentDownloads);
 
     // Set the URL matcher implementation (custom or default).
     urlMatcherImpl = urlMatcher ?? UrlMatcherDefault();
+
+    _initialized = true;
+  }
+
+  /// Restarts the local proxy server and recreates the download manager.
+  ///
+  /// When the app returns from background, the OS may have killed TCP
+  /// connections between the download manager (Dio) and the CDN. Simply
+  /// restarting the server socket is not enough — the download manager's
+  /// in-flight tasks and HTTP client hold stale connection state that can
+  /// cause requests to hang. This method disposes the old download manager
+  /// and creates a fresh one so that all subsequent requests use new
+  /// connections.
+  ///
+  /// Throws [StateError] if [init] has not been called yet.
+  static Future<void> restart() async {
+    if (!_initialized) {
+      throw StateError('VideoProxy.init() must be called before restart()');
+    }
+    // Dispose stale download state (dead TCP connections, in-flight tasks)
+    // and recreate with a fresh Dio client.
+    downloadManager.dispose();
+    downloadManager = DownloadManager(_maxConcurrentDownloads);
+    await _localProxyServer.restart();
+  }
+
+  /// Checks whether the proxy server is currently reachable.
+  ///
+  /// Returns `true` if a TCP connection to the proxy succeeds, `false`
+  /// otherwise. This can be used to decide whether [restart] is needed
+  /// (e.g., after returning from background).
+  static Future<bool> isRunning() async {
+    if (!_initialized) return false;
+    try {
+      final socket = await Socket.connect(
+        Config.ip,
+        Config.port,
+        timeout: Duration(seconds: 1),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }

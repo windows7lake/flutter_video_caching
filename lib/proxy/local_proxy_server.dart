@@ -30,6 +30,9 @@ class LocalProxyServer {
   /// The underlying server socket instance.
   ServerSocket? server;
 
+  /// Health check timer reference for proper cleanup.
+  Timer? _healthCheckTimer;
+
   /// Starts the proxy server.
   /// Binds to the configured IP and port, and listens for incoming connections.
   /// If the port is already in use, it will try the next port.
@@ -46,16 +49,19 @@ class LocalProxyServer {
       }
     } on SocketException catch (e) {
       logW('Proxy server Socket close: $e');
-      // If the port is occupied (error code 98), increment port and retry.
-      if (e.osError?.errorCode == 98) {
+      // If the port is occupied (EADDRINUSE), increment port and retry.
+      // Error code 48 on macOS/iOS, 98 on Linux.
+      final code = e.osError?.errorCode;
+      if (code == 48 || code == 98) {
         Config.port = Config.port + 1;
-        start();
+        await start();
       }
     }
   }
 
   void startHealthCheck() {
-    Timer.periodic(Duration(seconds: 10), (timer) async {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
       try {
         final socket = await Socket.connect(
           Config.ip,
@@ -73,13 +79,37 @@ class LocalProxyServer {
 
   void retry() {
     logD('Proxy server restarting...');
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = null;
     server?.close();
+    server = null;
     Future.delayed(Duration(seconds: 1), start);
   }
 
-  /// Shuts down the proxy server and closes the socket.
+  /// Restarts the proxy server.
+  ///
+  /// Closes the existing server and health check timer, then starts a new
+  /// server on the same port. This is useful when the app returns to the
+  /// foreground after the OS has killed the server socket in the background.
+  Future<void> restart() async {
+    logD('Proxy server restart requested...');
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = null;
+    try {
+      await server?.close();
+    } catch (_) {
+      // Server may already be dead (killed by OS in background).
+    }
+    server = null;
+    await start();
+  }
+
+  /// Shuts down the proxy server and cancels the health check timer.
   Future<void> close() async {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = null;
     await server?.close();
+    server = null;
   }
 
   /// Handles an incoming socket connection.

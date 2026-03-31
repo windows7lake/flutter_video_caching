@@ -295,7 +295,13 @@ class DownloadPool {
   }
 
   void dispose() {
-    _taskList.forEach((e) => updateTaskById(e.id, DownloadStatus.PAUSED));
+    // Force-cancel all in-flight download requests directly.
+    // When the app returns from background, TCP connections are dead and
+    // Dio's onReceiveProgress callback will never fire, so we must cancel
+    // tokens explicitly to unblock any pending futures.
+    for (final task in _taskList) {
+      task.cancelToken?.cancel('DownloadPool disposed');
+    }
     _taskList.clear();
     _streamController.close();
     _client.close();
