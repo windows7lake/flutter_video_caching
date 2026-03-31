@@ -1,3 +1,7 @@
+## 1.1.2
+
+- feat: Add VideoProxy.restart() and isRunning() for foreground recovery  (pr #44 from YoshiHotta)
+
 ## 1.1.1
 
 - fix: precache m3u8 with EXT-X-STREAM-INF tag failed

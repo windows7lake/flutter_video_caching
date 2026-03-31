@@ -271,6 +271,20 @@ This will cancel all tasks that have the specified URL as their main m3u8 playli
 VideoProxy.downloadManager.cancelTaskAboutUrl(url);
 ```
 
+### 10. Foreground recovery
+
+After the app goes to the background, the video proxy server may be killed by the system. 
+You can check if the server is running when the app resumes, and restart it if necessary.
+```dart
+// In app lifecycle listener (e.g., AppLifecycleListener.onResume)
+void onResume() async {
+  if (!await VideoProxy.isRunning()) {
+    await VideoProxy.restart();
+  }
+  // Then re-open media in your video players
+}
+```
+
 ## 🪧 Core Api
 
 ### 1. VideoProxy.init:
