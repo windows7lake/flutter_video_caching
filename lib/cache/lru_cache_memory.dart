@@ -11,7 +11,7 @@ class LruCacheMemory extends LruCacheImpl<String, Uint8List> {
   /// Constructs an [LruCacheMemory] with the specified [maxSize] in bytes.
   ///
   /// Throws an assertion error if [maxSize] is not greater than 0.
-  LruCacheMemory(int maxSize) : super(maxSize);
+  LruCacheMemory(super.maxSize);
 
   /// Retrieves the value associated with the given [key], or `null` if not present.
   ///
@@ -48,7 +48,7 @@ class LruCacheMemory extends LruCacheImpl<String, Uint8List> {
       }
       map[key] = value;
 
-      trimToSize(maxSize);
+      _trimToSizeLocked(maxSize);
       return previous;
     });
   }
@@ -77,32 +77,36 @@ class LruCacheMemory extends LruCacheImpl<String, Uint8List> {
   @override
   Future<void> trimToSize(int maxSize) async {
     await lock.synchronized(() {
-      while (true) {
-        String key;
-        Uint8List value;
-
-        if (size < 0 || (map.isEmpty && size != 0)) {
-          throw StateError(
-            '$runtimeType.sizeOf() is reporting inconsistent results!',
-          );
-        }
-
-        if (size <= maxSize) {
-          break;
-        }
-
-        final toEvict = _eldest();
-        if (toEvict == null) {
-          break;
-        }
-
-        key = toEvict.key;
-        value = toEvict.value;
-        map.remove(key);
-        size -= value.lengthInBytes;
-        evictionCount++;
-      }
+      _trimToSizeLocked(maxSize);
     });
+  }
+
+  void _trimToSizeLocked(int maxSize) {
+    while (true) {
+      String key;
+      Uint8List value;
+
+      if (size < 0 || (map.isEmpty && size != 0)) {
+        throw StateError(
+          '$runtimeType.sizeOf() is reporting inconsistent results!',
+        );
+      }
+
+      if (size <= maxSize) {
+        break;
+      }
+
+      final toEvict = _eldest();
+      if (toEvict == null) {
+        break;
+      }
+
+      key = toEvict.key;
+      value = toEvict.value;
+      map.remove(key);
+      size -= value.lengthInBytes;
+      evictionCount++;
+    }
   }
 
   /// Returns the eldest entry in the cache, or `null` if the cache is empty.

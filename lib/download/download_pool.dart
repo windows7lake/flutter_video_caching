@@ -198,8 +198,8 @@ class DownloadPool {
         }
       },
       options: Options(headers: headers),
-    ).then((response) {
-      _downloadResponse(task, startTime);
+    ).then((response) async {
+      await _downloadResponse(task, startTime);
     }).catchError((error) {
       _downloadError(task, error);
     });
@@ -246,13 +246,22 @@ class DownloadPool {
     }
   }
 
-  void _downloadResponse(DownloadTask task, DateTime startTime) {
+  Future<void> _downloadResponse(DownloadTask task, DateTime startTime) async {
     File saveFile = File(task.savePath);
     task.progress = 1;
     task.data = saveFile.readAsBytesSync();
     updateTaskById(task.id, DownloadStatus.COMPLETED);
-    LruCacheSingleton().memoryPut(task.matchUrl, Uint8List.fromList(task.data));
-    LruCacheSingleton().storagePut(task.matchUrl, saveFile);
+    try {
+      // Cache registration is an optimization after the network download has
+      // succeeded. Do not turn cache bookkeeping failures into download errors.
+      await LruCacheSingleton().memoryPut(
+        task.matchUrl,
+        Uint8List.fromList(task.data),
+      );
+      await LruCacheSingleton().storagePut(task.matchUrl, saveFile);
+    } catch (e) {
+      logE('[DownloadPool] Cache registration failed: $e');
+    }
     int duration = DateTime.now().difference(startTime).inSeconds;
     logV('[DownloadPool] Download done time: $duration s: ${task.toString()}');
     FunctionProxy.debounce(roundTask);

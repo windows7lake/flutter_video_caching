@@ -50,5 +50,49 @@ void main() {
       expect(await cache.get('c'), isNull);
       expect(await cache.get('d'), isNull);
     });
+
+    test('put waits for eviction before completing', () async {
+      cache = LruCacheStorage(5);
+      final file1 = File(p.join(tempDir.path, 'e.txt'));
+      final file2 = File(p.join(tempDir.path, 'f.txt'));
+      await file1.writeAsBytes([1, 2, 3, 4]);
+      await file2.writeAsBytes([5, 6, 7, 8]);
+
+      await cache.put('e', file1);
+      await cache.put('f', file2);
+
+      expect(cache.size, lessThanOrEqualTo(cache.maxSize));
+    });
+
+    test('get prunes missing files and repairs the size ledger', () async {
+      final file = File(p.join(tempDir.path, 'g.txt'));
+      await file.writeAsBytes([1, 2, 3]);
+      await cache.put('g', file);
+      await file.delete();
+
+      final result = await cache.get('g');
+
+      expect(result, isNull);
+      expect(cache.size, 0);
+      expect(cache.map, isEmpty);
+      await cache.trimToSize(cache.maxSize);
+    });
+
+    test(
+      'remove repairs the size ledger when the file was already deleted',
+      () async {
+        final file = File(p.join(tempDir.path, 'h.txt'));
+        await file.writeAsBytes([1, 2, 3]);
+        await cache.put('h', file);
+        await file.delete();
+
+        final removed = await cache.remove('h');
+
+        expect(removed, isNotNull);
+        expect(cache.size, 0);
+        expect(cache.map, isEmpty);
+        await cache.trimToSize(cache.maxSize);
+      },
+    );
   });
 }

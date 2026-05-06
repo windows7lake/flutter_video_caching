@@ -30,15 +30,19 @@ class UrlParserDefault implements UrlParser {
   Future<Uint8List?> cache(DownloadTask task) async {
     Uint8List? dataMemory = await LruCacheSingleton().memoryGet(task.matchUrl);
     if (dataMemory != null) {
-      logD('From memory: ${dataMemory.lengthInBytes.toMemorySize}, '
-          'total memory size: ${await LruCacheSingleton().memoryFormatSize()}'
-          'Request range：${task.startRange}-${task.endRange}');
+      logD(
+        'From memory: ${dataMemory.lengthInBytes.toMemorySize}, '
+        'total memory size: ${await LruCacheSingleton().memoryFormatSize()}'
+        'Request range：${task.startRange}-${task.endRange}',
+      );
       return dataMemory;
     }
     Uint8List? dataFile = await LruCacheSingleton().storageGet(task.matchUrl);
     if (dataFile != null) {
-      logD('From file: ${task.matchUrl} '
-          'Request range：${task.startRange}-${task.endRange}');
+      logD(
+        'From file: ${task.matchUrl} '
+        'Request range：${task.startRange}-${task.endRange}',
+      );
       await LruCacheSingleton().memoryPut(task.matchUrl, dataFile);
       return dataFile;
     }
@@ -134,8 +138,12 @@ class UrlParserDefault implements UrlParser {
     int requestRangeEnd,
     Map<String, String> headers,
   ) async {
-    DownloadTask task =
-        DownloadTask(uri: uri, startRange: 0, endRange: 1, headers: headers);
+    DownloadTask task = DownloadTask(
+      uri: uri,
+      startRange: 0,
+      endRange: 1,
+      headers: headers,
+    );
     Uint8List? data = await cache(task);
     int contentLength = 0;
     if (data != null) {
@@ -143,17 +151,15 @@ class UrlParserDefault implements UrlParser {
     }
     if (contentLength == 0) {
       contentLength = await head(uri, headers: headers);
-      String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
-          '/${task.saveFileName}';
-      File file = File(filePath);
-      file.writeAsString(contentLength.toString());
-      LruCacheSingleton().storagePut(task.matchUrl, file);
+      await _cacheContentLength(task, contentLength);
     }
 
     requestRangeEnd = contentLength - 1;
     responseHeaders.add('content-length: ${contentLength - requestRangeStart}');
-    responseHeaders.add('content-range: bytes '
-        '$requestRangeStart-$requestRangeEnd/$contentLength');
+    responseHeaders.add(
+      'content-range: bytes '
+      '$requestRangeStart-$requestRangeEnd/$contentLength',
+    );
     await socket.append(responseHeaders.join('\r\n'));
 
     bool downloading = true;
@@ -168,8 +174,10 @@ class UrlParserDefault implements UrlParser {
         endRange: endRange,
         headers: headers,
       );
-      logD('Start ${task.url} '
-          'Request range：${task.startRange}-${task.endRange}');
+      logD(
+        'Start ${task.url} '
+        'Request range：${task.startRange}-${task.endRange}',
+      );
 
       Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
@@ -232,8 +240,12 @@ class UrlParserDefault implements UrlParser {
   ) async {
     if ((requestRangeStart == 0 && requestRangeEnd == 1) ||
         requestRangeEnd == -1) {
-      DownloadTask task =
-          DownloadTask(uri: uri, startRange: 0, endRange: 1, headers: headers);
+      DownloadTask task = DownloadTask(
+        uri: uri,
+        startRange: 0,
+        endRange: 1,
+        headers: headers,
+      );
       Uint8List? data = await cache(task);
       int contentLength = 0;
       if (data != null) {
@@ -241,12 +253,7 @@ class UrlParserDefault implements UrlParser {
       }
       if (contentLength == 0) {
         contentLength = await head(uri, headers: headers);
-        String filePath =
-            '${await FileExt.createCachePath(task.uri.generateMd5)}'
-            '/${task.saveFileName}';
-        File file = File(filePath);
-        file.writeAsString(contentLength.toString());
-        LruCacheSingleton().storagePut(task.matchUrl, file);
+        await _cacheContentLength(task, contentLength);
       }
       if (requestRangeStart == 0 && requestRangeEnd == 1) {
         responseHeaders.add('content-range: bytes 0-1/$contentLength');
@@ -275,8 +282,10 @@ class UrlParserDefault implements UrlParser {
         endRange: endRange,
         headers: headers,
       );
-      logD('Start ${task.url} '
-          'Request range：${task.startRange}-${task.endRange}');
+      logD(
+        'Start ${task.url} '
+        'Request range：${task.startRange}-${task.endRange}',
+      );
 
       Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
@@ -340,8 +349,9 @@ class UrlParserDefault implements UrlParser {
     }
     Response response = await client.headUri(uri);
     // Get content-length from content-range, if failed get from content-length
-    String? contentRange =
-        response.headers.value(HttpHeaders.contentRangeHeader);
+    String? contentRange = response.headers.value(
+      HttpHeaders.contentRangeHeader,
+    );
     if (contentRange != null) {
       final match = RegExp(r'bytes (\d+)-(\d+)/(\d+)').firstMatch(contentRange);
       if (match != null && match.group(3) != null) {
@@ -351,10 +361,28 @@ class UrlParserDefault implements UrlParser {
         }
       }
     }
-    String? contentLength =
-        response.headers.value(HttpHeaders.contentLengthHeader);
+    String? contentLength = response.headers.value(
+      HttpHeaders.contentLengthHeader,
+    );
     client.close();
     return int.tryParse(contentLength ?? '-1') ?? -1;
+  }
+
+  Future<void> _cacheContentLength(
+    DownloadTask task,
+    int contentLength,
+  ) async {
+    try {
+      // Content length is already known by the caller. This small metadata file
+      // only speeds up later requests, so failures must not block the response.
+      String filePath = '${await FileExt.createCachePath(task.uri.generateMd5)}'
+          '/${task.saveFileName}';
+      File file = File(filePath);
+      await file.writeAsString(contentLength.toString());
+      await LruCacheSingleton().storagePut(task.matchUrl, file);
+    } catch (e) {
+      logE('[UrlParserDefault] Cache content length failed: $e');
+    }
   }
 
   /// Manages concurrent download tasks.
@@ -379,8 +407,9 @@ class UrlParserDefault implements UrlParser {
       bool isExit = VideoProxy.downloadManager.allTasks
           .where((e) => e.matchUrl == newTask.matchUrl)
           .isNotEmpty;
-      Uint8List? dataMemory =
-          await LruCacheSingleton().memoryGet(newTask.matchUrl);
+      Uint8List? dataMemory = await LruCacheSingleton().memoryGet(
+        newTask.matchUrl,
+      );
       if (dataMemory != null) isExit = true;
       newTask.cacheDir = await FileExt.createCachePath(newTask.uri.generateMd5);
       File file = File(newTask.savePath);
