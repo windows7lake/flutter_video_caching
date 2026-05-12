@@ -1,3 +1,7 @@
+## 1.1.3
+
+- fix: LruCacheStorage size ledger drift  (pr #47 from hkm5558)
+
 ## 1.1.2
 
 - feat: Add VideoProxy.restart() and isRunning() for foreground recovery  (pr #44 from YoshiHotta)
