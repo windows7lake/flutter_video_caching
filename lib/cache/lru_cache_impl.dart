@@ -13,10 +13,9 @@ abstract class LruCacheImpl<K, V> extends LruCache<K, V> {
   /// Constructs an [LruCacheImpl] with the specified [maxSize].
   ///
   /// Throws an assertion error if [maxSize] is not greater than 0.
-  LruCacheImpl(int maxSize) {
+  LruCacheImpl(this.maxSize) {
     assert(maxSize > 0, 'maxSize must be greater than 0');
-    this.maxSize = maxSize;
-    this.map = LinkedHashMap<K, V>();
+    map = LinkedHashMap<K, V>();
   }
 
   /// The map that stores the cache entries in access order.
@@ -64,8 +63,8 @@ abstract class LruCacheImpl<K, V> extends LruCache<K, V> {
     assert(maxSize > 0, 'maxSize must be greater than 0');
     await lock.synchronized(() {
       this.maxSize = maxSize;
-      trimToSize(maxSize);
     });
+    await trimToSize(maxSize);
   }
 
   /// Returns a string representation of the cache, including statistics such as
@@ -74,7 +73,7 @@ abstract class LruCacheImpl<K, V> extends LruCache<K, V> {
   String toString() {
     final int accesses = hitCount + missCount;
     final int hitPercent = accesses != 0 ? (100 * hitCount ~/ accesses) : 0;
-    return '${runtimeType} [ '
+    return '$runtimeType [ '
         'maxSize=$maxSize, '
         'hits=$hitCount, '
         'misses=$missCount, '

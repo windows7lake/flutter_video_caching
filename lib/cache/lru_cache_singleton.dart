@@ -37,7 +37,7 @@ class LruCacheSingleton {
   late LruCacheStorage _storageCache;
 
   /// Lock for synchronizing storage cache initialization.
-  Lock _lock = Lock();
+  final Lock _lock = Lock();
 
   /// Flag indicating whether the storage cache has been initialized.
   bool _isStorageInit = false;
@@ -117,12 +117,12 @@ class LruCacheSingleton {
     for (FileSystemEntity entity in files) {
       final stat = await entity.stat();
       if (stat.type == FileSystemEntityType.file) {
-        String filePath = entity.path;
-        await entity.delete(recursive: true);
-        await storageRemove(filePath);
+        await _removeStorageFile(entity);
       }
     }
-    await dir.delete(recursive: true);
+    if (await dir.exists()) {
+      await dir.delete(recursive: true);
+    }
   }
 
   /// Returns the formatted size of the disk cache.
@@ -155,8 +155,9 @@ class LruCacheSingleton {
         FileStat stat = await file.stat();
         if (stat.type == FileSystemEntityType.file) {
           String key = basenameWithoutExtension(file.path);
-          _storageCache.map[key] = file;
-          _storageCache.size += stat.size;
+          // Restore through LruCacheStorage so size and per-key ledgers stay
+          // in sync. Writing map/size directly caused stale startup state.
+          await _storageCache.restore(key, file, stat.size);
         }
       }
     });
@@ -183,17 +184,25 @@ class LruCacheSingleton {
           String directoryName = basename(file.path);
           if (directoryName == key) {
             Directory directory = file as Directory;
-            await directory.list(recursive: true).forEach((subFile) async {
+            await for (final subFile in directory.list(recursive: true)) {
               if (subFile is File) {
-                String subKey = basenameWithoutExtension(subFile.path);
-                await _memoryCache.remove(subKey);
+                await _removeStorageFile(subFile);
               }
-            });
-            await file.delete(recursive: true);
-            await directory.delete(recursive: true);
+            }
+            if (await directory.exists()) {
+              await directory.delete(recursive: true);
+            }
           }
         }
       }
     }
+  }
+
+  Future<void> _removeStorageFile(FileSystemEntity file) async {
+    final String key = basenameWithoutExtension(file.path);
+    // Directory cleanup must remove by cache key, not by full path. Passing a
+    // path here leaves the storage map and size ledger dirty.
+    await _storageCache.remove(key);
+    await _memoryCache.remove(key);
   }
 }

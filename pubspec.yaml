@@ -24,7 +24,9 @@ dependencies:
 
 dev_dependencies:
   test: ^1.25.15
-  mockito: 5.4.6
+  mockito: ^5.6.4
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
   flutter_test:
     sdk: flutter
 
