@@ -87,7 +87,10 @@ class UrlParserMp4 implements UrlParser {
       RegExpMatch? rangeMatch = exp.firstMatch(headers['range'] ?? '');
       int requestRangeStart = int.tryParse(rangeMatch?.group(1) ?? '0') ?? 0;
       int requestRangeEnd = int.tryParse(rangeMatch?.group(2) ?? '0') ?? -1;
-      bool partial = requestRangeStart > 0 || requestRangeEnd > 0;
+      // iOS may request `Range: bytes=0-` for normal startup. That is still a
+      // range request and AVPlayer expects a 206 with Content-Range; returning
+      // 200 makes the proxy look non-range-capable and delays startup.
+      bool partial = rangeMatch != null;
       List<String> responseHeaders = <String>[
         partial ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
         'Accept-Ranges: bytes',
@@ -110,6 +113,7 @@ class UrlParserMp4 implements UrlParser {
           responseHeaders,
           requestRangeStart,
           requestRangeEnd,
+          partial,
           headers,
         );
       }
@@ -178,6 +182,11 @@ class UrlParserMp4 implements UrlParser {
         'Request range：${task.startRange}-${task.endRange}',
       );
 
+      // Submit following segments before serving the current segment. When the
+      // current segment is already cached, the old flow returned immediately
+      // and never warmed the next segment, so UI "preload" did not help the
+      // next swipe.
+      await concurrent(task, headers, contentLength);
       Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
       bool exitUri = VideoProxy.downloadManager.isTaskExit(task);
@@ -188,7 +197,6 @@ class UrlParserMp4 implements UrlParser {
         }
       }
       if (data == null) {
-        concurrent(task, headers);
         task.priority += 2;
         data = await download(task);
       }
@@ -234,43 +242,25 @@ class UrlParserMp4 implements UrlParser {
     List<String> responseHeaders,
     int requestRangeStart,
     int requestRangeEnd,
+    bool partial,
     Map<String, String> headers,
   ) async {
-    if ((requestRangeStart == 0 && requestRangeEnd == 1) ||
-        requestRangeEnd == -1) {
-      DownloadTask task = DownloadTask(
-        uri: uri,
-        startRange: 0,
-        endRange: 1,
-        headers: headers,
-      );
-      Uint8List? data = await cache(task);
-      int contentLength = 0;
-      if (data != null) {
-        contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
-      }
-      if (contentLength == 0) {
-        contentLength = await head(uri, headers: headers);
-        await _cacheContentLength(task, contentLength);
-      }
-      if (requestRangeStart == 0 && requestRangeEnd == 1) {
-        responseHeaders.add('content-range: bytes 0-1/$contentLength');
-        await socket.append(responseHeaders.join('\r\n'));
-        await socket.append([0]);
-        await socket.close();
-        return;
-      } else if (requestRangeEnd == -1) {
-        requestRangeEnd = contentLength - 1;
-      }
+    final totalContentLength = await _contentLength(uri, headers);
+    final rangeResponse = Mp4RangeResponse.fromRequest(
+      start: requestRangeStart,
+      end: requestRangeEnd,
+      totalLength: totalContentLength,
+      partial: partial,
+    );
+    responseHeaders.add('content-length: ${rangeResponse.contentLength}');
+    if (rangeResponse.contentRangeHeader != null) {
+      responseHeaders.add(rangeResponse.contentRangeHeader!);
     }
-
-    int contentLength = requestRangeEnd - requestRangeStart + 1;
-    responseHeaders.add('content-length: $contentLength');
     await socket.append(responseHeaders.join('\r\n'));
 
     bool downloading = true;
     int startRange =
-        requestRangeStart - (requestRangeStart % Config.segmentSize);
+        rangeResponse.start - (rangeResponse.start % Config.segmentSize);
     int endRange = startRange + Config.segmentSize - 1;
     int retry = 3;
     while (downloading) {
@@ -285,6 +275,7 @@ class UrlParserMp4 implements UrlParser {
         'Request range：${task.startRange}-${task.endRange}',
       );
 
+      await concurrent(task, headers, totalContentLength);
       Uint8List? data = await cache(task);
       // if the task has been added, wait for the download to complete
       bool exitUri = VideoProxy.downloadManager.isTaskExit(task);
@@ -295,7 +286,6 @@ class UrlParserMp4 implements UrlParser {
         }
       }
       if (data == null) {
-        concurrent(task, headers);
         task.priority += 2;
         data = await download(task);
       }
@@ -310,11 +300,11 @@ class UrlParserMp4 implements UrlParser {
 
       int startIndex = 0;
       int? endIndex;
-      if (startRange < requestRangeStart) {
-        startIndex = requestRangeStart - startRange;
+      if (startRange < rangeResponse.start) {
+        startIndex = rangeResponse.start - startRange;
       }
-      if (endRange > requestRangeEnd) {
-        endIndex = requestRangeEnd - startRange + 1;
+      if (endRange > rangeResponse.end) {
+        endIndex = rangeResponse.end - startRange + 1;
       }
       data = data.sublist(startIndex, endIndex);
       socket.done.then((value) {
@@ -326,10 +316,35 @@ class UrlParserMp4 implements UrlParser {
       if (!success) downloading = false;
       startRange += Config.segmentSize;
       endRange = startRange + Config.segmentSize - 1;
-      if (startRange > requestRangeEnd) {
+      if (startRange > rangeResponse.end) {
         downloading = false;
       }
     }
+  }
+
+  Future<int> _contentLength(
+    Uri uri,
+    Map<String, String> headers,
+  ) async {
+    // Store content length in the existing first-segment metadata slot. Range
+    // normalization and tail clamping both need total length, and avoiding a
+    // HEAD on every iOS `bytes=0-` request keeps startup cheap.
+    final task = DownloadTask(
+      uri: uri,
+      startRange: 0,
+      endRange: 1,
+      headers: headers,
+    );
+    final data = await cache(task);
+    var contentLength = 0;
+    if (data != null) {
+      contentLength = int.tryParse(Utf8Codec().decode(data)) ?? 0;
+    }
+    if (contentLength == 0) {
+      contentLength = await head(uri, headers: headers);
+      await _cacheContentLength(task, contentLength);
+    }
+    return contentLength;
   }
 
   /// Sends a HEAD request to get the content length of the resource at [uri].
@@ -390,16 +405,22 @@ class UrlParserMp4 implements UrlParser {
   Future<void> concurrent(
     DownloadTask task,
     Map<String, String> headers,
+    int contentLength,
   ) async {
     DownloadTask newTask = task;
     int activeSize = VideoProxy.downloadManager.allTasks
         .where((e) => e.url == newTask.url)
         .length;
     while (activeSize < 2) {
+      final nextStartRange = newTask.startRange + Config.segmentSize;
+      if (contentLength > 0 && nextStartRange >= contentLength) return;
+      // Clamp the last warmed segment to the real file boundary. Some servers
+      // reject over-wide byte ranges, which can leave a "preloaded" tail
+      // segment missing.
       newTask = DownloadTask(
         uri: newTask.uri,
-        startRange: newTask.startRange + Config.segmentSize,
-        endRange: newTask.startRange + Config.segmentSize * 2 - 1,
+        startRange: nextStartRange,
+        endRange: _segmentEndRange(nextStartRange, contentLength),
         headers: headers,
       );
       bool isExit = VideoProxy.downloadManager.allTasks
@@ -434,7 +455,17 @@ class UrlParserMp4 implements UrlParser {
     Map<String, Object>? headers,
     int cacheSegments,
   ) async {
-    int contentLength = await head(url.toSafeUri(), headers: headers);
+    final uri = url.toSafeUri();
+    final contentLengthTask = DownloadTask(
+      uri: uri,
+      startRange: 0,
+      endRange: 1,
+      headers: headers,
+    );
+    int contentLength = await head(uri, headers: headers);
+    if (contentLength > 0) {
+      await _cacheContentLength(contentLengthTask, contentLength);
+    }
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
@@ -455,6 +486,13 @@ class UrlParserMp4 implements UrlParser {
     return true;
   }
 
+  int _segmentEndRange(int startRange, int contentLength) {
+    final endRange = startRange + Config.segmentSize - 1;
+    if (contentLength <= 0) return endRange;
+    final lastByte = contentLength - 1;
+    return endRange > lastByte ? lastByte : endRange;
+  }
+
   /// Pre-caches data from the network.
   ///
   /// [cacheSegments]: Number of segments to cache.<br>
@@ -472,7 +510,17 @@ class UrlParserMp4 implements UrlParser {
   ) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
-    int contentLength = await head(url.toSafeUri(), headers: headers);
+    final uri = url.toSafeUri();
+    final contentLengthTask = DownloadTask(
+      uri: uri,
+      startRange: 0,
+      endRange: 1,
+      headers: headers,
+    );
+    int contentLength = await head(uri, headers: headers);
+    if (contentLength > 0) {
+      await _cacheContentLength(contentLengthTask, contentLength);
+    }
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
@@ -484,7 +532,7 @@ class UrlParserMp4 implements UrlParser {
     int totalSize = cacheSegments;
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
+      DownloadTask task = DownloadTask(uri: uri, headers: headers);
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
       count++;
@@ -527,5 +575,41 @@ class UrlParserMp4 implements UrlParser {
     if (await file.exists()) return;
     task.cacheDir = cachePath;
     await VideoProxy.downloadManager.addTask(task);
+  }
+}
+
+class Mp4RangeResponse {
+  const Mp4RangeResponse({
+    required this.start,
+    required this.end,
+    required this.totalLength,
+    required this.partial,
+  });
+
+  factory Mp4RangeResponse.fromRequest({
+    required int start,
+    required int end,
+    required int totalLength,
+    required bool partial,
+  }) {
+    final resolvedEnd = end >= 0 ? end : totalLength - 1;
+    return Mp4RangeResponse(
+      start: start,
+      end: resolvedEnd,
+      totalLength: totalLength,
+      partial: partial,
+    );
+  }
+
+  final int start;
+  final int end;
+  final int totalLength;
+  final bool partial;
+
+  int get contentLength => end - start + 1;
+
+  String? get contentRangeHeader {
+    if (!partial) return null;
+    return 'content-range: bytes $start-$end/$totalLength';
   }
 }
