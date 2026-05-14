@@ -47,7 +47,7 @@ class DownloadPool {
     if (_poolSize <= 0) {
       throw ArgumentError('Pool size must be greater than 0');
     }
-    _client = Dio()..httpClientAdapter = NativeAdapter();
+    _client = Dio()..httpClientAdapter = _createHttpClientAdapter();
     _streamController = StreamController.broadcast();
   }
 
@@ -66,6 +66,19 @@ class DownloadPool {
   List<DownloadTask> get downloadingTasks => _taskList
       .where((task) => task.status == DownloadStatus.DOWNLOADING)
       .toList();
+
+  HttpClientAdapter _createHttpClientAdapter() {
+    try {
+      return NativeAdapter();
+    } catch (error) {
+      // Some simulator/runtime combinations cannot load native_dio_adapter's
+      // Objective-C dynamic library. Falling back keeps VideoProxy usable; the
+      // default Dio adapter still supports the Range requests used here.
+      logW(
+          '[DownloadPool] NativeAdapter unavailable, fallback to Dio default: $error');
+      return HttpClientAdapter();
+    }
+  }
 
   /// Finds a task in the pool by its [taskId].
   DownloadTask? findTaskById(String taskId) =>
