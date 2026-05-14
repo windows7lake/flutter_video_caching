@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_video_caching/download/download_manager.dart';
 import 'package:flutter_video_caching/cache/lru_cache_singleton.dart';
 import 'package:flutter_video_caching/download/download_task.dart';
 import 'package:flutter_video_caching/parser/url_parser_mp4.dart';
@@ -78,8 +79,13 @@ void main() {
     setUp(() async {
       PathProviderPlatform.instance = _FakePathProviderPlatform();
       VideoProxy.urlMatcherImpl = UrlMatcherDefault();
+      VideoProxy.downloadManager = DownloadManager();
       await LruCacheSingleton().memoryClear();
       await LruCacheSingleton().storageClear();
+    });
+
+    tearDown(() {
+      VideoProxy.downloadManager.dispose();
     });
 
     test('stores content length metadata for later proxy parse', () async {
@@ -99,5 +105,29 @@ void main() {
       expect(parser.headCalls, 1);
       expect(String.fromCharCodes(cachedLength!), '12345');
     });
+
+    test('passes priority to queued precache range tasks', () async {
+      final parser = _HeadStubUrlParserMp4(1024 * 1024 * 3);
+      final url = 'https://example.com/priority.mp4';
+
+      await parser.precache(url, null, 2, false, false, 7);
+      await _waitUntil(() => VideoProxy.downloadManager.allTasks.length == 2);
+
+      expect(VideoProxy.downloadManager.allTasks, hasLength(2));
+      expect(
+        VideoProxy.downloadManager.allTasks.map((task) => task.priority),
+        everyElement(7),
+      );
+    });
   });
+}
+
+Future<void> _waitUntil(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 1),
+}) async {
+  final stopwatch = Stopwatch()..start();
+  while (!condition() && stopwatch.elapsed < timeout) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
 }

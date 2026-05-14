@@ -462,16 +462,17 @@ class UrlParserDefault implements UrlParser {
   /// [cacheSegments]: Number of segments to cache.<br>
   /// [downloadNow]: If true, downloads immediately; otherwise, pushes tasks to the queue.<br>
   /// [progressListen]: If true, returns a [StreamController] with progress updates.
+  /// [priority]: Download task priority. Higher values are scheduled first.
   ///
   /// Returns a [StreamController] emitting progress maps, or `null` if not listening.
   @override
   Future<StreamController<Map>?> precache(
-    String url,
-    Map<String, Object>? headers,
-    int cacheSegments,
-    bool downloadNow,
-    bool progressListen,
-  ) async {
+      String url,
+      Map<String, Object>? headers,
+      int cacheSegments,
+      bool downloadNow,
+      bool progressListen,
+      [int priority = 1]) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
     int contentLength = await head(url.toSafeUri(), headers: headers);
@@ -486,7 +487,11 @@ class UrlParserDefault implements UrlParser {
     int totalSize = cacheSegments;
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
+      DownloadTask task = DownloadTask(
+        uri: url.toSafeUri(),
+        headers: headers,
+        priority: priority,
+      );
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
       count++;

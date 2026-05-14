@@ -50,6 +50,7 @@ class VideoCaching {
   /// [cacheSegments]: Number of segments to cache (default: 2).
   /// [downloadNow]: If true, downloads segments immediately; if false, pushes to the queue (default: true).
   /// [progressListen]: If true, returns a [StreamController] with progress updates (default: false).
+  /// [priority]: Higher-priority tasks are scheduled before lower-priority queued preloads.
   ///
   /// Returns a [StreamController] emitting progress/status updates, or `null` if not listening.
   static Future<StreamController<Map>?> precache(
@@ -58,9 +59,16 @@ class VideoCaching {
     int cacheSegments = 2,
     bool downloadNow = true,
     bool progressListen = false,
+    int priority = 1,
   }) {
-    return UrlParserFactory.createParser(url.toSafeUri())
-        .precache(url, headers, cacheSegments, downloadNow, progressListen);
+    return UrlParserFactory.createParser(url.toSafeUri()).precache(
+      url,
+      headers,
+      cacheSegments,
+      downloadNow,
+      progressListen,
+      priority,
+    );
   }
 
   /// Parses the HLS master playlist from the given [url].
