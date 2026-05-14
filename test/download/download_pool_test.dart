@@ -57,6 +57,21 @@ void main() {
       expect(pool.taskList.first.priority, 5);
     });
 
+    test('addTask promotes existing task priority for the same cache key',
+        () async {
+      final t1 =
+          DownloadTask(uri: Uri.parse('https://a.com/4.mp4'), priority: 1);
+      final t2 =
+          DownloadTask(uri: Uri.parse('https://a.com/4.mp4'), priority: 3);
+
+      await pool.addTask(t1);
+      final promoted = await pool.addTask(t2);
+
+      expect(pool.taskList.length, 1);
+      expect(identical(promoted, t1), isTrue);
+      expect(pool.taskList.first.priority, 3);
+    });
+
     test('notifyIsolate can pause and resume', () async {
       final task = DownloadTask(uri: Uri.parse('https://a.com/5.mp4'));
       await pool.executeTask(task);
