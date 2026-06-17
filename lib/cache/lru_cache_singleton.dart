@@ -153,12 +153,21 @@ class LruCacheSingleton {
       if (!(await cacheDir.exists())) return;
       for (FileSystemEntity file in cacheDir.listSync(recursive: true)) {
         FileStat stat = await file.stat();
-        if (stat.type == FileSystemEntityType.file) {
-          String key = basenameWithoutExtension(file.path);
-          // Restore through LruCacheStorage so size and per-key ledgers stay
-          // in sync. Writing map/size directly caused stale startup state.
-          await _storageCache.restore(key, file, stat.size);
+        if (stat.type != FileSystemEntityType.file) continue;
+        // In-flight downloads write to `.tmp` files. Any `.tmp` left on disk is an
+        // orphan from a previous crash/kill: delete it and never restore it into
+        // the index, otherwise an incomplete segment would be served as a
+        // complete one (decode artifacts / broken seek).
+        if (file.path.endsWith('.tmp')) {
+          try {
+            await file.delete();
+          } catch (_) {}
+          continue;
         }
+        String key = basenameWithoutExtension(file.path);
+        // Restore through LruCacheStorage so size and per-key ledgers stay
+        // in sync. Writing map/size directly caused stale startup state.
+        await _storageCache.restore(key, file, stat.size);
       }
     });
   }
