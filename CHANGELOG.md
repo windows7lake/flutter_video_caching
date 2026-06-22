@@ -1,3 +1,9 @@
+## 1.1.4
+
+- fix: write segments to .tmp and rename atomically; skip orphan .tmp files on startup (pr #50 from cjltgb520)
+- fix: respond 206 for all Range requests, add Content-Range in parseIOS, clamp last-segment endRange (pr #49 from cjltgb520)
+- doc: Update README with issue #51
+
 ## 1.1.3
 
 - fix: LruCacheStorage size ledger drift  (pr #47 from hkm5558)
