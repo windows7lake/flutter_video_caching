@@ -180,9 +180,14 @@ class DownloadPool {
     }
     bool append = task.cachedBytes > 0;
     Map<String, Object> headers = _downloadHeader(task);
+    // Write to a temp file and atomically rename it to the final name once the
+    // download completes. An interruption (or a killed process) leaves only a
+    // `.tmp` file, never a half-written segment under its final name (`.tmp` is
+    // skipped during startup restore — see LruCacheSingleton._storageInit).
+    final String tmpPath = '${task.savePath}.tmp';
     await _client.download(
       task.url,
-      task.savePath,
+      tmpPath,
       cancelToken: task.cancelToken,
       fileAccessMode: append ? FileAccessMode.append : FileAccessMode.write,
       deleteOnError: false,
@@ -247,7 +252,15 @@ class DownloadPool {
   }
 
   Future<void> _downloadResponse(DownloadTask task, DateTime startTime) async {
-    File saveFile = File(task.savePath);
+    final File tmpFile = File('${task.savePath}.tmp');
+    final File saveFile = File(task.savePath);
+    // Atomic publish: rename the completed `.tmp` to the final name. On Windows,
+    // renaming onto an existing path throws, so delete any stale file first. This
+    // guarantees the final name always points to a complete segment.
+    if (await saveFile.exists()) {
+      await saveFile.delete();
+    }
+    await tmpFile.rename(task.savePath);
     task.progress = 1;
     task.data = saveFile.readAsBytesSync();
     updateTaskById(task.id, DownloadStatus.COMPLETED);
@@ -268,14 +281,18 @@ class DownloadPool {
   }
 
   void _downloadError(DownloadTask task, dynamic error) {
-    File saveFile = File(task.savePath);
+    // Partial data lives in the `.tmp` file: keep it on cancel (= pause) so the
+    // download can resume, delete it on a real failure, and never let it reach
+    // the final name.
+    File tmpFile = File('${task.savePath}.tmp');
     // Check if the download was cancelled.
     if (error is DioException && CancelToken.isCancel(error)) {
-      logV('[DownloadPool] Download file size: ${saveFile.lengthSync()}');
+      logV('[DownloadPool] Download file size: '
+          '${tmpFile.existsSync() ? tmpFile.lengthSync() : 0}');
       logV('[DownloadPool] Download ${task.status.name}: ${task.url}');
     } else {
       // Handle HTTP errors and retry logic.
-      if (saveFile.existsSync()) saveFile.deleteSync();
+      if (tmpFile.existsSync()) tmpFile.deleteSync();
       updateTaskById(task.id, DownloadStatus.FAILED);
       logV('[DownloadPool] Download error: $error');
       if (error is DioException && error.response?.statusCode == 416) {
