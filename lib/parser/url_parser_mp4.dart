@@ -87,9 +87,13 @@ class UrlParserMp4 implements UrlParser {
       RegExpMatch? rangeMatch = exp.firstMatch(headers['range'] ?? '');
       int requestRangeStart = int.tryParse(rangeMatch?.group(1) ?? '0') ?? 0;
       int requestRangeEnd = int.tryParse(rangeMatch?.group(2) ?? '0') ?? -1;
-      // iOS may request `Range: bytes=0-` for normal startup. That is still a
-      // range request and AVPlayer expects a 206 with Content-Range; returning
-      // 200 makes the proxy look non-range-capable and delays startup.
+      // Any request carrying a Range header must be answered with 206. iOS
+      // AVPlayer may request `Range: bytes=0-` for normal startup; the previous
+      // `start > 0 || end > 0` check returned 200 for `bytes=0-`, which makes
+      // the proxy look non-range-capable (delaying startup) and makes
+      // ffmpeg/libmpv treat the stream as non-seekable (is_streamed=1): seeking
+      // jumps to EOF and, when moov sits at the tail, the final frames decode as
+      // garbage.
       bool partial = rangeMatch != null;
       List<String> responseHeaders = <String>[
         partial ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK',
@@ -171,6 +175,13 @@ class UrlParserMp4 implements UrlParser {
     int endRange = startRange + Config.segmentSize - 1;
     int retry = 3;
     while (downloading) {
+      // The last segment's endRange must not exceed the file's last byte. When
+      // the requested range end is past EOF, some origins (e.g. Aliyun OSS) reply
+      // 200 + the whole file instead of a clamped 206; the serve loop then
+      // splices the file's head where its tail belongs, corrupting playback
+      // around the segment boundary (jump to EOF). requestRangeEnd is the file's
+      // last byte here (contentLength-1), so clamp to it.
+      if (endRange > requestRangeEnd) endRange = requestRangeEnd;
       DownloadTask task = DownloadTask(
         uri: uri,
         startRange: startRange,
@@ -264,6 +275,13 @@ class UrlParserMp4 implements UrlParser {
     int endRange = startRange + Config.segmentSize - 1;
     int retry = 3;
     while (downloading) {
+      // The last segment's endRange must not exceed the file's last byte. When
+      // the requested range end is past EOF, some origins (e.g. Aliyun OSS) reply
+      // 200 + the whole file instead of a clamped 206; the serve loop then
+      // splices the file's head where its tail belongs, corrupting playback
+      // around the segment boundary (jump to EOF). requestRangeEnd is the file's
+      // last byte here (contentLength-1), so clamp to it.
+      if (endRange > requestRangeEnd) endRange = requestRangeEnd;
       DownloadTask task = DownloadTask(
         uri: uri,
         startRange: startRange,

@@ -115,6 +115,29 @@ Add the following to your projects Info.plist file:
 
 See the example project for a full example.
 
+### 5. Cache url with token parameter
+
+If your video URL contains token parameters that change frequently, you can override `matchCacheKey` in `UrlMatcher` to define a custom cache key that ignores the token parameters, so that the video can be cached and reused even when the token changes.
+
+```dart
+class UrlMatcherCustom extends UrlMatcherDefault {
+    @override
+    Uri matchCacheKey(Uri uri) {
+      final params = Map<String, String>.from(uri.queryParameters)
+        ..removeWhere((key, _) => key != 'token'); // Remove all parameters except 'token'
+      return uri.replace(queryParameters: params.isEmpty ? null : params);
+    }
+}
+````
+
+Then pass your custom UrlMatcher to `VideoProxy.init()`:
+
+```dart
+VideoProxy.init(
+  urlMatcher: UrlMatcherCustom(),
+);
+```
+
 ## ⚔️ Advanced Usage
 
 ### 1. Preload in `PageView` scenarios
