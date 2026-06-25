@@ -279,9 +279,10 @@ class UrlParserMp4 implements UrlParser {
       // the requested range end is past EOF, some origins (e.g. Aliyun OSS) reply
       // 200 + the whole file instead of a clamped 206; the serve loop then
       // splices the file's head where its tail belongs, corrupting playback
-      // around the segment boundary (jump to EOF). requestRangeEnd is the file's
-      // last byte here (contentLength-1), so clamp to it.
-      if (endRange > requestRangeEnd) endRange = requestRangeEnd;
+      // around the segment boundary (jump to EOF). rangeResponse.end is the
+      // resolved last byte (the request end, or contentLength-1 for `bytes=N-`),
+      // so clamp to it. Note requestRangeEnd is still -1 for open-ended requests.
+      if (endRange > rangeResponse.end) endRange = rangeResponse.end;
       DownloadTask task = DownloadTask(
         uri: uri,
         startRange: startRange,
