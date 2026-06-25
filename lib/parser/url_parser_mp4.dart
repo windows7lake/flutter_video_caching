@@ -432,7 +432,11 @@ class UrlParserMp4 implements UrlParser {
         .length;
     while (activeSize < 2) {
       final nextStartRange = newTask.startRange + Config.segmentSize;
-      if (contentLength > 0 && nextStartRange >= contentLength) return;
+      // Bail when the total length is unknown (head failed) or the next segment
+      // would start past EOF. Without the `contentLength <= 0` guard a failed
+      // head leaves no upper bound, so an all-cached tail spins this loop
+      // forever (activeSize never grows, nextStartRange never terminates).
+      if (contentLength <= 0 || nextStartRange >= contentLength) return;
       // Clamp the last warmed segment to the real file boundary. Some servers
       // reject over-wide byte ranges, which can leave a "preloaded" tail
       // segment missing.
