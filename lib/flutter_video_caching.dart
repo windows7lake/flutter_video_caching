@@ -6,6 +6,7 @@ export 'cache/lru_cache_singleton.dart';
 export 'download/download_manager.dart';
 export 'download/download_status.dart';
 export 'download/download_task.dart';
+export 'export/mp4_cache_exporter.dart';
 export 'ext/string_ext.dart';
 export 'http/http_client_builder.dart';
 export 'http/http_client_default.dart';

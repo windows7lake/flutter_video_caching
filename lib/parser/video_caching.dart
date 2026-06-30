@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 
+import '../export/mp4_cache_exporter.dart';
 import '../ext/string_ext.dart';
 import '../ext/uri_ext.dart';
 import 'url_parser.dart';
@@ -68,6 +69,27 @@ class VideoCaching {
       downloadNow,
       progressListen,
       priority,
+    );
+  }
+
+  /// Exports the cached MP4 ranges for [url] into one complete local file.
+  ///
+  /// Existing playback cache segments are reused. When [downloadMissingSegments]
+  /// is true, only missing ranges are downloaded before joining the file, and
+  /// the whole export is bounded by [timeout].
+  static Future<File?> exportCachedMp4(
+    String url, {
+    Map<String, Object>? headers,
+    Duration timeout = const Duration(seconds: 30),
+    bool downloadMissingSegments = true,
+    int priority = 5,
+  }) {
+    return Mp4CacheExporter().export(
+      url,
+      headers: headers,
+      timeout: timeout,
+      downloadMissingSegments: downloadMissingSegments,
+      priority: priority,
     );
   }
 
