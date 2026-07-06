@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
 
+import '../export/mp4_cache_exporter.dart';
 import '../ext/string_ext.dart';
 import '../ext/uri_ext.dart';
 import 'url_parser.dart';
@@ -50,6 +51,7 @@ class VideoCaching {
   /// [cacheSegments]: Number of segments to cache (default: 2).
   /// [downloadNow]: If true, downloads segments immediately; if false, pushes to the queue (default: true).
   /// [progressListen]: If true, returns a [StreamController] with progress updates (default: false).
+  /// [priority]: Higher-priority tasks are scheduled before lower-priority queued preloads.
   ///
   /// Returns a [StreamController] emitting progress/status updates, or `null` if not listening.
   static Future<StreamController<Map>?> precache(
@@ -58,9 +60,37 @@ class VideoCaching {
     int cacheSegments = 2,
     bool downloadNow = true,
     bool progressListen = false,
+    int priority = 1,
   }) {
-    return UrlParserFactory.createParser(url.toSafeUri())
-        .precache(url, headers, cacheSegments, downloadNow, progressListen);
+    return UrlParserFactory.createParser(url.toSafeUri()).precache(
+      url,
+      headers,
+      cacheSegments,
+      downloadNow,
+      progressListen,
+      priority,
+    );
+  }
+
+  /// Exports the cached MP4 ranges for [url] into one complete local file.
+  ///
+  /// Existing playback cache segments are reused. When [downloadMissingSegments]
+  /// is true, only missing ranges are downloaded before joining the file, and
+  /// the whole export is bounded by [timeout].
+  static Future<File?> exportCachedMp4(
+    String url, {
+    Map<String, Object>? headers,
+    Duration timeout = const Duration(seconds: 30),
+    bool downloadMissingSegments = true,
+    int priority = 5,
+  }) {
+    return Mp4CacheExporter().export(
+      url,
+      headers: headers,
+      timeout: timeout,
+      downloadMissingSegments: downloadMissingSegments,
+      priority: priority,
+    );
   }
 
   /// Parses the HLS master playlist from the given [url].

@@ -356,12 +356,12 @@ class UrlParserM3U8 implements UrlParser {
   /// If [progressListen] is true, returns a [StreamController] that emits progress updates.
   @override
   Future<StreamController<Map>?> precache(
-    String url,
-    Map<String, Object>? headers,
-    int cacheSegments,
-    bool downloadNow,
-    bool progressListen,
-  ) async {
+      String url,
+      Map<String, Object>? headers,
+      int cacheSegments,
+      bool downloadNow,
+      bool progressListen,
+      [int priority = 1]) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
 
@@ -383,6 +383,7 @@ class UrlParserM3U8 implements UrlParser {
           headers: headers,
           startRange: segment.startRange,
           endRange: segment.endRange,
+          priority: priority,
         );
         Uint8List? data = await cache(task);
         if (data == null) await download(task);
@@ -411,6 +412,7 @@ class UrlParserM3U8 implements UrlParser {
           headers: headers,
           startRange: segment.startRange,
           endRange: segment.endRange,
+          priority: priority,
         );
         push(task);
       }

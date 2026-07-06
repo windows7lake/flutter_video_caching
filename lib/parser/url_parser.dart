@@ -48,14 +48,15 @@ abstract class UrlParser {
   /// [cacheSegments]: Number of segments to cache.
   /// [downloadNow]: Whether to start downloading immediately.
   /// [progressListen]: Whether to listen for download progress.
+  /// [priority]: Download task priority. Higher values are scheduled first.
   ///
   /// Returns a [StreamController] that emits progress or status updates,
   /// or `null` if precaching is not supported.
   Future<StreamController<Map>?> precache(
-    String url,
-    Map<String, Object>? headers,
-    int cacheSegments,
-    bool downloadNow,
-    bool progressListen,
-  );
+      String url,
+      Map<String, Object>? headers,
+      int cacheSegments,
+      bool downloadNow,
+      bool progressListen,
+      [int priority = 1]);
 }

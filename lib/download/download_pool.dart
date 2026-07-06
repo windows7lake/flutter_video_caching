@@ -47,7 +47,7 @@ class DownloadPool {
     if (_poolSize <= 0) {
       throw ArgumentError('Pool size must be greater than 0');
     }
-    _client = Dio()..httpClientAdapter = NativeAdapter();
+    _client = Dio()..httpClientAdapter = _createHttpClientAdapter();
     _streamController = StreamController.broadcast();
   }
 
@@ -67,6 +67,19 @@ class DownloadPool {
       .where((task) => task.status == DownloadStatus.DOWNLOADING)
       .toList();
 
+  HttpClientAdapter _createHttpClientAdapter() {
+    try {
+      return NativeAdapter();
+    } catch (error) {
+      // Some simulator/runtime combinations cannot load native_dio_adapter's
+      // Objective-C dynamic library. Falling back keeps VideoProxy usable; the
+      // default Dio adapter still supports the Range requests used here.
+      logW(
+          '[DownloadPool] NativeAdapter unavailable, fallback to Dio default: $error');
+      return HttpClientAdapter();
+    }
+  }
+
   /// Finds a task in the pool by its [taskId].
   DownloadTask? findTaskById(String taskId) =>
       _taskList.where((task) => task.id == taskId).firstOrNull;
@@ -77,7 +90,13 @@ class DownloadPool {
 
   /// Adds a new [task] to the pool, creating a cache directory if needed.
   Future<DownloadTask> addTask(DownloadTask task) async {
-    logV('[DownloadIsolatePool] addTask: ${task.toString()}');
+    logV('[DownloadPool] addTask: ${task.toString()}');
+    DownloadTask? existTask =
+        _taskList.where((e) => e.matchUrl == task.matchUrl).firstOrNull;
+    if (existTask != null) {
+      _promoteTaskPriorityIfNeeded(existTask, task);
+      return existTask;
+    }
     if (task.cacheDir.isEmpty) {
       String cachePath = await FileExt.createCachePath();
       task.cacheDir = cachePath;
@@ -91,14 +110,28 @@ class DownloadPool {
   Future<DownloadTask> executeTask(DownloadTask task) async {
     DownloadTask? existTask =
         _taskList.where((e) => e.matchUrl == task.matchUrl).firstOrNull;
-    if (existTask != null && existTask.priority < task.priority) {
-      _taskList.removeWhere((e) => e.matchUrl == task.matchUrl);
-      await addTask(task);
+    if (existTask != null) {
+      _promoteTaskPriorityIfNeeded(existTask, task);
     } else if (existTask == null) {
       await addTask(task);
     }
     FunctionProxy.debounce(roundTask);
     return task;
+  }
+
+  void _promoteTaskPriorityIfNeeded(
+    DownloadTask existingTask,
+    DownloadTask incomingTask,
+  ) {
+    if (existingTask.priority >= incomingTask.priority) return;
+
+    // Keep the existing task object so listeners waiting on this cache key
+    // continue to observe the same download, but promote it in the scheduler.
+    existingTask.priority = incomingTask.priority;
+    if (existingTask.status == DownloadStatus.PAUSED) {
+      existingTask.status = DownloadStatus.IDLE;
+    }
+    FunctionProxy.debounce(roundTask);
   }
 
   void updateTaskById(String taskId, DownloadStatus status) {
