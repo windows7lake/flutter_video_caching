@@ -1,3 +1,7 @@
+## 1.1.5
+
+- fix: MMP4 range preload behavior and download priority controls (pr #52 from hkm5558)
+
 ## 1.1.4
 
 - fix: write segments to .tmp and rename atomically; skip orphan .tmp files on startup (pr #50 from cjltgb520)
