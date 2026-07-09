@@ -254,7 +254,9 @@ class DownloadPool {
       if (range.isEmpty) range = 'bytes=0-';
       range += '${task.endRange}';
     }
-    headers.putIfAbsent('Range', () => range);
+    if (range.isNotEmpty) {
+      headers.putIfAbsent('Range', () => range);
+    }
     // Add custom headers except 'host' and 'range'.
     if (task.headers != null) {
       task.headers!.forEach((key, value) {
