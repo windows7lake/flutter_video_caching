@@ -1,3 +1,7 @@
+## 1.1.6
+
+- fix: response status code 416
+
 ## 1.1.5
 
 - fix: MMP4 range preload behavior and download priority controls (pr #52 from hkm5558)
