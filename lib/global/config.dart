@@ -37,4 +37,11 @@ class Config {
 
   /// A custom cache identifier string.
   static String customCacheId = 'Custom-Cache-ID';
+
+  /// How long the MP4 download wait may block on a terminal task event
+  /// before giving up (null result). Bounds the previously infinite
+  /// `await for` in the serve loops' download fallback — a task that is
+  /// removed or never completes otherwise parks the serve loop and its
+  /// socket forever (see issue #38).
+  static Duration downloadWaitTimeout = const Duration(seconds: 30);
 }

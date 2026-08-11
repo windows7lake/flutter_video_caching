@@ -50,22 +50,38 @@ class UrlParserMp4 implements UrlParser {
 
   /// Downloads data from the network for the given [task].
   ///
-  /// Returns a [Uint8List] containing the downloaded data,
-  /// or `null` if the download fails.
+  /// Returns a [Uint8List] containing the downloaded data, or `null` if the
+  /// download fails, is cancelled, or the wait times out
+  /// ([Config.downloadWaitTimeout]).
+  ///
+  /// The previous implementation waited for a COMPLETED event with no bound.
+  /// A task that ends FAILED/CANCELLED — or one that is removed from the
+  /// pool, so `updateTaskById` finds nothing and never emits a terminal
+  /// event — parked the caller forever: the serve loop's socket-closing
+  /// `finally` never ran, and one broadcast-stream listener leaked per hung
+  /// wait (issue #38).
   @override
   Future<Uint8List?> download(DownloadTask task) async {
     logD('From network: ${task.url}');
-    Uint8List? dataNetwork;
     task.cacheDir = await FileExt.createCachePath(task.uri.generateMd5);
     await VideoProxy.downloadManager.executeTask(task);
-    await for (DownloadTask taskStream in VideoProxy.downloadManager.stream) {
-      if (taskStream.status == DownloadStatus.COMPLETED &&
-          taskStream.matchUrl == task.matchUrl) {
-        dataNetwork = Uint8List.fromList(taskStream.data);
-        break;
-      }
+    try {
+      final DownloadTask result = await VideoProxy.downloadManager.stream
+          .firstWhere((taskStream) =>
+              taskStream.matchUrl == task.matchUrl &&
+              (taskStream.status == DownloadStatus.COMPLETED ||
+                  taskStream.status == DownloadStatus.FAILED ||
+                  taskStream.status == DownloadStatus.CANCELLED))
+          .timeout(Config.downloadWaitTimeout);
+      if (result.status != DownloadStatus.COMPLETED) return null;
+      return Uint8List.fromList(result.data);
+    } on TimeoutException {
+      logW('[UrlParserMp4] download wait timed out: ${task.url}');
+      return null;
+    } on StateError {
+      // Stream closed (pool disposed) before a terminal event arrived.
+      return null;
     }
-    return dataNetwork;
   }
 
   /// Parses the request and returns the data to the [socket].

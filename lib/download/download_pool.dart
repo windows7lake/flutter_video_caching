@@ -144,11 +144,15 @@ class DownloadPool {
               .where((e) => e.id != taskId)
               .reduce((a, b) => a.priority < b.priority ? a : b);
           lowest.status = DownloadStatus.PAUSED;
+          _cancelRequest(lowest);
         }
         _download(task);
+      } else if (status == DownloadStatus.PAUSED) {
+        _cancelRequest(task);
       } else if (status == DownloadStatus.COMPLETED ||
           status == DownloadStatus.FAILED ||
           status == DownloadStatus.CANCELLED) {
+        _cancelRequest(task);
         _taskList.removeWhere((task) => task.id == taskId);
         _notifyTask(task);
       }
@@ -165,11 +169,15 @@ class DownloadPool {
               .where((e) => e.url != url)
               .reduce((a, b) => a.priority < b.priority ? a : b);
           lowest.status = DownloadStatus.PAUSED;
+          _cancelRequest(lowest);
         }
         _download(task);
+      } else if (status == DownloadStatus.PAUSED) {
+        _cancelRequest(task);
       } else if (status == DownloadStatus.COMPLETED ||
           status == DownloadStatus.FAILED ||
           status == DownloadStatus.CANCELLED) {
+        _cancelRequest(task);
         _taskList.removeWhere((task) => task.url == url);
         _notifyTask(task);
       }
@@ -185,6 +193,7 @@ class DownloadPool {
         for (var task in _taskList.sublist(_poolSize)) {
           if (task.status == DownloadStatus.DOWNLOADING) {
             task.status = DownloadStatus.PAUSED;
+            _cancelRequest(task);
             _notifyTask(task);
           }
         }
@@ -195,6 +204,7 @@ class DownloadPool {
           if (task.status == DownloadStatus.DOWNLOADING) continue;
           if (downloadingTasks.length >= _poolSize) {
             task.status = DownloadStatus.PAUSED;
+            _cancelRequest(task);
             _notifyTask(task);
             continue;
           }
@@ -204,6 +214,25 @@ class DownloadPool {
         }
       }
     });
+  }
+
+  /// Cancels the task's in-flight HTTP request, if any, keeping the resume
+  /// bookkeeping consistent (the same transform the progress-callback cancel
+  /// applies — a later resume continues from `cachedBytes` via the Range
+  /// header).
+  ///
+  /// Without this, pausing or cancelling a task only set its status; the
+  /// actual `CancelToken.cancel()` fired inside `onReceiveProgress`, i.e.
+  /// only when the NEXT byte arrived. For a stalled connection that byte
+  /// never comes: the "stopped" transfer kept its socket and `.tmp` file
+  /// handle open as a ghost, no longer counted by [downloadingTasks], and a
+  /// pause followed by a quick resume started a second request writing to
+  /// the same `.tmp` while the first was still alive.
+  void _cancelRequest(DownloadTask task) {
+    if (task.cancelToken == null) return;
+    task.cachedBytes = task.downloadedBytes;
+    task.cancelToken?.cancel();
+    task.cancelToken = null;
   }
 
   Future<void> _download(DownloadTask task) async {
