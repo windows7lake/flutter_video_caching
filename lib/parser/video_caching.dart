@@ -103,7 +103,7 @@ class VideoCaching {
     String url, {
     Map<String, Object>? headers,
   }) async {
-    Uri uri = url.toSafeUri();
+    Uri uri = url.toOriginUri();
     UrlParser parser = UrlParserFactory.createParser(uri);
     if (parser is! UrlParserM3U8) return null;
     HlsPlaylist? playlist = await parser.parsePlaylist(uri,

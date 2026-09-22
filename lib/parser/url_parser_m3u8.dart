@@ -326,7 +326,7 @@ class UrlParserM3U8 implements UrlParser {
     Map<String, Object>? headers,
     int cacheSegments,
   ) async {
-    List<HlsSegment> mediaList = await parseSegment(url.toSafeUri(), headers);
+    List<HlsSegment> mediaList = await parseSegment(url.toOriginUri(), headers);
     if (mediaList.isEmpty) return false;
     int totalSize = mediaList.length;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
@@ -365,7 +365,7 @@ class UrlParserM3U8 implements UrlParser {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
 
-    List<HlsSegment> mediaList = await parseSegment(url.toSafeUri(), headers);
+    List<HlsSegment> mediaList = await parseSegment(url.toOriginUri(), headers);
     int totalSize = mediaList.length;
     if (cacheSegments > totalSize) cacheSegments = totalSize;
     if (mediaList.isEmpty) return _streamController;

@@ -436,7 +436,7 @@ class UrlParserDefault implements UrlParser {
     Map<String, Object>? headers,
     int cacheSegments,
   ) async {
-    int contentLength = await head(url.toSafeUri(), headers: headers);
+    int contentLength = await head(url.toOriginUri(), headers: headers);
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
@@ -446,7 +446,7 @@ class UrlParserDefault implements UrlParser {
     }
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
+      DownloadTask task = DownloadTask(uri: url.toOriginUri(), headers: headers);
       // Set the start and end range for each segment
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
@@ -475,7 +475,7 @@ class UrlParserDefault implements UrlParser {
       [int priority = 1]) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
-    int contentLength = await head(url.toSafeUri(), headers: headers);
+    int contentLength = await head(url.toOriginUri(), headers: headers);
     if (contentLength > 0) {
       int segmentSize = contentLength ~/ Config.segmentSize +
           (contentLength % Config.segmentSize > 0 ? 1 : 0);
@@ -488,7 +488,7 @@ class UrlParserDefault implements UrlParser {
     int count = 0;
     while (count < cacheSegments) {
       DownloadTask task = DownloadTask(
-        uri: url.toSafeUri(),
+        uri: url.toOriginUri(),
         headers: headers,
         priority: priority,
       );

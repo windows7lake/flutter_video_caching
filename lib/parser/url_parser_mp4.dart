@@ -492,7 +492,7 @@ class UrlParserMp4 implements UrlParser {
     Map<String, Object>? headers,
     int cacheSegments,
   ) async {
-    final uri = url.toSafeUri();
+    final uri = url.toOriginUri();
     final contentLengthTask = DownloadTask(
       uri: uri,
       startRange: 0,
@@ -512,7 +512,7 @@ class UrlParserMp4 implements UrlParser {
     }
     int count = 0;
     while (count < cacheSegments) {
-      DownloadTask task = DownloadTask(uri: url.toSafeUri(), headers: headers);
+      DownloadTask task = DownloadTask(uri: uri, headers: headers);
       // Set the start and end range for each segment
       task.startRange += Config.segmentSize * count;
       task.endRange = task.startRange + Config.segmentSize - 1;
@@ -548,7 +548,7 @@ class UrlParserMp4 implements UrlParser {
       [int priority = 1]) async {
     StreamController<Map>? _streamController;
     if (progressListen) _streamController = StreamController();
-    final uri = url.toSafeUri();
+    final uri = url.toOriginUri();
     final contentLengthTask = DownloadTask(
       uri: uri,
       startRange: 0,

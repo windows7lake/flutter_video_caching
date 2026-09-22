@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter_video_caching/ext/string_ext.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_video_caching/download/download_manager.dart';
 import 'package:flutter_video_caching/cache/lru_cache_singleton.dart';
@@ -225,6 +226,75 @@ void main() {
       expect(file, isNotNull);
       expect(await file!.readAsBytes(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
       expect(parser.downloadedRanges, ['4-7', '8-9']);
+    });
+
+    test('exports local proxy url using origin cache key', () async {
+      final originUrl = 'https://cdn.example.com/proxy-source.mp4?token=1';
+      final localUrl = originUrl.toLocalUrl();
+      final uri = Uri.parse(originUrl);
+      await _cacheContentLength(uri, 6);
+      await _cacheRange(uri, 0, 3, [0, 1, 2, 3]);
+      await _cacheRange(uri, 4, 5, [4, 5]);
+
+      final file = await VideoCaching.exportCachedMp4(
+        localUrl,
+        downloadMissingSegments: false,
+      );
+
+      expect(file, isNotNull);
+      expect(await file!.readAsBytes(), [0, 1, 2, 3, 4, 5]);
+    });
+
+    test('origin url with stray whitespace still exports', () async {
+      // toOriginUrl() returns the string untouched when there is no origin
+      // parameter, so the cleanup has to happen after it. Without that a
+      // caller-supplied url with a leading space throws out of Uri.parse,
+      // while this method promises to return null instead.
+      final originUrl = 'https://cdn.example.com/whitespace.mp4';
+      final uri = Uri.parse(originUrl);
+      await _cacheContentLength(uri, 4);
+      await _cacheRange(uri, 0, 3, [9, 8, 7, 6]);
+
+      final file = await VideoCaching.exportCachedMp4(
+        '  $originUrl\r',
+        downloadMissingSegments: false,
+      );
+
+      expect(file, isNotNull);
+      expect(await file!.readAsBytes(), [9, 8, 7, 6]);
+    });
+
+    test('a url carrying its own origin parameter still exports', () async {
+      // `origin` is also a perfectly ordinary business parameter. It must not
+      // be mistaken for the proxy marker, or this url stops exporting.
+      final originUrl = 'https://cdn.example.com/own.mp4?origin=web';
+      final uri = Uri.parse(originUrl);
+      await _cacheContentLength(uri, 3);
+      await _cacheRange(uri, 0, 2, [1, 2, 3]);
+
+      final file = await VideoCaching.exportCachedMp4(
+        originUrl,
+        downloadMissingSegments: false,
+      );
+
+      expect(file, isNotNull);
+      expect(await file!.readAsBytes(), [1, 2, 3]);
+    });
+
+    test('a url that resolves to nothing returns null', () async {
+      // Neither restoring nor cleaning can make an absolute url out of these.
+      // Letting them through means firing an http request at a hostless uri,
+      // out of a method that promises null.
+      for (final broken in <String>['::not a url::', '/relative.mp4', '']) {
+        expect(
+          await VideoCaching.exportCachedMp4(
+            broken,
+            downloadMissingSegments: false,
+          ),
+          isNull,
+          reason: broken,
+        );
+      }
     });
 
     test('returns null when timeout expires while filling missing ranges',

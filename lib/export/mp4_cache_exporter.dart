@@ -21,6 +21,23 @@ class Mp4CacheExporter {
 
   final UrlParserMp4 _parser;
 
+  /// Resolves [url] to the URI the range cache is keyed by.
+  ///
+  /// Playback keys its cache by the origin URL (the local proxy server restores
+  /// it before building any [DownloadTask]), so a proxy URL has to be restored
+  /// first or every lookup misses keys that were never written.
+  /// [String.toOriginUrl] leaves a plain source URL alone and never throws.
+  ///
+  /// The scheme/host check rejects what neither step can make sense of — a
+  /// relative path, or junk that parsed into an empty `Uri`. Without it those
+  /// reach `_contentLength`, which fires an HTTP request at a hostless URI and
+  /// throws out of a method documented to return `null`.
+  static Uri? _resolveUri(String url) {
+    final uri = url.toOriginUri();
+    if (!uri.hasScheme || uri.host.isEmpty) return null;
+    return uri;
+  }
+
   /// Exports [url] to a complete MP4 file.
   ///
   /// Returns `null` when the total length is unknown, a required segment is
@@ -32,7 +49,8 @@ class Mp4CacheExporter {
     bool downloadMissingSegments = true,
     int priority = 5,
   }) async {
-    final uri = url.toSafeUri();
+    final uri = _resolveUri(url);
+    if (uri == null) return null;
     if (!VideoProxy.urlMatcherImpl.matchMp4(uri)) return null;
     final deadline = DateTime.now().add(timeout);
     final contentLength = await _contentLength(uri, headers, deadline);
